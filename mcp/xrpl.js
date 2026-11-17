@@ -12,6 +12,24 @@
 import { api, apiPost, xrplRpc, web, ApiError } from './api.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
+
+// An amount as PLAIN decimal digits, for a prefill link. String(0.0000001) is "1e-7", and the page
+// refuses anything that is not plain digits -- deliberately, since it is about to be approved -- so a
+// small deposit would silently arrive as an empty box. Six decimals because that is a drop, the
+// smallest unit XRP has; trailing zeros are trimmed so the field reads the way a person would write
+// it. An issued currency carries more precision than this, but not in a box someone is about to read.
+// IT VALIDATES ITS OWN OUTPUT against the rule the page enforces, and returns '' rather than a value
+// the page will throw away. Six decimals makes this sharper here than on Stellar: 0.0000001 XRP is
+// below a drop and rounds to "0", and the page treats an empty-or-zero box as unfilled, so it would
+// write "0" again on every tick for the whole watch window. Exponent notation ("1e+21") is simply
+// refused by the page. Either way, emit nothing and let the amount stand in the reply text alone.
+const plainAmount = (v) => {
+  const n = +v;
+  if (!isFinite(n) || n <= 0) return '';
+  const s = n.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s) || +s === 0) return '';
+  return s;
+};
 function ok(obj) { return { content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] }; }
 function fail(msg) { return { isError: true, content: [{ type: 'text', text: msg }] }; }
 
@@ -510,7 +528,11 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
     note: 'An AMM position on the XRP Ledger raises your account reserve by 0.2 XRP, and the LP token '
       + 'it issues takes a trustline. Creating a NEW pool also costs the one-time AMMCreate fee, which '
       + 'is the owner reserve at the time — far more than an ordinary transaction fee.',
-    prefill: NOFILL,
+    // NO `prefill: NOFILL` HERE ANY MORE, and that is the point of this change. The pool page now
+    // reads the amounts back (lx-poolprefill), on this chain as well as Stellar -- the deposit card
+    // is the same markup on both. NOFILL stays on every OTHER write in this file, because those pages
+    // still do not read a link, and claiming a prefill that does not happen is the exact bug this was
+    // written to avoid.
   };
   if (pool) {
     extra.pool_account = pool.acct;
@@ -529,10 +551,16 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
     extra.price_warning = 'The ratio you deposit SETS the opening price. Match the market or arbitrage '
       + 'will correct it at your expense.';
   }
+  // The amounts ride in the query, exactly as on Stellar. The two chains do not share a pool url
+  // shape -- here it is /pools/xrpl/id/<account> -- which is why lx-poolprefill matches each amount
+  // to its row BY CODE and never by reading the pair out of the path.
+  const fill = `?a=${encodeURIComponent(A.code)}&amount_a=${plainAmount(amount_a)}`
+    + `&b=${encodeURIComponent(B.code)}&amount_b=${plainAmount(amount_b)}`;
   return prepared('add_liquidity',
     `Deposit ${amount_a} ${A.code} and ${amount_b} ${B.code} into the ${A.code} / ${B.code} pool on the XRP Ledger`,
-    pool ? web('/pools/xrpl/id/' + pool.acct) : web(`/pools/xrpl/${encodeURIComponent(slug(A))}/${encodeURIComponent(slug(B))}`),
-    Object.assign({ enter_on_page: { [A.code]: +amount_a, [B.code]: +amount_b } }, extra));
+    (pool ? web('/pools/xrpl/id/' + pool.acct)
+      : web(`/pools/xrpl/${encodeURIComponent(slug(A))}/${encodeURIComponent(slug(B))}`)) + fill,
+    extra);
 }
 
 async function removeLiquidity({ a, b }) {
@@ -545,19 +573,35 @@ async function removeLiquidity({ a, b }) {
     { prefill: NOFILL });
 }
 
+// Recipient optional, and the figures carried in the link -- the same change as Stellar's bridge and
+// for the same reason; see the note there. Kept in step deliberately: a tool that asks for different
+// inputs depending on which chain it lands on is the harder bug to find.
+const netParam = (v) => {
+  const s = String(v || '').trim();
+  return /^[A-Za-z0-9 ._-]{1,32}$/.test(s) ? s : '';
+};
+const addrParam = (v) => {
+  const s = String(v || '').trim();
+  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s) ? s : '';
+};
+
 async function bridge({ asset, to_network, amount, recipient }) {
   if (!asset || !to_network) return fail('asset and to_network are required.');
   if (!(+amount > 0)) return fail('amount must be positive.');
-  if (!recipient) return fail('recipient is required — the address that receives the assets on the destination chain.');
+  const q = [];
+  const n = netParam(to_network); if (n) q.push('to=' + encodeURIComponent(n));
+  const av = netParam(asset);     if (av) q.push('asset=' + encodeURIComponent(av));
+  const m = plainAmount(amount);  if (m) q.push('amount=' + m);
+  const r = addrParam(recipient); if (r) q.push('recipient=' + encodeURIComponent(r));
   return prepared('bridge', `Bridge ${amount} ${asset} from the XRP Ledger to ${to_network}`,
-    web('/bridge/xrpl'),
-    { recipient, to_network,
+    web('/bridge/xrpl') + (q.length ? '?' + q.join('&') : ''),
+    { ...(recipient ? { recipient } : {}), to_network,
       // Axelar is the corridor that reaches XRPL, and it carries the TOKEN rather than the name: XRP
       // lands on the far side as wXRP. Saying so here stops an agent reporting that "XRP arrived".
       note: 'The XRP Ledger corridor is Axelar. It carries the token, not the name — XRP arrives on '
         + 'the destination chain as a wrapped representation (wXRP), not as native XRP. The route and '
-        + 'its fee are shown before you approve.',
-      prefill: NOFILL });
+        + 'its fee are shown before you approve.'
+        + (recipient ? '' : ' No destination address was given, so enter the receiving address on the page.') });
 }
 
 async function launchToken({ code, supply }) {

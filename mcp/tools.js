@@ -86,6 +86,23 @@ const sideId = (s) => (!s ? null : (s.issuer ? `${s.code}-${s.issuer}` : (String
 // Horizon spells an asset CODE:ISSUER in a query, where the rest of this file uses CODE-ISSUER.
 const hAsset = (x) => (x.id === 'native' ? 'native' : `${x.code}:${x.issuer}`);
 
+// An amount as PLAIN decimal digits, for a prefill link. String(0.0000001) is "1e-7", and the page
+// refuses anything that is not plain digits -- deliberately, since it is about to be approved -- so a
+// small deposit would silently arrive as an empty box. Seven decimals is Stellar's own precision;
+// trailing zeros are trimmed so the field reads the way a person would write it.
+// IT VALIDATES ITS OWN OUTPUT against the rule the page enforces, and returns '' rather than a value
+// the page will throw away. Two cases that formatting alone gets wrong: a number big enough that
+// toFixed still yields exponent notation ("1e+21"), which the page refuses; and an amount so small it
+// rounds to "0", which is worse than refused -- the page treats an empty-or-zero box as unfilled, so
+// it would write "0" again on every tick for the whole watch window.
+const plainAmount = (v) => {
+  const n = +v;
+  if (!isFinite(n) || n <= 0) return '';
+  const s = n.toFixed(7).replace(/0+$/, '').replace(/\.$/, '');
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(s) || +s === 0) return '';
+  return s;
+};
+
 // Every pool holding an asset, straight from the ledger. /lxapi/pools serves ONE page of the top pools
 // by TVL, which is the right answer for "show me the big pools" and the wrong one for "which pools hold
 // X" -- see listPools.
@@ -640,8 +657,15 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
       }
     }
   }
+  // CARRY THE AMOUNTS IN THE LINK. Until 2026-11-17 this returned the bare pool url, so the deposit
+  // card opened at 0.00 / 0.00 and the two numbers computed above lived only in this reply -- a user
+  // testing the connector reported exactly that. The page reads these back in lx-poolprefill
+  // (_tools/_poolprefill.js), which matches each amount to its row BY CODE rather than by position,
+  // which is why the codes travel too.
   return prepared('add_liquidity', `Deposit ${amount_a} ${A.code} and ${amount_b} ${B.code} into the ${A.code} / ${B.code} pool`,
-    web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`), extra);
+    web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`
+      + `?a=${encodeURIComponent(A.code)}&amount_a=${plainAmount(amount_a)}`
+      + `&b=${encodeURIComponent(B.code)}&amount_b=${plainAmount(amount_b)}`), extra);
 }
 
 async function removeLiquidity({ a, b }) {
@@ -651,15 +675,40 @@ async function removeLiquidity({ a, b }) {
     web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`));
 }
 
+// RECIPIENT IS OPTIONAL. It used to be required and the tool refused to prepare anything without it,
+// which is backwards: the destination address is the one input the person most often does not have to
+// hand, and the bridge page asks for it itself. Worse, the url this returned was a bare /bridge/stellar
+// -- so the address it insisted on was collected and then thrown away. Reported 2026-11-16.
+//
+// Everything the tool worked out now travels in the query for [[_bridgeprefill]] to apply. That layer
+// applies TWO of these four: the destination network and the receiving address. It will not write an
+// amount unless the page is already showing the asset asked for here -- the alternative is a number
+// against the wrong asset two clicks from a "You send" review screen. So the reply below still states
+// the asset and the amount in words, because the link alone may not carry them onto the page.
+const netParam = (v) => {
+  const s = String(v || '').trim();
+  return /^[A-Za-z0-9 ._-]{1,32}$/.test(s) ? s : '';
+};
+const addrParam = (v) => {
+  const s = String(v || '').trim();
+  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s) ? s : '';
+};
+
 async function bridge({ asset, to_network, amount, recipient }) {
   if (!asset || !to_network) return fail('asset and to_network are required.');
   if (!(+amount > 0)) return fail('amount must be positive.');
-  if (!recipient) return fail('recipient is required — the address that receives the assets on the destination chain.');
-  return prepared('bridge', `Bridge ${amount} ${asset} from Stellar to ${to_network}`, web('/bridge/stellar'),
-    { recipient, to_network,
+  const q = [];
+  const n = netParam(to_network); if (n) q.push('to=' + encodeURIComponent(n));
+  const a = netParam(asset);      if (a) q.push('asset=' + encodeURIComponent(a));
+  const m = plainAmount(amount);  if (m) q.push('amount=' + m);
+  const r = addrParam(recipient); if (r) q.push('recipient=' + encodeURIComponent(r));
+  return prepared('bridge', `Bridge ${amount} ${asset} from Stellar to ${to_network}`,
+    web('/bridge/stellar') + (q.length ? '?' + q.join('&') : ''),
+    { to_network, ...(recipient ? { recipient } : {}),
       note: 'LumosCore routes through Circle CCTP, LayerZero, NEAR Intents or Axelar depending on the '
         + 'destination — Axelar is the corridor that reaches the XRP Ledger. '
-        + 'The route and its fee are shown before you approve.' });
+        + 'The route and its fee are shown before you approve.'
+        + (recipient ? '' : ' No destination address was given, so enter the receiving address on the page.') });
 }
 
 async function launchToken({ code, supply }) {
@@ -775,7 +824,7 @@ export const TOOLS = [
   { name: 'remove_liquidity', title: 'Prepare an AMM withdrawal for you to approve (does not sign)',
     schema: { chain: CHAIN, a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'], run: route(removeLiquidity, XRPL.removeLiquidity) },
   { name: 'bridge', title: 'Prepare a cross-chain transfer for you to approve (does not sign)',
-    schema: { chain: CHAIN, asset: { type: 'string' }, to_network: { type: 'string' }, amount: { type: 'number' }, recipient: { type: 'string' } }, required: ['asset', 'to_network', 'amount', 'recipient'], run: route(bridge, XRPL.bridge) },
+    schema: { chain: CHAIN, asset: { type: 'string' }, to_network: { type: 'string' }, amount: { type: 'number' }, recipient: { type: 'string' } }, required: ['asset', 'to_network', 'amount'], run: route(bridge, XRPL.bridge) },
   { name: 'launch_token', title: 'Prepare a token issuance for you to approve (does not sign)',
     schema: { chain: CHAIN, code: { type: 'string' }, supply: { type: 'number' } }, required: ['code', 'supply'], run: route(launchToken, XRPL.launchToken) },
 ];
