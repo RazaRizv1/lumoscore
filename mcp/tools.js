@@ -10,6 +10,7 @@
 // here with a reason rather than in a wallet the user has already been asked to trust.
 import { api, horizon, parseAsset, G_RE, web, ApiError } from './api.js';
 import { XRPL } from './xrpl.js';
+import { NEAR } from './near.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
 
@@ -47,8 +48,9 @@ async function supplyOf(a) {
 // ---- reads ------------------------------------------------------------------------------------
 
 async function getMarket({ asset }) {
-  const a = parseAsset(asset);
-  if (!a) return fail(`"${asset}" is not an asset id. Use CODE-ISSUER (e.g. SHX-GDSTRSHX…) or XLM.`);
+  const ra = await wantAsset('asset', asset);
+  if (ra.error) return fail(ra.error);
+  const a = ra.want;
   if (a.id === 'native') return fail('XLM is the quote asset here; ask for an asset priced against it.');
   const d = await api('/lxapi/dexassets?a=' + encodeURIComponent(a.id));
   const row = d && d.a && d.a[a.id];
@@ -150,6 +152,26 @@ async function resolveCode(asset) {
   }
   const w = parseAsset(matches[0]);
   return w ? { want: w } : { error: `"${asset}" could not be resolved to an asset id.` };
+}
+
+// ONE RESOLVER FOR EVERY TOOL THAT TAKES AN ASSET, which resolveCode above was not.
+//
+// It was written for list_pools and wired into list_pools alone, so the connector answered the same
+// string two different ways: `list_pools asset=LUMOS` worked, while `add_liquidity a=LUMOS` failed
+// with `"LUMOS" is not an asset id` -- and the message named the right format without mentioning that
+// a curated code resolves at all. A user testing the connector reported it on 2026-11-16 as the pool
+// form being broken; six tools were affected (get_market, get_quote, get_orderbook, swap,
+// add_liquidity, remove_liquidity).
+//
+// The strictness stays exactly where resolveCode put it: a full CODE-ISSUER is taken as given, a bare
+// code resolves ONLY through the curated roster, and two curated issuers for one code refuses and
+// names both rather than picking. `label` says WHICH argument was wrong, because add_liquidity and
+// get_quote each take two and the bare message cannot say which one failed.
+async function wantAsset(label, x) {
+  const direct = parseAsset(x);
+  if (direct) return { want: direct };
+  const r = await resolveCode(x);
+  return r.want ? r : { error: `${label}: ${r.error}` };
 }
 
 async function listPools({ limit = 20, asset, page = 1 }) {
@@ -338,9 +360,9 @@ async function getPortfolio({ address }) {
 }
 
 async function getQuote({ from, to, amount }) {
-  const f = parseAsset(from), t = parseAsset(to);
-  if (!f) return fail(`"${from}" is not an asset id. Use CODE-ISSUER or XLM.`);
-  if (!t) return fail(`"${to}" is not an asset id. Use CODE-ISSUER or XLM.`);
+  const rf = await wantAsset('from', from); if (rf.error) return fail(rf.error);
+  const rt = await wantAsset('to', to);     if (rt.error) return fail(rt.error);
+  const f = rf.want, t = rt.want;
   const amt = +amount;
   if (!isFinite(amt) || amt <= 0) return fail('amount must be a positive number.');
   if (f.id === t.id) return fail('from and to are the same asset.');
@@ -452,8 +474,9 @@ async function listCuratedAssets({ include_mints = false, verified_only = false 
 // Prices are XLM per unit: the book is asked for with the asset SELLING and XLM BUYING, so Horizon
 // quotes the counter asset per base.
 async function getOrderbook({ asset, limit = 8 }) {
-  const a = parseAsset(asset);
-  if (!a) return fail(`"${asset}" is not an asset id. Use CODE-ISSUER (e.g. KALE-GBDVX4…) or XLM.`);
+  const ra = await wantAsset('asset', asset);
+  if (ra.error) return fail(ra.error);
+  const a = ra.want;
   if (a.id === 'native') return fail('XLM is the quote asset here; ask for an asset priced against it.');
   const n = Math.max(1, Math.min(50, +limit || 8));
   const t = a.code.length <= 4 ? 'credit_alphanum4' : 'credit_alphanum12';
@@ -527,11 +550,16 @@ const postRow = (p) => ({
 async function listBlogPosts({ limit = 20, tag, category, _chain }) {
   const d = await api('/lxapi/blog');
   let posts = (d && d.posts) || [];
-  // Drop only the posts belonging to the OTHER network. See blogChain() for why this is not an
+  // Drop only the posts belonging to ANOTHER network. See blogChain() for why this is not an
   // equality test on the category.
+  //
+  // IT IS EVERY OTHER NETWORK, NOT "THE" OTHER ONE. This was `_chain === 'xrpl' ? 'stellar' : 'xrpl'`
+  // -- a single swap, correct while there were exactly two chains and quietly wrong the moment there
+  // were three: asking for near dropped the XRPL posts and kept every Stellar one. Derived from
+  // CHAINS now, so a fourth fork cannot reintroduce it.
   if (_chain) {
-    const other = _chain === 'xrpl' ? 'stellar' : 'xrpl';
-    posts = posts.filter((p) => String(p.category || '').trim().toLowerCase() !== other);
+    const others = CHAINS.filter((c) => c !== _chain);
+    posts = posts.filter((p) => others.indexOf(String(p.category || '').trim().toLowerCase()) < 0);
   }
   if (tag) {
     const t = String(tag).toLowerCase();
@@ -596,7 +624,11 @@ async function swap({ from, to, amount }) {
   const q = await getQuote({ from, to, amount });
   if (q.isError) return q;
   const d = JSON.parse(q.content[0].text);
-  const f = parseAsset(from), t = parseAsset(to);
+  // getQuote has already accepted both, so these cannot fail here -- but they must RESOLVE, not just
+  // parse, or a bare curated code would quote fine and then fail at the swap it was quoted for.
+  const rf = await wantAsset('from', from); if (rf.error) return fail(rf.error);
+  const rt = await wantAsset('to', to);     if (rt.error) return fail(rt.error);
+  const f = rf.want, t = rt.want;
 
   if (f.id === 'native' || t.id === 'native') {
     const page = t.id === 'native' ? f.id : t.id;
@@ -614,9 +646,9 @@ async function swap({ from, to, amount }) {
 }
 
 async function addLiquidity({ a, b, amount_a, amount_b }) {
-  const A = parseAsset(a), B = parseAsset(b);
-  if (!A) return fail(`"${a}" is not an asset id.`);
-  if (!B) return fail(`"${b}" is not an asset id.`);
+  const rA = await wantAsset('a', a); if (rA.error) return fail(rA.error);
+  const rB = await wantAsset('b', b); if (rB.error) return fail(rB.error);
+  const A = rA.want, B = rB.want;
   if (!(+amount_a > 0) || !(+amount_b > 0)) return fail('amount_a and amount_b must both be positive.');
 
   // WHAT THE DEPOSIT ACTUALLY BUYS. An agent asked "how many liq shares will i have for depositing
@@ -669,8 +701,9 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
 }
 
 async function removeLiquidity({ a, b }) {
-  const A = parseAsset(a), B = parseAsset(b);
-  if (!A || !B) return fail('a and b must both be asset ids (CODE-ISSUER or XLM).');
+  const rA = await wantAsset('a', a); if (rA.error) return fail(rA.error);
+  const rB = await wantAsset('b', b); if (rB.error) return fail(rB.error);
+  const A = rA.want, B = rB.want;
   return prepared('remove_liquidity', `Withdraw your position from the ${A.code} / ${B.code} pool`,
     web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`));
 }
@@ -727,16 +760,20 @@ function fail(msg) { return { isError: true, content: [{ type: 'text', text: msg
 
 // ---- chains -------------------------------------------------------------------------------------
 //
-// ONE SET OF TOOLS, TWO CHAINS. Every tool takes `chain`, and the implementation behind it is picked
-// here rather than inside each function -- see the header of xrpl.js for why the two are separate
-// files.
+// ONE SET OF TOOLS, THREE CHAINS. Every tool takes `chain`, and the implementation behind it is
+// picked here rather than inside each function -- see the header of xrpl.js for why they are
+// separate files, and near.js for why a third chain made that call more obviously right.
 //
 // AN UNKNOWN CHAIN IS REFUSED, NOT DEFAULTED. The tempting line is `chain === 'xrpl' ? xrpl : stellar`,
 // which turns a typo, and anything a later fork adds, into a silent Stellar answer: ask for `chain:
-// "near"` and get Stellar prices back with no indication they are the wrong network. On a site where
-// a wrong-chain action is the expensive kind of mistake, a refusal naming the chains that exist is
-// the only safe reading of an argument nobody recognises.
-const CHAINS = ['stellar', 'xrpl'];
+// "hedera"` and get Stellar prices back with no indication they are the wrong network. On a site
+// where a wrong-chain action is the expensive kind of mistake, a refusal naming the chains that
+// exist is the only safe reading of an argument nobody recognises.
+//
+// THIS LIST IS THE ONE PLACE A CHAIN IS ADDED. `near` arriving here is what made every tool accept
+// it, because route() and the CHAIN schema below both read this array rather than repeating it --
+// which is also why `chain: "near"` used to produce the refusal above rather than a wrong answer.
+const CHAINS = ['stellar', 'xrpl', 'near'];
 
 function pickChain(args) {
   const c = String((args && args.chain) || 'stellar').trim().toLowerCase();
@@ -747,19 +784,25 @@ function pickChain(args) {
   return { chain: c };
 }
 
-// Wraps a Stellar implementation and its XRPL counterpart into one tool.
-function route(stellarFn, xrplFn) {
+// Wraps a Stellar implementation and its per-chain counterparts into one tool.
+//
+// A MISSING IMPLEMENTATION NAMES ITS CHAIN. The refusal used to be one sentence about the XRP Ledger
+// because there was only one other chain to be missing; with three, a message that said "the other
+// chain" would send an agent looking in the wrong place. Each gets its own name and its own reason.
+const CHAIN_NAMES = { stellar: 'Stellar', xrpl: 'The XRP Ledger', near: 'NEAR' };
+
+function route(stellarFn, xrplFn, nearFn) {
+  const impl = { xrpl: xrplFn, near: nearFn };
   return async (args) => {
     const p = pickChain(args);
     if (p.error) return fail(p.error);
-    if (p.chain === 'xrpl') {
-      if (!xrplFn) {
-        return fail('That tool is Stellar-only for now. '
-          + 'The XRP Ledger has no equivalent surface on LumosCore yet.');
-      }
-      return xrplFn(args);
+    if (p.chain === 'stellar') return stellarFn(args);
+    const fn = impl[p.chain];
+    if (!fn) {
+      return fail('That tool is Stellar-only for now. '
+        + `${CHAIN_NAMES[p.chain]} has no equivalent surface on LumosCore yet.`);
     }
-    return stellarFn(args);
+    return fn(args);
   };
 }
 
@@ -780,32 +823,52 @@ function blogChain(fn) {
 // tells you what each tool accepts. The description differs per tool where the two chains want
 // different inputs -- an asset id is CODE-ISSUER on both, but the issuer is a G-address on Stellar
 // and an r-address on the XRP Ledger, and an agent that is told so gets it right first time.
-const CHAIN = { type: 'string', enum: CHAINS, description: 'stellar (default) or xrpl' };
+const CHAIN = { type: 'string', enum: CHAINS, description: 'stellar (default), xrpl or near' };
+
+// WHAT AN ASSET ARGUMENT ACCEPTS, SAID ONCE AND SAID ON EVERY TOOL THAT TAKES ONE.
+//
+// swap, add_liquidity, remove_liquidity and bridge carried NO description on their asset arguments at
+// all, and the ones that had a description named only the CODE-ISSUER form. So an agent holding the
+// string "LUMOS" had nothing to tell it that a listed code resolves on its own, tried it, and got
+// `"LUMOS" is not an asset id` -- which reads as "no such token" rather than "say which issuer".
+// Reported 2026-11-16 together with the empty pool form; the resolver is wantAsset() above.
+// NEAR SPELLS AN ASSET DIFFERENTLY FROM THE OTHER TWO, and the description has to say so or an agent
+// will send it a CODE-ISSUER. There is no issuer on NEAR: the token's contract account IS its id.
+const ASSET = (extra) => ({
+  type: 'string',
+  description: 'On Stellar and the XRP Ledger: CODE-ISSUER (SHX-GDSTRSHX… / RLUSD-rMxCKbED…), or the '
+    + 'native coin as XLM / XRP. On NEAR: the token\'s contract account id '
+    + '(lumos.lumoscore.near, or a bridged token\'s 64-hex account), or NEAR for the native coin. '
+    + 'A bare code or symbol also works when exactly one listed asset carries it — two carriers '
+    + 'refuse and name both, rather than guessing which one you meant. list_curated_assets returns '
+    + 'every code that resolves on its own, per chain.'
+    + (extra ? ' ' + extra : ''),
+});
 
 export const TOOLS = [
   { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for an asset on Stellar or the XRP Ledger',
     schema: { chain: CHAIN,
-              asset: { type: 'string', description: 'CODE-ISSUER. Stellar: SHX-GDSTRSHX… — XRP Ledger: RLUSD-rMxCKbED…' } }, required: ['asset'], run: route(getMarket, XRPL.getMarket) },
+              asset: ASSET() }, required: ['asset'], run: route(getMarket, XRPL.getMarket, NEAR.getMarket) },
   { name: 'list_pools', title: 'Liquidity pools, optionally filtered to one asset (Stellar by TVL, XRP Ledger by 24h volume)',
     schema: { chain: CHAIN,
               limit: { type: 'number', description: 'Max pools to return (default 20, max 100)' },
               page: { type: 'number', description: 'Stellar only: page of the TVL ranking, 25 per page (default 1)' },
-              asset: { type: 'string', description: 'Only pools containing this asset. CODE-ISSUER, or on Stellar a bare code if LumosCore curates exactly one asset with it' } }, required: [], run: route(listPools, XRPL.listPools) },
+              asset: ASSET('Only pools containing this asset.') }, required: [], run: route(listPools, XRPL.listPools, NEAR.listPools) },
   { name: 'get_portfolio', title: 'Balances, pool positions and open orders for an account',
     schema: { chain: CHAIN,
-              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…)' } }, required: ['address'], run: route(getPortfolio, XRPL.getPortfolio) },
+              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…)' } }, required: ['address'], run: route(getPortfolio, XRPL.getPortfolio, NEAR.getPortfolio) },
   { name: 'get_quote', title: 'Best-route price for a swap, from the chain\'s own path finder',
-    schema: { chain: CHAIN, from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' },
-              address: { type: 'string', description: 'XRP Ledger only, and required there: ripple_path_find answers per account, because which routes exist depends on that account\'s trustlines and balances' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote) },
+    schema: { chain: CHAIN, from: ASSET('The asset being sold.'), to: ASSET('The asset being bought.'), amount: { type: 'number', description: 'How much of `from` to sell' },
+              address: { type: 'string', description: 'XRP Ledger only, and required there: ripple_path_find answers per account, because which routes exist depends on that account\'s trustlines and balances' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote, NEAR.getQuote) },
   { name: 'list_curated_assets', title: 'Assets LumosCore lists, with their verification state',
     schema: { chain: CHAIN,
               include_mints: { type: 'boolean', description: 'Stellar only: also include launchpad mints (not curated)' },
               verified_only: { type: 'boolean', description: 'Only assets that carry the tick' },
-              limit: { type: 'number', description: 'XRP Ledger only: how many of the top tokens by volume (default 100, max 100)' } }, required: [], run: route(listCuratedAssets, XRPL.listCuratedAssets) },
+              limit: { type: 'number', description: 'XRP Ledger only: how many of the top tokens by volume (default 100, max 100)' } }, required: [], run: route(listCuratedAssets, XRPL.listCuratedAssets, NEAR.listCuratedAssets) },
   { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against the chain\'s native coin',
     schema: { chain: CHAIN,
-              asset: { type: 'string', description: 'CODE-ISSUER. Quoted against XLM on Stellar, against XRP on the XRP Ledger' },
-              limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: route(getOrderbook, XRPL.getOrderbook) },
+              asset: ASSET('Quoted against XLM on Stellar, against XRP on the XRP Ledger.'),
+              limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: route(getOrderbook, XRPL.getOrderbook, NEAR.getOrderbook) },
   { name: 'list_blog_posts', title: 'LumosCore blog posts, newest first',
     schema: { chain: CHAIN,
               limit: { type: 'number', description: 'Max posts (default 20)' },
@@ -815,18 +878,20 @@ export const TOOLS = [
     schema: { slug: { type: 'string', description: 'Post slug from list_blog_posts' } }, required: ['slug'], run: getBlogPost },
   { name: 'get_rewards', title: 'LUMOS reward programs and the incentivized pool roster',
     schema: { chain: CHAIN,
-              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…), optional' } }, required: [], run: route(getRewards, XRPL.getRewards) },
+              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…), optional' } }, required: [], run: route(getRewards, XRPL.getRewards, NEAR.getRewards) },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',
-    schema: { chain: CHAIN, from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' },
-              address: { type: 'string', description: 'XRP Ledger only: your r… account, so the swap can carry a real quote' } }, required: ['from', 'to', 'amount'], run: route(swap, XRPL.swap) },
+    schema: { chain: CHAIN, from: ASSET('The asset being sold.'), to: ASSET('The asset being bought.'), amount: { type: 'number', description: 'How much of `from` to sell' },
+              address: { type: 'string', description: 'XRP Ledger only: your r… account, so the swap can carry a real quote' } }, required: ['from', 'to', 'amount'], run: route(swap, XRPL.swap, NEAR.swap) },
   { name: 'add_liquidity', title: 'Prepare an AMM deposit for you to approve (does not sign)',
-    schema: { chain: CHAIN, a: { type: 'string' }, b: { type: 'string' }, amount_a: { type: 'number' }, amount_b: { type: 'number' } }, required: ['a', 'b', 'amount_a', 'amount_b'], run: route(addLiquidity, XRPL.addLiquidity) },
+    schema: { chain: CHAIN, a: ASSET('One side of the pool.'), b: ASSET('The other side of the pool.'),
+              amount_a: { type: 'number', description: 'How much of `a` to deposit' },
+              amount_b: { type: 'number', description: 'How much of `b` to deposit' } }, required: ['a', 'b', 'amount_a', 'amount_b'], run: route(addLiquidity, XRPL.addLiquidity, NEAR.addLiquidity) },
   { name: 'remove_liquidity', title: 'Prepare an AMM withdrawal for you to approve (does not sign)',
-    schema: { chain: CHAIN, a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'], run: route(removeLiquidity, XRPL.removeLiquidity) },
+    schema: { chain: CHAIN, a: ASSET('One side of the pool.'), b: ASSET('The other side of the pool.') }, required: ['a', 'b'], run: route(removeLiquidity, XRPL.removeLiquidity, NEAR.removeLiquidity) },
   { name: 'bridge', title: 'Prepare a cross-chain transfer for you to approve (does not sign)',
-    schema: { chain: CHAIN, asset: { type: 'string' }, to_network: { type: 'string' }, amount: { type: 'number' }, recipient: { type: 'string' } }, required: ['asset', 'to_network', 'amount'], run: route(bridge, XRPL.bridge) },
+    schema: { chain: CHAIN, asset: ASSET('The asset to send.'), to_network: { type: 'string', description: 'Destination network name, e.g. XRPL, Base, Arbitrum' }, amount: { type: 'number', description: 'How much of `asset` to send' }, recipient: { type: 'string', description: 'Receiving address on the destination network. Optional — the bridge page asks for it if omitted' } }, required: ['asset', 'to_network', 'amount'], run: route(bridge, XRPL.bridge, NEAR.bridge) },
   { name: 'launch_token', title: 'Prepare a token issuance for you to approve (does not sign)',
-    schema: { chain: CHAIN, code: { type: 'string' }, supply: { type: 'number' } }, required: ['code', 'supply'], run: route(launchToken, XRPL.launchToken) },
+    schema: { chain: CHAIN, code: { type: 'string' }, supply: { type: 'number' } }, required: ['code', 'supply'], run: route(launchToken, XRPL.launchToken, NEAR.launchToken) },
 ];
 
 export { ApiError };

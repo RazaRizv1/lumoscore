@@ -100,14 +100,65 @@ const rippled = (a) => (a.native ? { currency: 'XRP' } : { currency: a.currency,
 // The form the website's urls want.
 const slug = (a) => (a.native ? 'XRP' : a.id);
 
-const bad = (what, v) => fail(`"${v}" is not an XRP Ledger asset id. Use CODE-ISSUER `
-  + `(e.g. RLUSD-rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De) or XRP.` + (what ? ` [${what}]` : ''));
+// The shape hint, kept in one place. It used to live in a `bad(what, v)` helper that every tool called
+// to REJECT a bare code; now that a bare code resolves, the rejection is only for a malformed id and
+// the helper had no callers left, so the text moved here rather than going stale in a dead function.
+const IDHINT = 'Use CODE-ISSUER (e.g. RLUSD-rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De) or XRP.';
+
+// A BARE CODE IS NOT AN IDENTITY HERE EITHER, and the XRP Ledger makes it worse than Stellar: 20,593
+// tokens are live and popular codes are squatted. So a bare code resolves ONLY through the same
+// roster list_curated_assets serves -- /lxapi/xrpltokens -- filtered to the tokens LumosCore itself
+// vouches for (`vf`, which that endpoint already substitutes for the upstream gateway flag and which
+// is deliberately narrower).
+//
+// AMBIGUITY IS THE COMMON CASE HERE, not the edge. Measured on the live roster 2026-11-17: USD
+// appears THREE times and BTC twice, every one of them vouched. Both refuse and name each candidate.
+// Resolving to the highest-volume one would hand an agent a different issuer's token than the one it
+// asked for, on a screen where the next step is a swap.
+//
+// A MISS IS NOT A VERDICT ON THE TOKEN. The roster is 100 rows out of 20,593, so a code that does not
+// resolve may still be a perfectly real asset. The message says so, because otherwise an agent
+// reports "no such token" when the token simply is not in the top hundred by volume.
+async function resolveXrplCode(asset) {
+  const code = String(asset || '').trim();
+  // A hyphen means they meant a full id and it did not parse -- that is a malformed id, not a code to
+  // look up, so it gets the shape hint instead of a roster search.
+  if (!code || code.includes('-')) return { error: `"${asset}" is not an XRP Ledger asset id. ${IDHINT}` };
+  let d = null;
+  try { d = await api('/lxapi/xrpltokens?n=100'); } catch (_) { d = null; }
+  const rows = ((d && d.rows) || []).filter((r) => +r.vf === 1);
+  const hit = rows.filter((r) => String(r.n || '').toUpperCase() === code.toUpperCase());
+  if (!hit.length) {
+    const total = d && d.total != null ? d.total : null;
+    return { error: `"${asset}" is not an XRP Ledger asset id, and no vouched token in the roster `
+      + 'carries that code. That roster is the top 100 tokens by 24h volume'
+      + (total ? ` out of ${total} on the ledger` : '')
+      + ', so this may still be a real asset — pass the full CODE-ISSUER. list_curated_assets returns '
+      + 'every code this server can resolve on its own.' };
+  }
+  if (hit.length > 1) {
+    return { error: `"${asset}" is ambiguous — ${hit.length} vouched tokens carry that code: `
+      + hit.map((r) => `${r.n}-${r.i}`).join(', ') + '. Pass the full CODE-ISSUER.' };
+  }
+  const w = parseXrplAsset(`${hit[0].n}-${hit[0].i}`);
+  return w ? { want: w } : { error: `"${asset}" could not be resolved to an asset id.` };
+}
+
+// Mirrors wantAsset() in tools.js, including the `label` prefix: add_liquidity and get_quote each take
+// two assets and the bare message cannot say which one was wrong.
+async function wantXrplAsset(label, x) {
+  const direct = parseXrplAsset(x);
+  if (direct) return { want: direct };
+  const r = await resolveXrplCode(x);
+  return r.want ? r : { error: `${label}: ${r.error}` };
+}
 
 // ---- reads ---------------------------------------------------------------------------------------
 
 async function getMarket({ asset }) {
-  const a = parseXrplAsset(asset);
-  if (!a) return bad('asset', asset);
+  const ra = await wantXrplAsset('asset', asset);
+  if (ra.error) return fail(ra.error);
+  const a = ra.want;
   if (a.native) return fail('XRP is the quote asset here; ask for a token priced against it.');
   const d = await api('/lxapi/xrpltoken?id=' + encodeURIComponent(upstreamId(a)));
   if (!d || d.ok === false) return fail(`No market data for ${a.code} on the XRP Ledger.`
@@ -136,8 +187,9 @@ async function getMarket({ asset }) {
 async function listPools({ limit = 20, asset }) {
   let want = null;
   if (asset) {
-    want = parseXrplAsset(asset);
-    if (!want) return bad('asset', asset);
+    const rw = await wantXrplAsset('asset', asset);
+    if (rw.error) return fail(rw.error);
+    want = rw.want;
   }
   const n = Math.max(1, Math.min(100, +limit || 20));
   // The endpoint filters by ISSUER, not by a full asset id, so an issuer with two tokens comes back
@@ -270,9 +322,9 @@ async function getPortfolio({ address }) {
 // offers and ignore the pool that would actually fill it. A number that confident and that wrong is
 // worse than asking for one more argument.
 async function getQuote({ from, to, amount, address }) {
-  const f = parseXrplAsset(from), t = parseXrplAsset(to);
-  if (!f) return bad('from', from);
-  if (!t) return bad('to', to);
+  const rf = await wantXrplAsset('from', from); if (rf.error) return fail(rf.error);
+  const rt = await wantXrplAsset('to', to);     if (rt.error) return fail(rt.error);
+  const f = rf.want, t = rt.want;
   const amt = +amount;
   if (!isFinite(amt) || amt <= 0) return fail('amount must be a positive number.');
   if (f.id === t.id) return fail('from and to are the same asset.');
@@ -353,8 +405,9 @@ async function listCuratedAssets({ verified_only = false, limit = 100 }) {
 }
 
 async function getOrderbook({ asset, limit = 8 }) {
-  const a = parseXrplAsset(asset);
-  if (!a) return bad('asset', asset);
+  const ra = await wantXrplAsset('asset', asset);
+  if (ra.error) return fail(ra.error);
+  const a = ra.want;
   if (a.native) return fail('XRP is the quote asset here; ask for a token priced against it.');
   const n = Math.max(1, Math.min(50, +limit || 8));
   const XRP = { currency: 'XRP' };
@@ -449,9 +502,9 @@ function prepared(action, summary, url, extra) {
 }
 
 async function swap({ from, to, amount, address }) {
-  const f = parseXrplAsset(from), t = parseXrplAsset(to);
-  if (!f) return bad('from', from);
-  if (!t) return bad('to', to);
+  const rf = await wantXrplAsset('from', from); if (rf.error) return fail(rf.error);
+  const rt = await wantXrplAsset('to', to);     if (rt.error) return fail(rt.error);
+  const f = rf.want, t = rt.want;
   if (!(+amount > 0)) return fail('amount must be a positive number.');
   if (f.id === t.id) return fail('from and to are the same asset.');
 
@@ -504,9 +557,9 @@ async function swap({ from, to, amount, address }) {
 }
 
 async function addLiquidity({ a, b, amount_a, amount_b }) {
-  const A = parseXrplAsset(a), B = parseXrplAsset(b);
-  if (!A) return bad('a', a);
-  if (!B) return bad('b', b);
+  const rA = await wantXrplAsset('a', a); if (rA.error) return fail(rA.error);
+  const rB = await wantXrplAsset('b', b); if (rB.error) return fail(rB.error);
+  const A = rA.want, B = rB.want;
   if (!(+amount_a > 0) || !(+amount_b > 0)) return fail('amount_a and amount_b must both be positive.');
   if (A.id === B.id) return fail('a and b are the same asset.');
 
@@ -564,9 +617,9 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
 }
 
 async function removeLiquidity({ a, b }) {
-  const A = parseXrplAsset(a), B = parseXrplAsset(b);
-  if (!A) return bad('a', a);
-  if (!B) return bad('b', b);
+  const rA = await wantXrplAsset('a', a); if (rA.error) return fail(rA.error);
+  const rB = await wantXrplAsset('b', b); if (rB.error) return fail(rB.error);
+  const A = rA.want, B = rB.want;
   return prepared('remove_liquidity',
     `Withdraw your position from the ${A.code} / ${B.code} pool on the XRP Ledger`,
     web(`/pools/xrpl/${encodeURIComponent(slug(A))}/${encodeURIComponent(slug(B))}`),

@@ -145,6 +145,71 @@ export async function horizon(path) {
   }
 }
 
+// NEAR, read from the same two hosts the website's own account page reads.
+//
+// WHY NOT OUR OWN /lxapi FOR A PORTFOLIO. There is no near-portfolio endpoint -- the account page
+// calls these directly from the browser, and the two names below are lifted from its own reader
+// (`RPC` and `FT_API` in lumoscore-account.html) rather than chosen here. Same rule as Horizon above:
+// a balance read through a cache of ours could be stale against the chain it claims to describe.
+//
+// ONE CALL FOR EVERY TOKEN BALANCE, not one per token. FastNEAR's /ft returns every FT contract an
+// account has ever touched in a single response. The obvious alternative -- ft_balance_of against each
+// of the 72 curated contracts -- is 72 requests to a free public RPC for one portfolio answer, which
+// is both slow and the kind of thing that gets an IP rate-limited.
+const NEAR_RPC = 'https://free.rpc.fastnear.com';
+const NEAR_FT = 'https://api.fastnear.com/v1/account/';
+
+// A NEAR JSON-RPC call. Like rippled, NEAR reports failures INSIDE a 200 response: a missing account
+// comes back as a successful HTTP request carrying `error`, so reading r.ok alone would turn "this
+// account does not exist" into "this account is empty", which is a different and worse claim.
+export async function nearRpc(method, params, { timeout = TIMEOUT_MS } = {}) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeout);
+  let r;
+  try {
+    r = await fetch(NEAR_RPC, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json', 'user-agent': UA },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: params || {} }), signal: ctl.signal,
+    });
+  } catch (e) {
+    clearTimeout(t);
+    throw new ApiError(e && e.name === 'AbortError'
+      ? `NEAR did not respond within ${Math.round(timeout / 1000)}s (${method})`
+      : `Could not reach NEAR (${method}): ${e && e.message}`, 0);
+  }
+  clearTimeout(t);
+  const j = await r.json().catch(() => null);
+  if (!j) throw new ApiError(`NEAR ${method} did not return JSON`, r.status);
+  // Handed back for the caller to read. UNKNOWN_ACCOUNT is an answer about the account, not a
+  // failure of ours, and only the caller knows whether it is the expected one.
+  if (j.error) {
+    const c = (j.error.cause && j.error.cause.name) || j.error.name || '';
+    if (/UNKNOWN_ACCOUNT|UNKNOWN_BLOCK/.test(c)) return { _nearError: c };
+    throw new ApiError(`NEAR ${method} failed: ${c || JSON.stringify(j.error).slice(0, 160)}`, 0);
+  }
+  return j.result;
+}
+
+// Every fungible-token balance an account holds, in one request. A 404 is a real answer here too --
+// an account FastNEAR has never indexed holds no tokens it can tell us about.
+export async function nearFt(account) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  try {
+    const r = await fetch(NEAR_FT + encodeURIComponent(account) + '/ft',
+      { headers: { accept: 'application/json', 'user-agent': UA }, signal: ctl.signal });
+    clearTimeout(t);
+    if (r.status === 404) return null;
+    if (!r.ok) throw new ApiError(`FastNEAR returned HTTP ${r.status}`, r.status);
+    return await r.json();
+  } catch (e) {
+    clearTimeout(t);
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(`Could not reach FastNEAR: ${e && e.message}`, 0);
+  }
+}
+
 export const G_RE = /^G[A-Z2-7]{55}$/;
 // CODE-ISSUER, the form the site uses in its urls, plus the bare native asset.
 export const ASSET_RE = /^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})$/;
