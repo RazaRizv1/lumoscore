@@ -443,7 +443,7 @@ for (const dev of ['desktop', 'mobile']) {
     // The wording is corrected as well, and not only as a belt-and-braces: this text is still READ, by
     // screen readers and by crawlers, and it named the wrong chain in both.
     p = p.split("Provide liquidity and earn fees on Aptos's on-chain AMM pools.")
-         .join("Provide liquidity and earn fees on Stellar's on-chain AMM pools.");
+         .join("Add, remove and manage your liquidity in Stellar's on-chain AMM pools.");
     p = p.replace(/<h1 class="page-title">/g, '<h1 class="page-title lx-sronly">')
          .replace(/<p class="page-subtitle">/g, '<p class="page-subtitle lx-sronly">');
     // ...and the DESKTOP heading, which is a different element entirely and was therefore never baked.

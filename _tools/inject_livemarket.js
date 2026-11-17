@@ -147,7 +147,7 @@ function buildPools(cfg){
     + `<div class="lm-streams">${svg}</div>`
     + `<div class="lm-chip"><div class="p1">TOTAL VALUE LOCKED</div><div class="p2">$5.32M</div><div class="p3"><span>&#9650;</span> 4.2% &middot; 7d</div></div>`
     + `<div class="lm-c lm-c-pool"><h2 class="lm-h">Provide liquidity, earn <em>swap fees</em>.</h2>`
-    + `<p class="lm-sub">Deposit a token pair and earn a share of the fee from every swap routed through the pool.</p>`
+    + `<p class="lm-sub">Deposit a token pair to add liquidity to the pool, and withdraw it any time.</p>`
     + `<a class="lm-cta" href="lumoscore-amm-pool.html">Provide Liquidity ${arrow}</a></div>`
     + `</div></div>`;
 }

@@ -1856,7 +1856,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   // header/subtitle testnet wording
   function paintCopy(){
-    qa("main p, .amm-hero p, .amm-sub").forEach(function(p){ if(/on Aptos.s on-chain AMM|Aptos.s on-chain/i.test(p.textContent)) p.textContent="Provide liquidity and earn fees on Stellar\\u2019s mainnet AMM pools."; });
+    qa("main p, .amm-hero p, .amm-sub").forEach(function(p){ if(/on Aptos.s on-chain AMM|Aptos.s on-chain/i.test(p.textContent)) p.textContent="Add, remove and manage your liquidity in Stellar\\u2019s mainnet AMM pools."; });
   }
 
   function paint(){ paintSnapshot(); paintTables(); paintCopy(); try{ healLogos(); }catch(_){} }
