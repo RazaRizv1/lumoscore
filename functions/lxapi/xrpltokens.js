@@ -120,14 +120,22 @@ export async function onRequest(context) {
     //
     // The last good answer is kept under its own key for a day and served when the live one fails, marked `stale` with the
     // time it was taken so the page can say so rather than passing old figures off as current.
+    //
+    // AND WHICHEVER ANSWER THIS IS, IT IS NOW HELD UNDER THE MAIN KEY (RAZA 2026-11-17, dashboard cards
+    // grey for seconds). The stale copy used to be returned WITHOUT a cache.put, so during a 429
+    // window every visitor paid the ~1.6s back-off-and-retry again and asked the refusing upstream
+    // again. Held briefly so a refusal costs one upstream call per colo: the labelled stale copy 60s,
+    // a plain failure 30s (seconds only -- never-cache-a-failure rule).
+    const err = String((e && e.message) || e);
     const last = await cache.match(lastKey(url, n)).catch(() => null);
-    if (last) {
-      const old = await last.json().catch(() => null);
-      if (old && old.rows && old.rows.length) {
-        return json({ ...old, stale: true, error: String((e && e.message) || e) }, 30);
-      }
-    }
-    return json({ ok: false, error: String((e && e.message) || e), rows: [] }, 30);
+    const old = last ? await last.json().catch(() => null) : null;
+    const isStale = !!(old && old.rows && old.rows.length);
+    const res = isStale
+      ? json({ ...old, stale: true, error: err }, 60)
+      : json({ ok: false, error: err, rows: [] }, 30);
+    res.headers.set('x-lx-upstream', isStale ? 'stale' : 'failed');
+    context.waitUntil(cache.put(key, res.clone()));
+    return res;
   }
 
   const res = json(out, TTL);

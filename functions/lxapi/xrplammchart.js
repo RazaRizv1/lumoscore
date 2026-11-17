@@ -62,10 +62,35 @@ export async function onRequest(context) {
 
     out = { ok: true, acct, p, unit: 'XRP', count: pts.length, pts, src: 'xrpl.to' };
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e), pts: [] }, 30);
+    // A REFUSED UPSTREAM BLANKED THE CHART FOR EVERYONE (RAZA 2026-11-17: "Could not load the liquidity
+    // history" on the live XRP/RLUSD pool, xrpl.to answering 429). Nothing was kept and nothing was
+    // cached, so every visitor asked the refusing upstream again and got an empty chart. Same shape as
+    // xrplpools/xrpltokens now: the last good series, kept for a day, is served marked `stale` with the
+    // time it was taken; whichever answer this is, it is held under the main key briefly so a 429
+    // window costs one upstream call per colo -- stale (real data, labelled) 60s, a plain failure 30s
+    // (seconds only: never cache a failure as an answer).
+    const err = String((e && e.message) || e);
+    const last = await cache.match(lastKey(url, acct, p)).catch(() => null);
+    const old = last ? await last.json().catch(() => null) : null;
+    const isStale = !!(old && old.ok === true && old.pts && old.pts.length);
+    const res = isStale
+      ? json({ ...old, stale: true, error: err }, 60)
+      : json({ ok: false, error: err, pts: [] }, 30);
+    res.headers.set('x-lx-upstream', isStale ? 'stale' : 'failed');
+    context.waitUntil(cache.put(key, res.clone()));
+    return res;
   }
 
   const res = json(out, TTL);
+  res.headers.set('x-lx-upstream', 'live');
   context.waitUntil(cache.put(key, res.clone()));
+  // …and the copy that outlives a refusal, served by the catch above.
+  context.waitUntil(cache.put(lastKey(url, acct, p), json({ ...out, cachedAt: Date.now() }, 86400)));
   return res;
+}
+
+// A second cache entry, kept for a day, holding the last series the upstream actually gave -- per pool
+// and per period, so a refused 1y request is never answered with another pool's or another range's line.
+function lastKey(url, acct, p) {
+  return new Request(url.origin + url.pathname + '?lastgood=1&acct=' + acct + '&p=' + p);
 }

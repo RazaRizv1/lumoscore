@@ -177,7 +177,26 @@ export async function onRequest(context) {
       src: 'xrpl.to', attribution: 'Data by xrpl.to', attributionUrl: 'https://xrpl.to',
     };
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e), rows: [] }, 30);
+    // A REFUSED UPSTREAM USED TO COST EVERY VISITOR 1.6s AND RETURN NOTHING (RAZA 2026-11-17, dashboard
+    // cards grey for seconds). Measured on lumoscore.com that morning: every request answered
+    // {ok:false,"upstream 429"} after ~1.6s (one 1.2s back-off + retry), and nothing was cached, so
+    // the next visitor paid the same wait, got the same nothing, and asked the refusing upstream again.
+    //
+    // Now, the same shape xrpltokens already had: the last good answer, kept for a day, is served
+    // marked `stale` with the time it was taken. And whichever answer this is, it is held under the
+    // main key briefly so a 429 window costs ONE upstream call per colo, not one per visitor:
+    //   stale (real data, labelled)  60s
+    //   failed (labelled ok:false)   30s -- seconds only; a refusal must never sit in the cache as
+    //                                       though it were an answer (never-cache-a-failure rule)
+    const err = String((e && e.message) || e);
+    const last = await cache.match(lastKey(url, n, p0, issuer)).catch(() => null);
+    const old = last ? await last.json().catch(() => null) : null;
+    const res = (old && old.ok === true && old.rows && old.rows.length)
+      ? json({ ...old, stale: true, error: err }, 60)
+      : json({ ok: false, error: err, rows: [] }, 30);
+    res.headers.set('x-lx-upstream', (old && old.ok === true && old.rows && old.rows.length) ? 'stale' : 'failed');
+    context.waitUntil(cache.put(key, res.clone()));
+    return res;
   }
 
   // THE DEEP BATCHES ARE CACHED FOR LONGER, which is what makes a 10,000-row walk reachable at all.
@@ -192,6 +211,16 @@ export async function onRequest(context) {
   // changes — so a short TTL there buys freshness nobody can see and spends the rate limit that the
   // depth itself needs. The head keeps its 120s.
   const res = json(out, p0 > 1 ? 900 : TTL);
+  res.headers.set('x-lx-upstream', 'live');
   context.waitUntil(cache.put(key, res.clone()));
+  // …and the copy that outlives a refusal, served by the catch above while the upstream says 429.
+  context.waitUntil(cache.put(lastKey(url, n, p0, issuer), json({ ...out, cachedAt: Date.now() }, 86400)));
   return res;
+}
+
+// A second cache entry, kept for a day, holding the last answer the upstream actually gave. Same
+// n/p0/issuer as the main key: a deep batch or an issuer filter must never be answered with the
+// head of the ranking.
+function lastKey(url, n, p0, issuer) {
+  return new Request(url.origin + url.pathname + '?lastgood=1&n=' + n + '&p0=' + p0 + '&issuer=' + issuer);
 }
