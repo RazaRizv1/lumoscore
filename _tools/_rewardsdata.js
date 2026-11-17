@@ -33,16 +33,18 @@ const SCRIPT = `<script id="lx-rewardsdata">(function(){
   var WHALE_UNIT=5000000, WHALE_POOL=1000000, NATIVE_POOL=1000000, ECO_PER_POOL=100000;
   var NATIVE={hex:"78e6cfc930e2d7ceb3f6cefd4f9aa5e098c5b0af086cde0ad3147982f4d217f2",code:"XLM"};
   var ECO=[
-    {hex:"2d630c4224248bf23ff7a639bcf05db096c4ed9a96e2d1f3e9b94c2986ef9332",code:"LMNR"},
-    {hex:"a7d73ed49edd21b7f3533c8a2a3b534409c1ce9a0909eb6cbb230b957d37faff",code:"yXLM"},
-    {hex:"a027264ce20ff9161c0eb8a016ac382432ff1b0248b407374da47d502a0a071e",code:"sages"},
-    {hex:"68d62e263f1006fdec7f456ccbd3e2fba67a335b6804088a30050542209d9f51",code:"AQUA"},
-    {hex:"afab0b06224d5f9a737b78f3ff2014ddee4f9e747d1c514374e22890dbbe92ba",code:"SSLX"},
+    // THE CURRENT CYCLE (RAZA 2026-11-18): the ten ids _adminrewards.js S_ECO pays. Was the previous cycle's
+    // LMNR, sages, SSLX, TKG, LIBERATOR, KALE... -- rotate this with S_ECO, _ammdata.js and _lumostoken.js.
+    {hex:"344e6618b45f6925e7b53a71b7882e6e2c1b983ab0926676f4175a4bfb46b7bf",code:"USDC"},
+    {hex:"6097e8e4b959ef59cc6030c9d94bc56f2570a371624f80a4dbed74c24cdf60bf",code:"USDT0"},
+    {hex:"a9414b0c90b18a3c6dca4855127b48f4f1faec83a489ce2b6a79c7cfdd47e655",code:"EURC"},
     {hex:"9be7d7872051f1575e8f4e69b81954ef3d017f100a4cb3f7a407fb8bc894654f",code:"SHX"},
-    {hex:"40bb76280b61590c22398a882ca67b7de328f7ae689c33cc27197059134cd2cc",code:"TKG"},
-    {hex:"d6dc92ff8c34c657f3a20e50c6954fecf4c965d804325e0301b0f35da4b1af71",code:"LIBERATOR"},
-    {hex:"f0312476658fdd50a87c95ddcee3bedd204c29368a4a647770237610dcdb269b",code:"KALE"},
-    {hex:"344e6618b45f6925e7b53a71b7882e6e2c1b983ab0926676f4175a4bfb46b7bf",code:"USDC"}
+    {hex:"68d62e263f1006fdec7f456ccbd3e2fba67a335b6804088a30050542209d9f51",code:"AQUA"},
+    {hex:"dd31ba1dd14612984adad5126b3c8bbf7fc7fe88ba121b432c88bcc011ce0e33",code:"BLND"},
+    {hex:"e67b5a693d12ba98cb411d3b349b900602302cc8bc4479d35e0c806712c9ca59",code:"xLMNR"},
+    {hex:"a7d73ed49edd21b7f3533c8a2a3b534409c1ce9a0909eb6cbb230b957d37faff",code:"yXLM"},
+    {hex:"ac3b01d256366c386c0bff1e1a59bcd5fe57749f268aefc03854a8fdedf050a2",code:"XRP"},
+    {hex:"7d476a9bc5832cce0e7e8b1f0aa8756e0197f0ece132990f52ccf3e9a7297ca6",code:"PYUSD"}
   ];
   var ECO_CODES=ECO.map(function(p){return p.code;});
   // LumosDAO project / treasury / burn wallets — excluded from ALL reward programs

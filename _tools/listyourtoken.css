@@ -251,3 +251,116 @@ html[data-theme="light"] .lxlt{
   .lxlt .lt-done-row{grid-template-columns:minmax(0,1fr)}
   .lxlt .lt-pay-row{flex-wrap:wrap;gap:2px 18px}
 }
+
+/* REDESIGN 2026-11-17 (RAZA: "too AI generated ... professional, attractive, to the point") */
+/* MOCKUP -- /list-your-token, same visual language as the hub panel and the Launch App chooser */
+.ly{max-width:1040px;margin:0 auto;padding:48px 20px 72px;box-sizing:border-box;font-family:"Hanken Grotesk",system-ui,sans-serif;color:#f6f5f3}
+.ly *{box-sizing:border-box}
+.ly-hidden{position:absolute!important;width:1px;height:1px;opacity:0;pointer-events:none}
+.ly-head{text-align:center;max-width:640px;margin:0 auto 36px}
+.ly-head h1{font-size:clamp(34px,4.4vw,48px);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin:0 0 12px;color:#f6f5f3}
+.ly-sub{font-size:16.5px;line-height:1.6;color:#a5a4ac;margin:0 auto 20px;max-width:520px}
+.ly-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;list-style:none;margin:0;padding:0}
+.ly-facts li{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border:1px solid #26262c;border-radius:999px;background:#131317;font-size:13.5px;font-weight:500;color:#c9c8cf}
+.ly-facts li b{color:#f6f5f3;font-weight:700}
+.ly-facts li::before{content:"";width:6px;height:6px;border-radius:50%;background:#ea6a2c}
+.ly-body{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+.ly-card{background:#131317;border:1px solid #26262c;border-radius:18px}
+.lt-form.ly-card{padding:6px 24px}
+.ly-step{padding:22px 0;border-bottom:1px solid #1f1f25}
+.ly-step:last-child{border-bottom:0}
+.ly-step h2{display:flex;align-items:center;gap:10px;font-size:16.5px;font-weight:700;letter-spacing:-.01em;margin:0 0 16px;color:#f6f5f3}
+.ly-n{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#1d1d25;color:#a5a4ac}
+.ly-nets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ly-net{display:flex;align-items:center;gap:10px;height:48px;padding:0 12px;border:1px solid #26262c;border-radius:12px;background:#1a1a1f;color:#d7d6dc;font:600 15px/1 "Hanken Grotesk",system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background-color .15s}
+.ly-net:hover{background:#1f1f25}
+.ly-net.on{border-color:#ea6a2c;background:rgba(234,106,44,.07);color:#f6f5f3}
+.ly-ico{width:26px;height:26px;flex:0 0 26px;border-radius:50%;background-size:112%;background-position:center;background-repeat:no-repeat;background-color:#1d1d25}
+.ly-two{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px}
+.ly-two.one{grid-template-columns:1fr}
+.ly-four{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ly-field{margin:0 0 14px;min-width:0}
+.ly-field label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:#a5a4ac;margin:0 0 6px}
+.ly-count{font-weight:500;color:#6f6e76;font-variant-numeric:tabular-nums}
+.ly-in{display:block;width:100%;height:42px;padding:0 12px;border:1px solid #26262c;border-radius:10px;background:#1a1a1f;color:#f6f5f3;font:500 15px/1.4 "Hanken Grotesk",system-ui,sans-serif;outline:none;transition:border-color .15s}
+textarea.ly-in{height:auto;padding:10px 12px;resize:vertical;min-height:84px}
+.ly-in::placeholder{color:#6f6e76}
+.ly-in:focus{border-color:#ea6a2c}
+.ly-mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+.ly-drop{position:relative;border:1px dashed #33333b;border-radius:12px;background:#16161b;cursor:pointer;transition:border-color .15s}
+.ly-drop:hover{border-color:#ea6a2c}
+.ly-drop-in{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.ly-drop-ic{width:36px;height:36px;border-radius:10px;background:#1d1d25;display:flex;align-items:center;justify-content:center;color:#a5a4ac;flex:0 0 36px}
+.ly-drop-ic svg{width:18px;height:18px}
+.ly-drop-t{font-size:14.5px;font-weight:600;color:#f6f5f3}
+.ly-drop-d{font-size:12.5px;color:#7c7c8a;margin-left:auto;text-align:right}
+.ly-drop .lt-file{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ly-pay{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border:1px solid #26262c;border-radius:12px;background:#1a1a1f}
+.ly-k{display:block;font-size:12.5px;font-weight:600;color:#7c7c8a;margin:0 0 4px}
+.ly-amt{display:block;font-size:24px;font-weight:700;color:#f6f5f3;letter-spacing:-.01em}
+.ly-usd{display:block;font-size:12.5px;color:#7c7c8a;margin-top:4px}
+.ly-usd #ltRateSrc{display:none}
+.ly-badge{font-size:13px;font-weight:700;color:#ea6a2c;background:rgba(234,106,44,.1);border-radius:999px;padding:6px 11px}
+.ly-to{font-size:12.5px;color:#6f6e76;margin:10px 2px 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ly-go{display:block;width:100%;height:48px;border:0;border-radius:12px;background:#ea6a2c;color:#fff;font:700 15.5px/1 "Hanken Grotesk",system-ui,sans-serif;cursor:pointer;transition:background-color .15s}
+.ly-go:hover{background:#f07a3d}
+.ly-status{font-size:13px;color:#a5a4ac;margin:10px 0 0;text-align:center}
+.ly-side{position:sticky;top:96px}
+.ly-how{padding:22px}
+.ly-how h2{font-size:16.5px;font-weight:700;margin:0 0 14px;color:#f6f5f3}
+.ly-how ol{list-style:none;margin:0;padding:0;counter-reset:s}
+.ly-how li{position:relative;padding:0 0 16px 34px;counter-increment:s}
+.ly-how li:last-child{padding-bottom:0}
+.ly-how li::before{content:counter(s);position:absolute;left:0;top:0;width:22px;height:22px;border-radius:50%;background:#1d1d25;color:#a5a4ac;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ly-how li b{display:block;font-size:14.5px;font-weight:600;color:#f6f5f3;margin:1px 0 3px}
+.ly-how li span{display:block;font-size:13.5px;line-height:1.5;color:#8e8d95}
+.ly-note{font-size:12.5px;line-height:1.55;color:#6f6e76;margin:14px 4px 0}
+.ly-note a{color:#a5a4ac;text-decoration:underline;text-underline-offset:2px}
+.lt-err{font-size:12.5px;color:#f26a6a;margin:6px 0 0}
+html[data-theme=light] .ly{color:#16161a}
+html[data-theme=light] .ly-head h1,html[data-theme=light] .ly-step h2,html[data-theme=light] .ly-how h2,html[data-theme=light] .ly-how li b,html[data-theme=light] .ly-drop-t,html[data-theme=light] .ly-amt{color:#16161a}
+html[data-theme=light] .ly-sub{color:#5c5c66}
+html[data-theme=light] .ly-card,html[data-theme=light] .ly-facts li{background:#fff;border-color:#e7e5e1}
+html[data-theme=light] .ly-facts li{color:#5c5c66}
+html[data-theme=light] .ly-facts li b{color:#16161a}
+html[data-theme=light] .ly-step{border-color:#efedea}
+html[data-theme=light] .ly-in,html[data-theme=light] .ly-net,html[data-theme=light] .ly-pay{background:#f6f5f3;border-color:#e7e5e1;color:#16161a}
+html[data-theme=light] .ly-net.on{background:rgba(234,106,44,.06);border-color:#ea6a2c}
+html[data-theme=light] .ly-drop{background:#faf9f7;border-color:#d9d6d1}
+html[data-theme=light] .ly-n,html[data-theme=light] .ly-how li::before,html[data-theme=light] .ly-drop-ic,html[data-theme=light] .ly-ico{background-color:#f0efec;color:#5c5c66}
+html[data-theme=light] .ly-how li span{color:#5c5c66}
+@media (max-width:900px){.ly-body{grid-template-columns:minmax(0,1fr)}.ly-side{position:static}}
+@media (max-width:640px){
+  .ly{padding:28px 0 56px}
+  .ly-head{margin-bottom:24px}
+  .ly-sub{font-size:15.5px}
+  .lt-form.ly-card{padding:4px 16px}
+  .ly-nets{grid-template-columns:1fr}
+  .ly-two,.ly-four{grid-template-columns:1fr;gap:0}
+  .ly-in{font-size:16px;height:46px}
+  .ly-drop-in{flex-wrap:wrap}.ly-drop-d{margin-left:48px;text-align:left;width:100%;margin-top:-6px}
+}
+.lxlt .lt-go.ly-go{background:#ea6a2c!important;background-image:none!important;box-shadow:none!important;transform:none!important}
+.lxlt .lt-go.ly-go:hover{background:#f07a3d!important}
+a.ly-net{text-decoration:none}
+.ly-field[hidden],.ly .lt-err[hidden]{display:none!important}
+.ly-done{padding:26px}
+.ly-done .lt-done-h{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ea6a2c;margin:0 0 8px}
+.ly-done .lt-done-t{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px;color:#f6f5f3}
+.ly-done p{font-size:14.5px;line-height:1.6;color:#a5a4ac;margin:0 0 14px}
+.ly-done a{color:#ea6a2c}
+.ly-done .lt-done-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #1f1f25;font-size:13.5px}
+.ly-done .lt-done-k{color:#7c7c8a}
+.ly-done .lt-done-v{color:#f6f5f3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ly .lt-in.lt-wrong{border-color:#f26a6a}
+.ly .lt-picked{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.ly .lt-picked img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.ly .lt-picked-ok{font-size:14px;font-weight:600;color:#f6f5f3}
+.ly .lt-picked-n{font-size:12.5px;color:#7c7c8a}
+.ly .lt-drop.lt-over{border-color:#ea6a2c}
+html[data-theme=light] .ly-done .lt-done-t,html[data-theme=light] .ly-done .lt-done-v,html[data-theme=light] .ly .lt-picked-ok{color:#16161a}
+html[data-theme=light] .ly-done .lt-done-row{border-color:#efedea}
+
+.lxlt.ly a.ly-net,.lxlt.ly a.ly-net:visited{color:#d7d6dc!important;text-decoration:none!important}.lxlt.ly a.ly-net.on{color:#f6f5f3!important}html[data-theme=light] .lxlt.ly a.ly-net,html[data-theme=light] .lxlt.ly a.ly-net:visited{color:#3a3a42!important}html[data-theme=light] .lxlt.ly a.ly-net.on{color:#16161a!important}
+
+.lxlt.ly a.ly-net,.lxlt.ly a.ly-net:visited{color:#d7d6dc!important;text-decoration:none!important}.lxlt.ly a.ly-net.on{color:#f6f5f3!important}html[data-theme=light] .lxlt.ly a.ly-net,html[data-theme=light] .lxlt.ly a.ly-net:visited{color:#3a3a42!important}html[data-theme=light] .lxlt.ly a.ly-net.on{color:#16161a!important}@media (max-width:820px){.lxlt.ly .ly-in,.lxlt.ly .lt-in{font-size:16px!important}}

@@ -110,7 +110,7 @@ const FAQ = {
   'rewards': [
     ["When did rewards start on Stellar?", "The three programmes began at different times. Native LP rewards started on 15 December 2025, whale holder rewards on 1 April 2026, and Ecosystem LP rewards on 15 April 2026."],
     ["How often are rewards paid?", "Every round, and rounds run from the 1st and 15th of each month, so twice a month and twelve rounds over a six-month cycle. Ecosystem LP began on 15 April 2026, making 1 October 2026 its twelfth and final round."],
-    ["Which assets are in the Ecosystem LP rewards?", "Ten pools, each pairing LUMOS with one other asset: currently LMNR, yXLM, sages, AQUA, SSLX, SHX, TKG, LIBERATOR, KALE and USDC. Each pays 100,000 LUMOS per round, and the ten are reselected every 6 months."],
+    ["Which assets are in the Ecosystem LP rewards?", "Ten pools, each pairing LUMOS with one other asset: currently USDC, USDT0, EURC, SHX, AQUA, BLND, xLMNR, yXLM, XRP and PYUSD. Each pays 100,000 LUMOS per round, and the ten are reselected every 6 months."],
   ],
   'asset-overview': [
     ['Why does the issuer matter more than the ticker?', 'Stellar lets anyone issue an asset with any code, so a ticker is not an identity — hundreds of distinct assets use the code USDC. The issuing account is what uniquely identifies an asset.'],

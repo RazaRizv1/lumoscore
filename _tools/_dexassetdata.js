@@ -2775,7 +2775,24 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       window.__lxDXAholdNext=holdCursor(d);
       window.__lxDXAranked=1; guardApply();
     }
-    j(HURL).then(takeRanked).catch(function(){
+    // "STILL SCANNING" IS AN ANSWER, NOT A FAILURE (RAZA 2026-11-18: "holders taking forever to load. also
+    // once it loads, it doesnt show top 10 and top 50"). The endpoint builds the ranking itself now and,
+    // while a big asset's first build runs, answers 204 with x-lx-holders: scanning -- each request moving
+    // the build forward. Treating that 204 as a failure sent the page to horizonHolders(): one unranked
+    // Horizon page (11-60s on VELO) and Top 10 / Top 50 dashed for good. So ask again until the ranking
+    // lands (bounded at 24 asks, ~8 min: SHX, 55K holders, needs several). Only "giant" or a real error goes to the Horizon fallback.
+    function poll(n){
+      return fetch(HURL+(n?"&_r="+Date.now():""),{credentials:"same-origin"}).then(function(r){
+        if(r.status===204){
+          var why=r.headers.get("x-lx-holders")||"";
+          if(why==="scanning"&&n<24) return new Promise(function(go){ setTimeout(go,800); }).then(function(){ return poll(n+1); });
+          throw new Error("no ranking: "+(why||"204"));
+        }
+        if(!r.ok) throw new Error("holders "+r.status);
+        return r.json();
+      });
+    }
+    poll(0).then(takeRanked).catch(function(){
       // A short wait, because the two likely causes -- a cold edge cache in front of a slow upstream,
       // and a rate-limited one -- both clear on their own; an immediate retry would just repeat the
       // same failure. Still only one, so a genuinely dead upstream costs one extra request.
@@ -2895,6 +2912,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // and a fabricated "12,408 holders" pager, presented as this asset's data for the ~2s the fetch takes.
     // Clear them and say we're loading instead.
     var hold=window.__lxDXAhold;
+    // THE PAGER IS THE DESIGN MOCK UNTIL ROWS EXIST: "Showing 1-50 of 12,408 holders, Cumulative 47.1%" and
+    // pages 1 2 3 ... 249 sat under "Loading holders" (seen on SHX, 2026-11-18). Hidden until the table is ours.
+    var _pgw=wrap.querySelector(".dxa-hl-pgn,.mdxa-hl-pgn");
+    if(_pgw)_pgw.style.visibility=(hold&&hold.length)?"":"hidden";
     if(!hold||!hold.length){
       var _tb0=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody");
       if(_tb0&&!_tb0.getAttribute("data-lxbuilt")&&_tb0.getAttribute("data-lxload")!=="1"){

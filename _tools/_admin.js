@@ -2207,13 +2207,29 @@ function paintAssets(){
   // links go to HashScan, and the refund is sent from a Hedera wallet and recorded by transaction id --
   // this panel signs Stellar only. No backslashes in this block: it is a template literal, which eats them.
   function isH(r){ return r&&r.network==="hedera"; }
-  function reqUnit(r){ return isH(r)?"HBAR":"XLM"; }
+  // XRP LEDGER and NEAR rows (2026-11-17, /lxapi/xrpllisting and /lxapi/nearlisting): paid in XRP / NEAR,
+  // approved only once the token is on that network's curated list, refunded from Xaman / a NEAR wallet
+  // and recorded by hash. Together with Hedera these are the "outside" networks this panel cannot sign.
+  function isX(r){ return r&&r.network==="xrpl"; }
+  function isN(r){ return r&&r.network==="near"; }
+  function isExt(r){ return isH(r)||isX(r)||isN(r); }
+  function netName(r){ return isH(r)?"Hedera":isX(r)?"XRP Ledger":isN(r)?"NEAR":"Stellar"; }
+  function reqUnit(r){ return isH(r)?"HBAR":isX(r)?"XRP":isN(r)?"NEAR":"XLM"; }
   function reqAmt(r){ return (+r.payAmount||0).toLocaleString(undefined,{maximumFractionDigits:2})+" "+reqUnit(r); }
-  function reqShort(r,a){ return isH(r)?String(a||""):shortG(a); }
+  function reqShort(r,a){ return (isH(r)||isN(r))?String(a||""):shortG(a); }
   var HS="https://hashscan.io/mainnet/";
   function reqTxUrl(r,which){
     if(isH(r)){ var t=which==="refund"?r.refundTxId:r.txId; return t?(HS+"transaction/"+encodeURIComponent(t)):""; }
-    return "https://stellar.expert/explorer/public/tx/"+encodeURIComponent(which==="refund"?r.refundHash:r.txHash);
+    var h=which==="refund"?r.refundHash:r.txHash;
+    if(isX(r))return h?("https://xrpscan.com/tx/"+encodeURIComponent(String(h).toUpperCase())):"";
+    if(isN(r))return h?("https://nearblocks.io/txns/"+encodeURIComponent(h)):"";
+    return "https://stellar.expert/explorer/public/tx/"+encodeURIComponent(h);
+  }
+  function reqIssuerUrl(r){
+    if(isH(r))return HS+"token/"+encodeURIComponent(r.issuer);
+    if(isX(r))return "https://xrpscan.com/account/"+encodeURIComponent(r.issuer);
+    if(isN(r))return "https://nearblocks.io/address/"+encodeURIComponent(r.issuer);
+    return "https://stellar.expert/explorer/public/account/"+encodeURIComponent(r.issuer);
   }
   function reqWhen(t){ if(!t)return "—"; var d=new Date(+t);
     return d.toLocaleDateString(undefined,{day:"numeric",month:"short"})+", "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
@@ -2227,7 +2243,9 @@ function paintAssets(){
     + "at the next publish. Declining does not send the money back: the row then shows a refund owed, "
     + "and Refund pays it from the wallet connected here, to the account that actually paid. "
     + "Hedera requests are paid in HBAR: approve once the token is vouched in the Hedera build and deployed, "
-    + "and send a refund from HashPack or Kabila, then record it here by its transaction id.";
+    + "and send a refund from HashPack or Kabila, then record it here by its transaction id. "
+    + "XRP Ledger and NEAR requests work the same way: paid in XRP or NEAR, approved once the token is on that "
+    + "network's curated list on the live site, refunded from Xaman or a NEAR wallet and recorded here by its hash.";
   function setNote(){
     var n=q(".lxadm-note"); if(!n)return;
     if(NOTE0===null)NOTE0=n.textContent;
@@ -2271,9 +2289,9 @@ function paintAssets(){
       if(r.status==="pending"){
         act="<button class='lxreq-btn go' type='button' title='Curate this asset and approve the request' data-lxap='"+esc(r.id)+"'>Approve</button>"
            +"<button class='lxreq-btn' type='button' title='Decline with a reason' data-lxrj='"+esc(r.id)+"'>Decline</button>";
-      } else if(r.status==="rejected"&&isH(r)){
-        // No HBAR signer here: the refund is sent from a Hedera wallet, then recorded and checked.
-        act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" to "+esc(r.payer)+" from a Hedera wallet, then record it' data-lxrh='"+esc(r.id)+"'>Record refund</button>"
+      } else if(r.status==="rejected"&&isExt(r)){
+        // No HBAR / XRP / NEAR signer here: the refund is sent from that network's wallet, then recorded and checked.
+        act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" to "+esc(r.payer)+" from a "+esc(netName(r))+" wallet, then record it' data-lxrh='"+esc(r.id)+"'>Record refund</button>"
            +"<button class='lxreq-btn' type='button' title='Put this back in the queue' data-lxro='"+esc(r.id)+"'>Reopen</button>";
       } else if(r.status==="rejected"){
         act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" back to the account that paid' data-lxrf='"+esc(r.id)+"'>Refund</button>"
@@ -2291,10 +2309,10 @@ function paintAssets(){
           +"<div><div class='asset-name'>"+esc(r.code)+(r.curated?tickFor(r.asset):"")+"</div>"
           // Truncated with a copy button rather than printed in full: 56 characters would dominate the
           // row, and what you actually do with an issuer is paste it somewhere.
-          +"<div class='asset-sub mono'>"+(isH(r)?"Hedera · ":"")+esc(reqShort(r,r.issuer))
-            +"<button class='lxreq-copy' type='button' title='"+(isH(r)?"Copy the token id":"Copy the issuing account")+"' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
-            +"<a class='ext-link' title='"+(isH(r)?"The token on HashScan":"The issuing account on stellar.expert")+"' target='_blank' rel='noopener' href='"
-              +esc(isH(r)?(HS+"token/"+encodeURIComponent(r.issuer)):("https://stellar.expert/explorer/public/account/"+encodeURIComponent(r.issuer)))+"'>"+EXTICON+"</a>"
+          +"<div class='asset-sub mono'>"+(isExt(r)?(netName(r)+" · "):"")+esc(reqShort(r,r.issuer))
+            +"<button class='lxreq-copy' type='button' title='"+((isH(r)||isN(r))?"Copy the token id":"Copy the issuing account")+"' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
+            +"<a class='ext-link' title='The token on the "+esc(netName(r))+" explorer' target='_blank' rel='noopener' href='"
+              +esc(reqIssuerUrl(r))+"'>"+EXTICON+"</a>"
           +"</div>"
           // The WHOLE description, not the first 120 characters. This is the review screen; deciding
           // whether a project describes itself honestly cannot be done from an ellipsis.
@@ -2351,8 +2369,8 @@ function paintAssets(){
     var r=reqById(id); if(!r)return;
     // Hedera: curation lives in the Hedera build (a vouch, a rebuild, a deploy), not in assetmeta, so
     // this only records the decision -- and the endpoint refuses until the token is on that list.
-    if(isH(r)){
-      if(!confirm("Approve "+r.code+" ("+r.issuer+")? It must already be vouched in the Hedera build and deployed, or this is refused."))return;
+    if(isExt(r)){
+      if(!confirm("Approve "+r.code+" ("+r.issuer+")? It must already be on the "+netName(r)+" curated list on the live site, or this is refused."))return;
       btn.disabled=true; btn.textContent="Recording…";
       reqAct(id,{action:"approve"})
         .then(function(){ alert(r.code+" ("+r.issuer+") is approved."); })
@@ -2461,6 +2479,7 @@ function paintAssets(){
   function reqRefundHash(id){
     var r=reqById(id); if(!r||q(".lxmodal"))return;
     if(isH(r))return reqRefundHedera(r);
+    if(isX(r)||isN(r))return reqRefundOther(r);
     var m=document.createElement("div"); m.className="lxmodal";
     m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Record a refund</h3>"
       +"<p class='lxmodal-s'>For a refund sent from somewhere else. We check the ledger: it has to be an XLM payment to "+esc(shortG(r.payer))+" of at least "+esc(reqAmt(r))+", or it is not accepted.</p>"
@@ -2505,6 +2524,43 @@ function paintAssets(){
       if(!/^0[.]0[.][0-9]+[@-][0-9]+[.-][0-9]+$/.test(h)&&!/^[0-9a-fA-F]{96}$/.test(h)){ er.textContent="That is not a Hedera transaction id."; return; }
       ok.disabled=true; ok.textContent="Checking…";
       reqAct(r.id,{action:"refund",refundTxId:h}).then(close)
+        .catch(function(e){ ok.disabled=false; ok.textContent="Check and record"; er.textContent=e.message; });
+    });
+  }
+
+  // An XRP Ledger or NEAR refund: sent from Xaman / a NEAR wallet, then recorded by hash. Checked on that
+  // ledger server-side (a payment to the payer of at least what was taken) before the row closes. NEAR
+  // finds a transaction by hash AND sender, so it asks for the account the refund was sent from too.
+  // No backslashes in this block (template literal).
+  function reqRefundOther(r){
+    var near=isN(r);
+    var m=document.createElement("div"); m.className="lxmodal";
+    m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Record the "+esc(reqUnit(r))+" refund</h3>"
+      +"<p class='lxmodal-s'>Send "+esc(reqAmt(r))+" to "+esc(r.payer)+" from "+(near?"a NEAR wallet":"Xaman or another XRP Ledger wallet")
+      +", then paste the transaction hash. We check the ledger: it has to be a "+esc(reqUnit(r))+" payment to that account of at least "+esc(reqAmt(r))+", or it is not accepted.</p>"
+      +"<label class='lxmodal-l' for='lxrhTx'>Transaction hash</label><input class='lxmodal-i' id='lxrhTx' placeholder='"+(near?"The NEAR transaction hash":"64 hex characters")+"' maxlength='120'>"
+      +(near?"<label class='lxmodal-l' for='lxrhFrom'>Sent from (NEAR account)</label><input class='lxmodal-i' id='lxrhFrom' placeholder='fees-lumoscore.near' maxlength='64'>":"")
+      +"<p class='lxmodal-e' id='lxrhErr'></p>"
+      +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxrhCancel'>Cancel</button>"
+      +"<button class='adm-btn primary' type='button' id='lxrhOk'>Check and record</button></div></div>";
+    document.body.appendChild(m);
+    var inp=m.querySelector("#lxrhTx"), from=m.querySelector("#lxrhFrom"), er=m.querySelector("#lxrhErr"), ok=m.querySelector("#lxrhOk");
+    inp.focus();
+    function close(){ m.remove(); }
+    m.addEventListener("click",function(e){ if(e.target===m)close(); });
+    m.querySelector("#lxrhCancel").addEventListener("click",close);
+    ok.addEventListener("click",function(){
+      // An explorer link is accepted too: its last path segment is the hash.
+      var h=(inp.value||"").trim().split("/").pop().split("?")[0].split("#")[0];
+      var body={action:"refund",refundHash:h};
+      if(near){
+        if(!/^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(h)){ er.textContent="That is not a NEAR transaction hash."; return; }
+        var f=((from&&from.value)||"").trim().toLowerCase();
+        if(!/^[a-z0-9._-]{2,64}$/.test(f)){ er.textContent="Give the NEAR account the refund was sent from."; return; }
+        body.refundSigner=f;
+      } else if(!/^[0-9a-fA-F]{64}$/.test(h)){ er.textContent="That is not an XRP Ledger transaction hash."; return; }
+      ok.disabled=true; ok.textContent="Checking…";
+      reqAct(r.id,body).then(close)
         .catch(function(e){ ok.disabled=false; ok.textContent="Check and record"; er.textContent=e.message; });
     });
   }

@@ -2160,6 +2160,75 @@ export async function onRequest(context){
     + JSON.stringify(ld).split('</').join('<' + String.fromCharCode(92) + '/') + '</scr' + 'ipt>');
 
   let rw = new HTMLRewriter().on('head', new HeadInjector(head.join('')));
+  // FEATURE NAVIGATION ALWAYS OPENS THE FEATURE'S HUB (RAZA 2026-11-18: "if not connected, and if we tap
+  // anything Trade, Launch, Cross-chain, Pools, Lumos, it should always bring to the hub page for that
+  // feature. Thats where the user will select the network"). Each fork bakes its own network into its
+  // menus at build time -- XRPL pages pointed every nav link at /<feature>/xrpl, NEAR's bar and menu at
+  // /<feature>/near, and _mobnavlaunch.js pins Stellar's Launch tab to /launchpad/stellar -- so a
+  // signed-out visitor on any network page was taken past the network choice. Fixed HERE, on the way
+  // out, because every page of every network passes through this one place and a fork rebuild cannot
+  // undo it. A CONNECTED wallet loses nothing: the hub forwards it to its own network's page.
+  //
+  // ONLY the four navigation areas: the phone bar (.nb-bar), the phone menu (.menu-links), the desktop
+  // side menu (a.nx-item) and the footer (.site-footer). Links in page content -- the hub's own network
+  // cards above all -- keep their network. Exact /<feature>/<network> only: deeper links (a pool, an
+  // asset) are content, not navigation. No backslashes here: this is inside a template literal.
+  // footer a[href] too: the DESKTOP footer is a plain <footer> with no class (the phone one is .site-footer).
+  rw = rw.on('.nb-bar a[href], .menu-links a[href], a.nx-item[href], .site-footer a[href], footer a[href]', {
+    element(el) {
+      const parts = String(el.getAttribute('href') || '').split('?')[0].split('/');
+      if (parts.length === 4 && parts[3] === '') parts.pop();
+      if (parts.length !== 3 || parts[0] !== '') return;
+      const FEATURE = { trade: 1, pools: 1, bridge: 1, launchpad: 1, lumos: 1, rewards: 1 };
+      const NETWORK = { stellar: 1, xrpl: 1, near: 1, arc: 1, hedera: 1 };
+      if (FEATURE[parts[1]] === 1 && NETWORK[parts[2]] === 1) el.setAttribute('href', '/' + parts[1]);
+    }
+  });
+  // THE BRIDGE'S "Connected" TAG IS A FACT, NOT DECORATION (RAZA 2026-11-18: "im not connected but it shows
+  // connected tag. also check for other networks"). The design ships the source-network box with a fixed
+  // <span class="st">Connected</span>, and every network's bridge page inherited it, so a signed-out
+  // visitor was told their wallet was connected. On /bridge/<network> the tag is hidden by default and
+  // shown only while a wallet ON THAT NETWORK is stored -- network read the way the hub gate reads it
+  // (lumos.network, else the address shape). Re-checked every second, so connecting or disconnecting
+  // without a reload updates it. No backslashes here: this is inside a template literal.
+  {
+    const bp = String(canonPath || '').split('/');
+    const BRIDGE_NETS = { stellar: 1, xrpl: 1, near: 1, arc: 1, hedera: 1 };
+    if (bp[1] === 'bridge' && BRIDGE_NETS[bp[2]] === 1) {
+      const css = '<style id="lx-bridge-conn-css">html:not(.lx-src-on) .br-netbox .br-netchip .st{display:none!important}</style>';
+      const js = '<script id="lx-bridge-conn">(function(){var net=' + JSON.stringify(bp[2]) + ';'
+        + 'function upd(){var a="",n="";try{a=localStorage.getItem("lumos.address")||"";n=(localStorage.getItem("lumos.network")||"").toLowerCase();}catch(_){}'
+        + 'if(n!=="xrpl"&&n!=="stellar"&&n!=="near"&&n!=="arc"&&n!=="hedera"){var c=a.charAt(0);n=!a?"":(c==="r"?"xrpl":((c==="G"&&a.length===56)?"stellar":"near"));}'
+        + 'document.documentElement.classList.toggle("lx-src-on",!!a&&n===net);}'
+        + 'upd();setInterval(upd,1000);window.addEventListener("storage",upd);})();</scr' + 'ipt>';
+      rw = rw.on('head', { element(el) { el.append(css + js, { html: true }); } });
+    }
+  }
+  // "VIEW FULL HOLDER LIST" OPENS OUR OWN HOLDERS TAB (RAZA 2026-11-18: "should connect with Trade asset (lumos) -->
+  // Holders tab. On all 3 networks"). The design shipped href="#" (Stellar, XRPL) or NearBlocks (NEAR); now every
+  // /lumos/<network> page links to that network's LUMOS asset page with ?tab=holders, and every asset page opens
+  // the tab its ?tab= names. The opener clicks the tab the page already has (a real click, so the page's own
+  // loader runs), re-asserts it for ~9s in case a late init flips back to the default, stops the moment the
+  // visitor touches anything, and scrolls the tab bar into view once. No backslashes: template literal.
+  {
+    const tp = String(canonPath || '').split('/');
+    const LUMOS_ASSET = { stellar: 'LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S', xrpl: 'LUMOS-rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha', near: 'lumos.lumoscore.near' };
+    if (tp.length === 3 && tp[1] === 'lumos' && LUMOS_ASSET[tp[2]]) {
+      const to = '/trade/' + tp[2] + '/' + LUMOS_ASSET[tp[2]] + '?tab=holders';
+      rw = rw.on('.h-foot a', { element(el) { el.setAttribute('href', to); el.removeAttribute('target'); el.removeAttribute('rel'); } });
+    }
+    const TAB_NETS = { stellar: 1, xrpl: 1, near: 1 };
+    if (tp.length === 4 && tp[1] === 'trade' && TAB_NETS[tp[2]] === 1 && tp[3]) {
+      const js = '<script id="lx-tabparam">(function(){var w="";try{w=new URLSearchParams(location.search).get("tab")||"";}catch(_){}'
+        + 'if(w!=="holders"&&w!=="pools"&&w!=="exchanges")return;var user=false,done=false,n=0;'
+        + '["pointerdown","touchstart","keydown","wheel"].forEach(function(e){window.addEventListener(e,function(){user=true;},{capture:true,passive:true});});'
+        + 'function tick(){if(user)return;var t=[].slice.call(document.querySelectorAll("[data-tab="+JSON.stringify(w)+"]")).filter(function(x){return x.offsetParent;})[0];'
+        + 'if(t){if(!t.classList.contains("active"))t.click();if(!done){done=true;try{(t.closest(".tabs-bar")||t).scrollIntoView({block:"start"});window.scrollBy(0,-90);}catch(_){}}}'
+        + 'if(++n<30)setTimeout(tick,300);}'
+        + 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",tick);else tick();})();</scr' + 'ipt>';
+      rw = rw.on('head', { element(el) { el.append(js, { html: true }); } });
+    }
+  }
   // GUARDED ON THE VALUE, NOT ON seo EXISTING.
   //
   // These two rewrite the page's OWN title and description, so an seo object carrying empty strings

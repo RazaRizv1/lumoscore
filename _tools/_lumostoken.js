@@ -37,7 +37,7 @@ background-size:400% 100%;animation:lxchsh 1.3s ease-in-out infinite}
    smudge rather than a mark. 32px, overlap kept proportional.
    TOP LEVEL on purpose: most of this stylesheet is inside @media(min-width:760px), and .pool-list is
    the phone layout, so a rule placed in that block could never apply to the list it describes. */
-.pool-list .pair-icons{width:auto!important;height:32px!important}
+.wsize-bar .fill{display:block}.pool-list .pair-icons{width:auto!important;height:32px!important}
 .pool-list .pair-icons .a,.pool-list .pair-icons .b{width:32px!important;height:32px!important}
 .pool-list .pair-icons .b{margin-left:5px!important;left:0!important}
 /* verified mark and home domain: the same badge and link treatment the rest of the site uses */
@@ -162,8 +162,12 @@ html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;co
 .holder-row:not([data-lxbuilt]) .addr,
 .holder-row:not([data-lxbuilt]) .chain,
 .holder-row:not([data-lxbuilt]) .holdings .v,
+.holder-row:not([data-lxbuilt]) .holdings .pct,
 .holder-row:not([data-lxbuilt]) .holdings .lc-money{color:transparent!important;border-radius:5px;background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.24),rgba(140,140,150,.10))!important;background-size:200% 100%!important;animation:lxshim 1.15s ease-in-out infinite}
 @keyframes lxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* the phone's mock dollars sit in .holdings .pct, and the avatar carried the site logo -- both read as data */
+.holder-row:not([data-lxbuilt]) .av{background:rgba(140,140,150,.16)!important;background-image:none!important;color:transparent!important;box-shadow:none!important}
+.holder-row:not([data-lxbuilt]) .av>*{visibility:hidden!important}
 /* scrollable full pool list with a sticky header */
 .lx-poolscroll{max-height:440px;overflow-y:auto}
 .lx-poolscroll::-webkit-scrollbar{width:9px}
@@ -260,19 +264,22 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     "GCYFMZPDAR7ZTTTBA5DVG2SPR2N4CLPZLGLVI475BCGJ532WOKWRKUDG":1,"GAMXMHJX6CW6LZWUYRKVF73GOMRFJDQI57UMA4LE5QUF4DCJRGI55QD6":1,
     "GDVU64GNDFDR3OWKGPK37DAK67RPOK4OMZB4RH7NQN5UOYB4GPFVQUOD":1,"GDB46BXMVI7FEZCHG4OTZ3OCSJX4CRBOOK6OJL5JD7BF5QIW3AS53IWA":1
   };
-  // reward pools (Horizon hex -> incentive label) — from the Rewards page data layer
+  // reward pools (Horizon hex -> incentive label). THE CURRENT CYCLE (RAZA 2026-11-18: "you still havent
+  // updated the Incentives tag"): the ten pool ids _adminrewards.js S_ECO pays, which RAZA confirmed on
+  // 2026-11-13 is the live programme. This list was the PREVIOUS cycle's (LMNR, sages, SSLX, TKG, LIBERATOR,
+  // KALE...). If the cycle rotates, rotate this with S_ECO and _ammdata.js's Rewarded tab.
   var REWARD_HEX={
-    "78e6cfc930e2d7ceb3f6cefd4f9aa5e098c5b0af086cde0ad3147982f4d217f2":"Native LP",
-    "2d630c4224248bf23ff7a639bcf05db096c4ed9a96e2d1f3e9b94c2986ef9332":"Ecosystem",
-    "a7d73ed49edd21b7f3533c8a2a3b534409c1ce9a0909eb6cbb230b957d37faff":"Ecosystem",
-    "a027264ce20ff9161c0eb8a016ac382432ff1b0248b407374da47d502a0a071e":"Ecosystem",
-    "68d62e263f1006fdec7f456ccbd3e2fba67a335b6804088a30050542209d9f51":"Ecosystem",
-    "afab0b06224d5f9a737b78f3ff2014ddee4f9e747d1c514374e22890dbbe92ba":"Ecosystem",
-    "9be7d7872051f1575e8f4e69b81954ef3d017f100a4cb3f7a407fb8bc894654f":"Ecosystem",
-    "40bb76280b61590c22398a882ca67b7de328f7ae689c33cc27197059134cd2cc":"Ecosystem",
-    "d6dc92ff8c34c657f3a20e50c6954fecf4c965d804325e0301b0f35da4b1af71":"Ecosystem",
-    "f0312476658fdd50a87c95ddcee3bedd204c29368a4a647770237610dcdb269b":"Ecosystem",
-    "344e6618b45f6925e7b53a71b7882e6e2c1b983ab0926676f4175a4bfb46b7bf":"Ecosystem"
+    "78e6cfc930e2d7ceb3f6cefd4f9aa5e098c5b0af086cde0ad3147982f4d217f2":"Native LP",   // XLM
+    "344e6618b45f6925e7b53a71b7882e6e2c1b983ab0926676f4175a4bfb46b7bf":"Ecosystem",   // USDC
+    "6097e8e4b959ef59cc6030c9d94bc56f2570a371624f80a4dbed74c24cdf60bf":"Ecosystem",   // USDT0
+    "a9414b0c90b18a3c6dca4855127b48f4f1faec83a489ce2b6a79c7cfdd47e655":"Ecosystem",   // EURC
+    "9be7d7872051f1575e8f4e69b81954ef3d017f100a4cb3f7a407fb8bc894654f":"Ecosystem",   // SHX
+    "68d62e263f1006fdec7f456ccbd3e2fba67a335b6804088a30050542209d9f51":"Ecosystem",   // AQUA
+    "dd31ba1dd14612984adad5126b3c8bbf7fc7fe88ba121b432c88bcc011ce0e33":"Ecosystem",   // BLND
+    "e67b5a693d12ba98cb411d3b349b900602302cc8bc4479d35e0c806712c9ca59":"Ecosystem",   // xLMNR
+    "a7d73ed49edd21b7f3533c8a2a3b534409c1ce9a0909eb6cbb230b957d37faff":"Ecosystem",   // yXLM
+    "ac3b01d256366c386c0bff1e1a59bcd5fe57749f268aefc03854a8fdedf050a2":"Ecosystem",   // XRP
+    "7d476a9bc5832cce0e7e8b1f0aa8756e0197f0ece132990f52ccf3e9a7297ca6":"Ecosystem"    // PYUSD
   };
   // seed XLM/USD from a shared localStorage cache so a CoinGecko rate-limit (429) never blanks the USD
   // values (market cap / FDV / volume / chart) — falls back to the last-known price (<=6h old).
@@ -701,6 +708,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // The chain pill said Stellar while carrying an APT mark, and on a Stellar-only page it says
       // nothing anyway -- the desktop table drops its Network column for the same reason.
       var pill=row.querySelector(".chain-pill"); if(pill&&pill.parentNode)pill.parentNode.removeChild(pill);
+      // The incentive pill was cloned from the template row too, so every phone row said "Native LP".
+      var ipl=row.querySelector(".incent-pill"); if(ipl){ var ilab=REWARD_HEX[pool.hex];
+        if(ilab){ ipl.textContent=ilab; ipl.className="incent-pill "+(ilab==="Native LP"?"native":"eco"); ipl.style.display=""; }
+        else ipl.style.display="none"; }
       // The phone keeps its figures in .stats-row as label/value pairs. There is no .lc-money in this
       // markup at all, so the two lines copied from the desktop builder wrote nothing and every cloned
       // row kept the template pool's $182K -- real pairs with one pool's numbers under all of them,
@@ -786,6 +797,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     qa("*").forEach(function(e){ if(e.children.length)return; var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("both chains")>=0)e.textContent=t.replace(/Combined[^]*?both chains/,"Ranked by balance"); });
     var hold=window.__lxLThold; if(!hold||!hold.length||!(supply>0))return;
     var b=[0,0,0,0];  // 5M+, 1M–5M, 250K–1M, <250K
+    // Holders = accounts with a balance. The list is every TRUSTLINE (1,498 on 2026-11-18), so ~540 empty
+    // ones were counted into "Under 250K" and the total, against the tab's own 962 holders.
+    hold=hold.filter(function(h){return h.bal>0;}); if(!hold.length)return;
     hold.forEach(function(h){ var v=h.bal; if(v>=5e6)b[0]++; else if(v>=1e6)b[1]++; else if(v>=25e4)b[2]++; else b[3]++; });
     var labels=["5M+ LUMOS","1M – 5M","250K – 1M","Under 250K"], tot=hold.length||1, mx=Math.max(b[0],b[1],b[2],b[3])||1;
     var rows=qa(".wsize-row");
@@ -816,12 +830,20 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var vv=c.querySelector(".holdings .v"); if(vv)vv.textContent=abbrNum(h.bal)+" LUMOS";
       var mm=c.querySelector(".holdings .lc-money")||c.querySelector(".holdings .pct");
       if(mm&&pUsd>0){ var uu=abbrUsd(h.bal*pUsd); mm.textContent=uu; mm.setAttribute("data-orig",uu); mm.setAttribute("data-usd",h.bal*pUsd); mm.classList.add("lc-money"); }
+      else if(mm){ mm.textContent=""; mm.removeAttribute("data-orig"); }   // no price yet: blank, never the mock
       // link the row to the holder's Stellar.expert account page
       c.style.cursor="pointer"; c.setAttribute("title","View "+shortG(h.addr)+" on Stellar Explorer");
       (function(ad){ c.addEventListener("click",function(ev){ if(ev.target&&ev.target.closest&&ev.target.closest("a"))return; window.open("https://stellar.expert/explorer/public/account/"+ad,"_blank","noopener"); }); })(h.addr);
       c.setAttribute("data-lx-noswap",""); c.setAttribute("data-lxbuilt","1"); c.setAttribute("data-lxbal",h.bal); c.classList.add("lxlt");
       if(row.parentNode)row.parentNode.replaceChild(c,row);
     });
+    // THE DOLLARS FOLLOW THE PRICE, NOT THE BUILD (2026-11-18). A row is built once; with the ranked list now
+    // landing in ~2s it usually beats the price, and the build left the design's $94,720 in place for good.
+    // Every pass re-values built rows from data-lxbal once the price is known.
+    var _pu=lumosXlm*xlmUsd;
+    if(_pu>0)qa(".holder-row[data-lxbuilt]").forEach(function(r){ var bb=+r.getAttribute("data-lxbal");
+      var mm2=r.querySelector(".holdings .lc-money")||r.querySelector(".holdings .pct"); if(!mm2||!(bb>0))return;
+      var u2=abbrUsd(bb*_pu); if(mm2.textContent!==u2){ mm2.textContent=u2; mm2.setAttribute("data-orig",u2); mm2.setAttribute("data-usd",bb*_pu); mm2.classList.add("lc-money"); } });
     // "Combined · both chains" subtitle -> "Ranked by balance" (network is obvious; drop it)
     // Same claim, phone markup: <div class="h-head"><h3>Top LUMOS holders</h3><div class="meta">both
     // chains</div></div>. Matched on the heading beside it rather than on the string, so it reads the
@@ -829,11 +851,13 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     qa(".h-head").forEach(function(hd){ var m=hd.querySelector(".meta"); if(!m)return;
       if((m.textContent||"").indexOf("both chains")>=0) setText(m,"Ranked by balance"); });
     qa("*").forEach(function(e){ if(e.children.length)return; var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("both chains")>=0)e.textContent=t.replace(/Combined[^]*?both chains/,"Ranked by balance"); });
-    // "View full holder list →" -> the LUMOS asset (holders) on stellar.expert
+    // "View full holder list →" -> OUR asset page's Holders tab, same tab (RAZA 2026-11-18). It used to open
+    // stellar.expert; the edge sets the same href, so this only has to stop overwriting it.
     var vfl=qa("a,button").filter(function(e){return /holder list/i.test((e.textContent||""));})[0];
+    var HOLDERS_URL="/trade/stellar/"+CODE+"-"+ISSUER+"?tab=holders";
     if(vfl&&vfl.getAttribute("data-lxvf")!=="1"){ vfl.setAttribute("data-lxvf","1"); vfl.style.cursor="pointer";
-      if(vfl.tagName==="A"){ vfl.setAttribute("href",EXPLORER); vfl.setAttribute("target","_blank"); vfl.setAttribute("rel","noopener"); }
-      else { vfl.addEventListener("click",function(ev){ ev.preventDefault(); ev.stopPropagation(); window.open(EXPLORER,"_blank","noopener"); }); }
+      if(vfl.tagName==="A"){ vfl.setAttribute("href",HOLDERS_URL); vfl.removeAttribute("target"); vfl.removeAttribute("rel"); }
+      else { vfl.addEventListener("click",function(ev){ ev.preventDefault(); ev.stopPropagation(); location.href=HOLDERS_URL; }); }
     }
   }
   function loadHolders(){
@@ -859,7 +883,30 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // for the rest of the session. Clear the flag so a later pass can have another go.
       }).catch(function(){ if(acc.length)finish(); else window.__lxLTholdLoading=false; });
     }
-    page(H+"/accounts?asset="+CODE+":"+ISSUER+"&limit=200&order=desc",0);
+    // THE RANKED LIST FIRST (RAZA 2026-11-18: "Top Holders section on Stellar ... never loads or takes forever").
+    // Paging Horizon from the browser meant 8 pages of 11-16 MB each (every LUMOS holder brings its whole
+    // balance list) -- minutes on a phone, so the rows sat as skeletons over the design's mock dollars.
+    // /lxapi/holders builds the same ranking at the edge and keeps it, so this is a few 200-row reads of
+    // ~10 KB. While its first build runs it answers 204 "scanning": ask again. Any other failure falls back
+    // to the old Horizon walk below, so nothing is lost if the endpoint is absent.
+    var RURL="/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200";
+    function ranked(off,tries){
+      return fetch(RURL+(off?"&cursor="+off:"")+(tries?"&_r="+Date.now():"")).then(function(r){
+        if(r.status===204){
+          if((r.headers.get("x-lx-holders")||"")==="scanning"&&tries<24)
+            return new Promise(function(go){ setTimeout(go,800); }).then(function(){ return ranked(off,tries+1); });
+          throw new Error("no ranking");
+        }
+        if(!r.ok)throw new Error("holders "+r.status);
+        return r.json().then(function(d){
+          var recs=(d&&d._embedded&&d._embedded.records)||[];
+          recs.forEach(function(x){ var b=(+x.balance||0)/1e7; if(x.account&&b>0)acc.push({addr:x.account,bal:b}); });
+          if(recs.length>=200&&off<4000)return ranked(off+recs.length,0);
+        });
+      });
+    }
+    ranked(0,0).then(function(){ if(!acc.length)throw new Error("empty"); finish(); })
+      .catch(function(){ acc=[]; page(H+"/accounts?asset="+CODE+":"+ISSUER+"&limit=200&order=desc",0); });
   }
   // holders (balance > 0) vs trustlines (all accounts trusting LUMOS, incl. 0-balance).
   // AUDIT (numeric): the holders figure sat on "\\u2026" for ~29s and most visitors never saw a number.

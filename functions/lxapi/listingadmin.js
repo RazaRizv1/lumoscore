@@ -57,6 +57,88 @@ async function hederaTx(ref) {
   const j = await r.json();
   return ((j && j.transactions) || []).filter((t) => !t.nonce && !t.scheduled)[0] || null;
 }
+// ---- XRP LEDGER and NEAR rows (network 'xrpl' / 'near', written by xrpllisting.js / nearlisting.js) --
+// Same three decisions as Hedera, same guarantee: never an approval this endpoint cannot see, never a
+// refund it has not found on the ledger.
+//   * CURATED means the token is in that network's curated set AS THE PUBLIC SITE SERVES IT. Read from
+//     lumoscore.com, not this origin: the admin project carries Stellar's functions only, so neither
+//     /lxapi/xrpltokens nor /lxapi/nearmarket exists here. XRPL: a row of /lxapi/xrpltokens with that
+//     issuer and currency (40-hex or 3-char). NEAR: a row of /lxapi/nearmarket whose id is the contract
+//     (the list is baked into the NEAR build: nearcurated.generated.json -> _nearcurated.js).
+//   * REFUNDS are sent from Xaman / a NEAR wallet and recorded by hash: XRPL = a validated tesSUCCESS
+//     Payment to the payer delivering at least the XRP taken; NEAR = a successful Transfer to the payer
+//     of at least the NEAR taken (NEAR RPC needs the sender too, so the panel sends it).
+import { ledgerCurrency } from './xrpllisting.js';
+const PUBLIC = 'https://lumoscore.com';
+const XRPL_RPC = ['https://s1.ripple.com:51234/', 'https://s2.ripple.com:51234/', 'https://xrplcluster.com/'];
+const NEAR_RPC = ['https://free.rpc.fastnear.com', 'https://near.drpc.org'];
+const NEAR_HASH_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
+const NEAR_ACCT_RE = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$|^[0-9a-f]{64}$/;
+const EXT = { hedera: 1, xrpl: 1, near: 1 };
+
+async function xrplCurated() {
+  try {
+    const r = await fetch(PUBLIC + '/lxapi/xrpltokens', MCF);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.ok || !Array.isArray(d.rows)) return null;
+    return new Set(d.rows.map((x) => String(x.i) + '|' + String(x.c).toUpperCase()));
+  } catch (e) { return null; }
+}
+function xrplKey(row) { return row.issuer + '|' + ledgerCurrency(row.code).toUpperCase(); }
+async function nearCurated() {
+  try {
+    const r = await fetch(PUBLIC + '/lxapi/nearmarket', MCF);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.ok || !Array.isArray(d.rows)) return null;
+    return new Set(d.rows.map((x) => String(x.i)));
+  } catch (e) { return null; }
+}
+async function xrplRpc(method, params) {
+  for (const url of XRPL_RPC) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method, params: [params] }) });
+      if (r.ok) { const j = await r.json(); if (j && j.result) return j.result; }
+    } catch (e) { /* next */ }
+  }
+  throw new Error('xrpl unreachable');
+}
+async function nearRpc(method, params) {
+  for (const url of NEAR_RPC) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 'lx', method, params }) });
+      if (r.ok) { const j = await r.json(); if (j && j.result) return j.result; if (j && j.error) return { error: j.error }; }
+    } catch (e) { /* next */ }
+  }
+  throw new Error('near unreachable');
+}
+// Pure checks, exported for tests.
+export function xrplRefundOk(t, payer, amount) {
+  if (!t || t.error) return { err: 'that refund transaction is not on the XRP Ledger' };
+  const tx = t.tx_json || t, meta = t.meta || {};
+  if (!t.validated) return { err: 'that refund is not in a validated ledger yet — try again in a few seconds' };
+  if (meta.TransactionResult !== 'tesSUCCESS') return { err: 'that refund transaction did not succeed (' + meta.TransactionResult + ')' };
+  if (tx.TransactionType !== 'Payment' || tx.Destination !== payer) return { err: 'that transaction is not a payment to ' + payer };
+  const d = meta.delivered_amount;
+  if (typeof d !== 'string' || !/^\d+$/.test(d)) return { err: 'that payment did not deliver XRP' };
+  const got = +d / 1e6;
+  if (got + 1e-6 < +amount) return { err: 'that refund is ' + got.toFixed(6) + ' XRP, short of the ' + amount + ' XRP taken' };
+  return { amount: got.toFixed(6) };
+}
+export function nearRefundOk(t, payer, amount) {
+  if (!t || t.error) return { err: 'that refund transaction is not on NEAR' };
+  const tx = t.transaction || {}, st = t.status || {};
+  if (!('SuccessValue' in st)) return { err: 'that refund transaction did not succeed' };
+  if (tx.receiver_id !== payer) return { err: 'that transaction did not go to ' + payer };
+  let y = 0;
+  for (const a of tx.actions || []) if (a && a.Transfer && a.Transfer.deposit) y += Number(a.Transfer.deposit);
+  if (!y) return { err: 'that transaction has no NEAR transfer' };
+  const got = y / 1e24;
+  if (got + 1e-5 < +amount) return { err: 'that refund is ' + got.toFixed(5) + ' NEAR, short of the ' + amount + ' NEAR taken' };
+  return { amount: got.toFixed(5) };
+}
+
 function hashscanId(t) {
   return t ? String(t.transaction_id || '').replace(/^(\d+\.\d+\.\d+)-(\d+)-(\d+)$/, '$1@$2.$3') : '';
 }
@@ -116,6 +198,15 @@ export async function onRequestGet({ request, env }) {
     hed.forEach((r) => { if (r.tx_hash) refs.push(r.tx_hash); if (r.refund_hash) refs.push(r.refund_hash); });
     await Promise.all(refs.slice(0, 200).map((h) => hederaTx(h).then((t) => { txIds[h] = hashscanId(t); }, () => {})));
   }
+  // XRPL / NEAR rows: their curated sets, read from the public site (see xrplCurated / nearCurated).
+  const xOn = rows.some((r) => r.network === 'xrpl') ? await xrplCurated() : null;
+  const nOn = rows.some((r) => r.network === 'near') ? await nearCurated() : null;
+  const curatedOf = (r) => {
+    if (r.network === 'hedera') return !!(hOn && hOn.has(r.issuer));
+    if (r.network === 'xrpl') return !!(xOn && xOn.has(xrplKey(r)));
+    if (r.network === 'near') return !!(nOn && nOn.has(r.issuer));
+    return on.has(r.code + '-' + r.issuer);
+  };
 
   return json({
     ok: true,
@@ -124,7 +215,7 @@ export async function onRequestGet({ request, env }) {
       network: r.network,
       code: r.code,
       issuer: r.issuer,
-      asset: r.network === 'hedera' ? r.issuer : r.code + '-' + r.issuer,
+      asset: (r.network === 'hedera' || r.network === 'near') ? r.issuer : r.code + '-' + r.issuer,
       descr: r.descr || '',
       // The panel renders this straight into an <img src>. /lxapi/media is public and serves only what
       // was stored under a media: key, which is why the logo can be shown without a second auth hop.
@@ -145,7 +236,7 @@ export async function onRequestGet({ request, env }) {
       twitter: r.twitter || '',
       telegram: r.telegram || '',
       discord: r.discord || '',
-      curated: r.network === 'hedera' ? !!(hOn && hOn.has(r.issuer)) : on.has(r.code + '-' + r.issuer),
+      curated: curatedOf(r),
       // Hedera only: transaction ids for HashScan links ('' when the Mirror Node did not answer).
       txId: r.network === 'hedera' ? (txIds[r.tx_hash] || '') : undefined,
       refundTxId: r.network === 'hedera' && r.refund_hash ? (txIds[r.refund_hash] || '') : undefined,
@@ -218,6 +309,29 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- approve -------------------------------------------------------------------------------------
+  if (action === 'approve' && (row.network === 'xrpl' || row.network === 'near')) {
+    const isX = row.network === 'xrpl';
+    const set = isX ? await xrplCurated() : await nearCurated();
+    const label = isX ? 'XRP Ledger' : 'NEAR';
+    if (!set) return json({ ok: false, error: 'could not read the ' + label + ' curated list just now — nothing was changed; try again' }, 503);
+    const has = isX ? set.has(xrplKey(row)) : set.has(row.issuer);
+    if (!has) {
+      return json({
+        ok: false,
+        error: (isX ? row.code + ' (' + row.issuer + ')' : row.issuer) + ' is not on the ' + label + ' curated list yet. '
+          + (isX ? 'Vouch it in the XRPL build' : 'Add it to C:\\LumosCore-NEAR\\_tools\\nearcurated.generated.json (bake_curated)')
+          + ', rebuild and deploy to lumoscore.com, then approve — the request stays pending until it is there',
+      }, 409);
+    }
+    try {
+      await db.prepare(
+        "UPDATE listing_request SET status='approved', decided_at=?2, note=?3 WHERE id=?1"
+      ).bind(id, Date.now(), note || row.note || null).run();
+    } catch (e) { return json({ ok: false, error: 'could not save that decision' }, 500); }
+    await audit(env, request, 'listing.approve', id, { asset: isX ? row.code + '-' + row.issuer : row.issuer, network: row.network, note: note || undefined });
+    return json({ ok: true, id, status: 'approved' }, 200);
+  }
+
   if (action === 'approve') {
     const asset = row.code + '-' + row.issuer;
     let curated = [];
@@ -284,6 +398,33 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- refund --------------------------------------------------------------------------------------
+  if (action === 'refund' && (row.network === 'xrpl' || row.network === 'near')) {
+    const isX = row.network === 'xrpl';
+    const ref = String((b && b.refundHash) || '').trim();
+    let v;
+    try {
+      if (isX) {
+        if (!/^[0-9a-f]{64}$/i.test(ref)) return json({ ok: false, error: 'that is not an XRP Ledger transaction hash (64 hex)' }, 400);
+        v = xrplRefundOk(await xrplRpc('tx', { transaction: ref.toUpperCase(), binary: false }), row.payer, row.pay_amount);
+      } else {
+        const sender = String((b && b.refundSigner) || '').trim().toLowerCase();
+        if (!NEAR_HASH_RE.test(ref)) return json({ ok: false, error: 'that is not a NEAR transaction hash' }, 400);
+        if (!NEAR_ACCT_RE.test(sender)) return json({ ok: false, error: 'give the account the refund was sent FROM (NEAR needs it to find the transaction)' }, 400);
+        v = nearRefundOk(await nearRpc('tx', { tx_hash: ref, sender_account_id: sender, wait_until: 'FINAL' }), row.payer, row.pay_amount);
+      }
+    } catch (e) { return json({ ok: false, error: 'could not reach the ' + (isX ? 'XRP Ledger' : 'NEAR network') + '; try again' }, 503); }
+    if (v.err) return json({ ok: false, error: v.err }, 400);
+    const stored = isX ? ref.toLowerCase() : ref;
+    try {
+      await db.prepare(
+        "UPDATE listing_request SET status='refunded', refund_hash=?2, decided_at="
+        + 'COALESCE(decided_at, ?3) WHERE id=?1'
+      ).bind(id, stored, Date.now()).run();
+    } catch (e) { return json({ ok: false, error: 'could not record that refund' }, 500); }
+    await audit(env, request, 'listing.refund', id, { to: row.payer, amount: v.amount, tx: stored, network: row.network });
+    return json({ ok: true, id, status: 'refunded', refunded: v.amount }, 200);
+  }
+
   if (action === 'refund') {
     const hash = String((b && b.refundHash) || '').trim().toLowerCase();
     if (!HASH_RE.test(hash)) return json({ ok: false, error: 'that is not a transaction hash' }, 400);
