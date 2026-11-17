@@ -1435,13 +1435,13 @@ const HUB_SEO = {
   },
   '/pools': {
     title: 'Liquidity Pools on Stellar and XRP Ledger',
-    desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
+    desc: 'Add, remove and manage your liquidity positions. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
     h1: 'Liquidity Pools',
-    intro: 'Add liquidity and earn a share of every trade that routes through your pool. Choose a network to see its pools.',
+    intro: 'Add, remove and manage your liquidity. Choose a network to see its pools.',
   },
   '/bridge': {
     title: 'Bridge assets with LumosCore — Choose a network',
-    desc: 'Move assets between chains with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from to see its routes.',
+    desc: 'Move assets from one network to another, from your own wallet. Choose the network you are bridging from to see its routes.',
     h1: 'Bridge Assets',
     intro: 'Move assets from one network to another. Choose the network you are bridging from.',
   },
@@ -1506,17 +1506,17 @@ const NET_SEO = {
   },
   '/pools/stellar': {
     title: 'Stellar Liquidity Pools — TVL, Volume and Fees',
-    desc: 'Provide liquidity to Stellar AMM pools and earn a share of the 0.30% pool fee on every trade. See each pool’s value locked, 24h volume and your own positions.',
+    desc: 'Add, remove and manage your liquidity in Stellar AMM pools. See each pool’s value locked, 24h volume and your own positions.',
     h1: '<em>Stellar</em> Liquidity Pools',
-    intro: 'Provide liquidity to Stellar’s on-chain AMM pools and earn a share of the 0.30% pool fee on every trade that routes through them.',
+    intro: 'Add, remove and manage your liquidity in Stellar’s on-chain AMM pools.',
   },
   '/pools/xrpl': {
     title: 'XRP Ledger Liquidity Pools — TVL, Volume, Fees',
-    desc: 'Provide liquidity to XRP Ledger AMM pools and earn a share of every trade that routes through them. See each pool’s value locked, 24h volume and your positions.',
+    desc: 'Add, remove and manage your liquidity in XRP Ledger AMM pools. See each pool’s value locked, 24h volume and your own positions.',
     h1: '<em>XRP Ledger</em> Liquidity Pools',
     // The line this replaces read "Stellar's on-chain AMM pools" ON THE XRPL PAGE -- wrong-chain copy
     // inherited with the markup, exactly the shape [[lumoscore-xrpl-wrong-chain-copy]] records.
-    intro: 'Provide liquidity to the XRP Ledger’s native AMM pools and earn a share of each pool’s trading fee.',
+    intro: 'Add, remove and manage your liquidity in the XRP Ledger’s native AMM pools.',
   },
   '/launchpad/stellar': {
     title: 'Launch a Token on Stellar for $25',
@@ -2770,6 +2770,12 @@ export async function onRequest(context){
     rw = rw.on('.summary-fixed', new Dropper())
            .on('#summaryFixed', new Dropper())
            .on('.steps-mobile', new Dropper());
+    // THE PHONE BAR'S LAUNCH TAB GOES TO THE LAUNCHPAD HUB HERE (RAZA 2026-11-17, signed out on /trade:
+    // tapping Launch opened the Stellar launchpad, not the hub). _mobnavlaunch.js pins that tab to
+    // /launchpad/stellar on every Stellar page -- right on a network page (RAZA 2026-11-16: "make stellar
+    // and xrpl go straight to their own launchpad"), wrong on a hub, which is served from those same
+    // Stellar pages and has no network yet. So only a hub response is rewritten; network pages keep the pin.
+    rw = rw.on('a.nb-tab[data-id="launch"]', { element(el){ el.setAttribute('href', '/launchpad'); } });
     // The SAME CLASS OF MISS, found on 2026-10-27 by diffing the hub text against its network page:
     // these two explainers are modal overlays at body level, so neither strip above reached them, and
     // the /trade hub was serving 220 words of "How the Stellar DEX works" -- a single chain's prose on

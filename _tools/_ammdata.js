@@ -1224,7 +1224,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       try{ paintSnapshot(); }catch(_){}
     }).catch(function(){});
   }
-  function myEmptyRow(){ return '<tr class="lx-ammrow"><td colspan="5"><div class="lx-amm-empty"><b>No open positions</b>Add liquidity to a pool to start earning a share of its swap fees.</div></td></tr>'; }
+  function myEmptyRow(){ return '<tr class="lx-ammrow"><td colspan="5"><div class="lx-amm-empty"><b>No open positions</b>Add liquidity to a pool to open your first position.</div></td></tr>'; }
   // The design's #panelMyPositions gets emptied on some machines (can't repro / find the cause), so we OWN
   // the My Positions table entirely: build our own #lx-mypanel that nothing else touches, and toggle it.
   function buildMyPanel(){
