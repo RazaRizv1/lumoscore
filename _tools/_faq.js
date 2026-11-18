@@ -128,7 +128,7 @@ const FAQ = {
     ['Can an assistant move my funds?', 'No. The server holds no private key and cannot sign anything. A write tool validates what you asked for and hands back a link; the transaction opens in your browser, in your wallet, with the figures in front of you, and nothing moves until you approve it there.'],
     ['What can it see?', 'Only what is already public on-chain. It reads balances, orders and pool positions for any address you name, the same way a block explorer does. It never sees your keys, and it is not connected to your wallet.'],
     ['Does it cost anything?', 'No. The connector is free and unauthenticated. Trades placed through the links it prepares pay the ordinary LumosCore fee of 0.2%, or 0.1% if you hold 250,000 LUMOS, and limit orders are free.'],
-    ['Which networks does it cover?', 'The tools read Stellar today, which is where LumosCore trading and pools run. Cross-chain transfers it prepares reach the networks LumosCore bridges to, and the connector grows as the platform does — one endpoint, not one per chain.'],
+    ['Which networks does it cover?', 'Stellar, the XRP Ledger and NEAR, from one endpoint. Every tool takes a chain argument (stellar, xrpl or near; Stellar if it is left out), and an asset can also be written with its network, such as xrpl:XRP or near:NEAR. On NEAR the order book and swap quotes are not offered, because NEAR trading runs through pools and cross-chain intents.'],
   ],
 
 };

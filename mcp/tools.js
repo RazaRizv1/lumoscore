@@ -794,12 +794,62 @@ function pickChain(args) {
 // chain" would send an agent looking in the wrong place. Each gets its own name and its own reason.
 const CHAIN_NAMES = { stellar: 'Stellar', xrpl: 'The XRP Ledger', near: 'NEAR' };
 
+// A NETWORK WRITTEN INTO THE ASSET (RAZA 2026-11-18, testing from ChatGPT: "MCP is still not working for xrpl and
+// near"). The agent never set `chain` -- most likely a tool list it cached before chain existed -- so "XRP" answered
+// with Stellar's XRP token, and its fallback, `xrpl:XRP` / `near:NEAR` in the asset itself, was refused as a bad id.
+// That spelling is unambiguous, so it is read as the chain: the prefix is stripped from every string argument that
+// carries one, and a prefix that disagrees with an explicit `chain` (or with another argument's prefix) is refused
+// rather than guessed. `xrp:` is accepted as the XRP Ledger, since that is how people write it.
+const PREFIX_RE = /^\s*(stellar|xrpl|xrp|near)\s*[:/]\s*(.+)$/i;
+const PREFIX_CHAIN = { stellar: 'stellar', xrpl: 'xrpl', xrp: 'xrpl', near: 'near' };
+function splitPrefixes(args) {
+  const out = Object.assign({}, args || {});
+  let found = null;
+  for (const k of Object.keys(out)) {
+    if (k === 'chain' || typeof out[k] !== 'string') continue;
+    const m = PREFIX_RE.exec(out[k]);
+    if (!m) continue;
+    const c = PREFIX_CHAIN[m[1].toLowerCase()];
+    if (found && found !== c) return { error: `Arguments name two different networks (${found} and ${c}). Use one chain per call.` };
+    found = c; out[k] = m[2].trim();
+  }
+  if (found) {
+    if (out.chain && String(out.chain).trim().toLowerCase() !== found) {
+      return { error: `chain is "${out.chain}" but an argument is written for ${found}. Use one: chain: "${found}" with the bare asset.` };
+    }
+    out.chain = found;
+  }
+  return { args: out };
+}
+// THE NATIVE COIN OF ANOTHER NETWORK, ASKED FOR WITHOUT A CHAIN. Bare "XRP" on Stellar is a real Stellar token (and a
+// Stellar swap into it is legitimate), so the call is NOT rerouted -- but the answer says where the native coin lives,
+// so an agent that meant the XRP Ledger or NEAR is told how to ask instead of reporting that network as missing.
+function nativeHint(args, chainGiven) {
+  if (chainGiven) return '';
+  for (const k of ['asset', 'from', 'to']) {
+    const v = String((args && args[k]) || '').trim().toUpperCase();
+    if (v === 'XRP') return 'This answered for Stellar (the default). For the XRP Ledger\'s native XRP, call again with chain: "xrpl" (or asset "xrpl:XRP").';
+    if (v === 'NEAR') return 'This answered for Stellar (the default). For NEAR\'s native coin, call again with chain: "near" (or asset "near:NEAR").';
+  }
+  return '';
+}
+function withHint(res, hint) {
+  if (!hint || !res || !res.content || !res.content[0]) return res;
+  const c = res.content[0];
+  if (res.isError) return Object.assign({}, res, { content: [{ type: 'text', text: c.text + ' ' + hint }] });
+  try { const o = JSON.parse(c.text); o.chain_hint = hint; return { content: [{ type: 'text', text: JSON.stringify(o, null, 2) }] }; }
+  catch (e) { return res; }
+}
+
 function route(stellarFn, xrplFn, nearFn) {
   const impl = { xrpl: xrplFn, near: nearFn };
-  return async (args) => {
+  return async (rawArgs) => {
+    const sp = splitPrefixes(rawArgs);
+    if (sp.error) return fail(sp.error);
+    const args = sp.args;
     const p = pickChain(args);
     if (p.error) return fail(p.error);
-    if (p.chain === 'stellar') return stellarFn(args);
+    if (p.chain === 'stellar') return withHint(await stellarFn(args), nativeHint(args, !!(args && args.chain)));
     const fn = impl[p.chain];
     if (!fn) {
       return fail('That tool is Stellar-only for now. '

@@ -195,9 +195,15 @@ async function getMarket({ asset }) {
   const ra = await wantNearAsset('asset', asset);
   if (ra.error) return fail(ra.error);
   const a = ra.want;
+  // THE NATIVE COIN ANSWERS, it is not refused (RAZA 2026-11-18: an agent testing "NEAR" got "ask for a token" and reported
+  // the chain as not working). The rate is the curated roster's own NEAR/USD, the one every NEAR-priced figure here uses.
   if (a.native) {
-    return fail('NEAR is the quote asset here; ask for a token priced against it. '
-      + 'list_curated_assets carries the NEAR/USD rate itself.');
+    let m = null;
+    try { m = await api('/lxapi/nearmarket'); } catch (_) { m = null; }
+    if (!m || !(+m.usd > 0)) return fail('The NEAR/USD rate could not be read right now. Try again in a moment.');
+    return ok({ chain: 'near', asset: 'NEAR', native: true, price_usd: nf(+m.usd, 6),
+      change_24h_pct: m.near24 != null ? nf(+m.near24, 2) : null,
+      note: 'NEAR is the network\'s native coin; tokens are priced against it. For a token\'s market, pass its contract id (e.g. lumos.lumoscore.near).' });
   }
   const d = await api('/lxapi/neartoken?i=' + encodeURIComponent(a.id));
   if (!d || d.ok === false) {

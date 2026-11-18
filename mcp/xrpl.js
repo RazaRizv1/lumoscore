@@ -159,7 +159,16 @@ async function getMarket({ asset }) {
   const ra = await wantXrplAsset('asset', asset);
   if (ra.error) return fail(ra.error);
   const a = ra.want;
-  if (a.native) return fail('XRP is the quote asset here; ask for a token priced against it.');
+  // THE NATIVE COIN ANSWERS, it is not refused (RAZA 2026-11-18: an agent testing "XRP" on the XRP Ledger got "ask for a
+  // token" and reported the chain as not working). Its USD price is the token roster's own `usd`, the same rate every
+  // XRP-priced figure on this server is converted with; a token's market still needs its CODE-ISSUER id.
+  if (a.native) {
+    let t = null;
+    try { t = await api('/lxapi/xrpltokens?n=1'); } catch (_) { t = null; }
+    if (!t || !(+t.usd > 0)) return fail('The XRP/USD rate could not be read right now. Try again in a moment.');
+    return ok({ chain: 'xrpl', asset: 'XRP', native: true, price_usd: +(+t.usd).toFixed(6),
+      note: 'XRP is the XRP Ledger\'s native coin; tokens are priced against it. For a token\'s market, pass its CODE-ISSUER id (or a vouched code such as LUMOS).' });
+  }
   const d = await api('/lxapi/xrpltoken?id=' + encodeURIComponent(upstreamId(a)));
   if (!d || d.ok === false) return fail(`No market data for ${a.code} on the XRP Ledger.`
     + (d && d.error ? ` (${d.error})` : '') + ' It may not be traded, or the issuer may be wrong.');

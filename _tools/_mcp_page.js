@@ -345,7 +345,7 @@ function mainHTML(cfg){
     <div class="lxh-l" id="lxhLeft">
       <div class="lxh-anim" data-d="0"><div class="lxh-badge"><span>Model Context Protocol</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about LumosCore and it answers &mdash; live prices, any wallet, pools and routes. Ask it to act and you get the transaction back, filled in and ready to sign. <b class="lxh-k">It never holds your key.</b></p>
+      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about LumosCore and it answers &mdash; live prices, any wallet, pools and routes on Stellar, the XRP Ledger and NEAR. Ask it to act and you get the transaction back, filled in and ready to sign. <b class="lxh-k">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
     </div>
