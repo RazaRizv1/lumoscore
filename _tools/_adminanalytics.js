@@ -95,11 +95,6 @@ const MAIN = `
         </div>
       </div>
 
-      <div class="adm-card lxan-card" style="margin-bottom:18px">
-        <div class="adm-card-head"><div><div class="adm-card-title">Exit rate by page</div><div class="adm-card-sub" id="lxanExitSub">the share of each page&rsquo;s views that ended the visit &middot; highest first</div></div></div>
-        <div class="adm-card-body" style="padding:0"><div id="lxanExits" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
-      </div>
-
       <div class="adm-card lxan-card" style="margin-bottom:18px" id="lxanSearchCard">
         <div class="adm-card-head"><div><div class="adm-card-title">Search queries</div><div class="adm-card-sub" id="lxanSearchSub">what people searched on Google and Bing (and DuckDuckGo, which runs largely on Bing) when LumosCore showed up</div></div></div>
         <div class="adm-card-body" style="padding:0"><div id="lxanSearchStatus" class="lxan-sqstat"></div><div id="lxanSearch" class="lxan-sq"><div class="lxadm-empty">Loading&hellip;</div></div></div>
