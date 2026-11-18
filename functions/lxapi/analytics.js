@@ -285,7 +285,12 @@ export async function onRequestGet({ request, env }) {
             + 'ON m.sid = p.sid AND m.t = p.ts WHERE p.host = ?2 ORDER BY p.ts DESC LIMIT 100'
           ).bind(since, H2).all(),
           db.prepare('SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts > ?1 AND host = ?2').bind(since, H2).first(),
-          db.prepare('SELECT ts, path, country, region, city, device FROM pageview WHERE host = ?1 ORDER BY ts DESC LIMIT 1').bind(H2).first(),
+          // The last visitor gets the same "how they landed" as a live row (RAZA 2026-11-19): referrer + landing page of
+          // that session's first view. Two subqueries on one row, so the cost is the same ~2ms as the live list's.
+          db.prepare('SELECT p.ts AS ts, p.path AS path, p.country AS country, p.region AS region, p.city AS city, p.device AS device, '
+            + '(SELECT f.ref FROM pageview f WHERE f.sid = p.sid AND f.host = ?1 ORDER BY f.ts ASC LIMIT 1) AS ref, '
+            + '(SELECT f.path FROM pageview f WHERE f.sid = p.sid AND f.host = ?1 ORDER BY f.ts ASC LIMIT 1) AS landing '
+            + 'FROM pageview p WHERE p.host = ?1 ORDER BY p.ts DESC LIMIT 1').bind(H2).first(),
           db.prepare('SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2').bind(dayStart, H2).first(),
         ]);
         return json({ live: {
@@ -296,6 +301,7 @@ export async function onRequestGet({ request, env }) {
           last: last ? {
             ts: last.ts, path: last.path || '/', device: last.device || '',
             country: (last.country || '').toUpperCase(), region: last.region || '', city: last.city || '',
+            ref: last.ref || '', landing: last.landing || '',
           } : null,
           rows: ((now && now.results) || []).map((r) => ({
             id: String(r.sid || '').slice(0, 6), sid: r.sid, ts: r.ts, path: r.path,

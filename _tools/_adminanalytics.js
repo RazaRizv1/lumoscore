@@ -196,6 +196,7 @@ const CSS = `<style id="lx-adminanalytics-css">
 @media (max-width:640px){.lxan-sqt th:nth-child(6),.lxan-sqt td:nth-child(6){display:none}}
 .lxan-src{flex:0 1 auto;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--lxan-s);color:var(--accent,#ea6a2c);margin-right:14px}
 .lxan-src.d{color:var(--text-muted)}
+.lxan-quiet-m .lxan-qsrc{font-family:inherit;font-size:inherit;line-height:inherit;font-weight:600;color:var(--accent,#ea6a2c)}
 .lxan-arrive{border-top:1px dashed var(--border,rgba(255,255,255,.08))}
 @media (max-width:640px){.lxan-src{max-width:90px;margin-right:8px}}
 .lxan-open{display:inline-flex;align-items:center;vertical-align:middle;margin-left:6px;padding:2px;border-radius:4px;color:var(--text-muted);opacity:.85}
@@ -1025,7 +1026,11 @@ function liveTick(){
       el.innerHTML="<div class='lxan-quiet'>"
         +"<div class='lxan-quiet-i'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/></svg></div>"
         +"<div class='lxan-quiet-m'><b>Nobody on the site right now.</b>"
-        +(lt?("<span>Last visitor "+esc(ago(lt.ts))+(where?(" from "+esc(where)):"")+", on <code>"+esc(lt.path||"/")+"</code>.</span>")
+        // The page gets the same open icon as a live row, and the visit its source (RAZA 2026-11-19): the referring site of
+        // that session's first view, or "directly"; the landing page only when it differs from the page they were last on.
+        +(lt?("<span>Last visitor "+esc(ago(lt.ts))+(where?(" from "+esc(where)):"")+", on <code>"+esc(lt.path||"/")+"</code>"+openIcon(lt.path||"/")+". "
+             +"Came "+(lt.ref?("from <b class='lxan-qsrc'>"+esc(lt.ref)+"</b>"):"directly")
+             +((lt.landing&&lt.landing!==(lt.path||"/"))?(", landing on <code>"+esc(lt.landing)+"</code>"+openIcon(lt.landing)):"")+".</span>")
              :"<span>No page view has been recorded yet.</span>")+"</div>"
         +"<div class='lxan-quiet-k'><div><b>"+num(td.sessions||0)+"</b><span>visitors today (UTC)</span></div>"
         +"<div><b>"+num(td.views||0)+"</b><span>page views today (UTC)</span></div></div></div>";
