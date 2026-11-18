@@ -245,7 +245,7 @@ async function handle(msg, origin, ctx) {
       instructions:
         'Live market data and transaction preparation from LumosCore on three networks: Stellar, the XRP Ledger '
         + 'and NEAR. Every tool takes chain: "stellar" | "xrpl" | "near" (default stellar), and all of them '
-        + 'work on all three -- the two exceptions on NEAR (get_orderbook, get_quote) say so when called. '
+        + 'work on all three -- the one exception is get_orderbook on NEAR, which has no order book and says so when called. get_quote on NEAR reads the Rhea pool contracts themselves, the same figure the NEAR trade page shows; pass on its warning when price impact is high. '
         + 'The read tools answer directly. The write tools (swap, add_liquidity, remove_liquidity, bridge, '
         + 'launch_token) DO NOT sign anything: they validate the request and return an approve_url the person '
         + 'opens to sign in their own wallet. Never tell a user a transaction has been sent before they approve '

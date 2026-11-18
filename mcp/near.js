@@ -7,16 +7,14 @@
 // code and no issuer anywhere in it. There is nothing to share below the surface, and interleaving
 // three identity models inside fourteen functions is fourteen places for the wrong one to win.
 //
-// WHAT NEAR CANNOT DO, SAID IN THE RESPONSE RATHER THAN GUESSED AT. Two tools have no NEAR surface
-// and they REFUSE with the reason instead of returning a plausible shape:
+// WHAT NEAR CANNOT DO, SAID IN THE RESPONSE RATHER THAN GUESSED AT. One tool has no NEAR surface
+// and it REFUSES with the reason instead of returning a plausible shape:
 //
 //   * get_orderbook -- NEAR has no order book. Rhea is an AMM; there are no resting offers to read.
 //     Returning an empty book would read as "no liquidity", which is a different and false claim.
-//   * get_quote    -- there is no swap-router endpoint on this chain. /lxapi/nearoneclick?op=quote
-//     is NEAR Intents and is CROSS-chain only: it demands a destination asset on another network and
-//     a refund account, and quoting a same-chain swap through it is not a thing it does. Deriving a
-//     price from pool reserves here instead would be this server inventing a number, which is the one
-//     thing it must not do -- see rule 2 in api.js.
+//
+// get_quote USED TO REFUSE here too, and no longer does (2026-11-18): it asks Rhea's own contracts the way the
+// trade page does -- see "the swap quote" below.
 //
 // PREFILL IS PER PAGE AND IT IS MEASURED, NOT ASSUMED. Checked against live NEAR pages 2026-11-17:
 // /trade/near/<contract> carries `lx-tradeprefill` and reads ?side= and ?amount=, so a swap link
@@ -375,18 +373,241 @@ async function getPortfolio({ address }) {
   }, CREDIT));
 }
 
-// NO ROUTER ON THIS CHAIN, so no quote. See the file header for why one-click is not a substitute and
-// why pool arithmetic is not either.
+// ---- the swap quote: Rhea's own contracts, asked the way the trade page asks them ------------------
+//
+// A REAL QUOTE, NOT POOL ARITHMETIC (RAZA 2026-11-18: ChatGPT, asked for 21 NEAR -> LUMOS, said "its NEAR swap tool
+// does not provide an executable quote yet" and fell back to estimating from prices). This used to refuse, because
+// there is no swap-router ENDPOINT on LumosCore. But the NEAR trade page never had one either: it asks Rhea's contracts
+// directly -- `get_return` on v2.ref-finance.near for a classic pool, `quote` on dclv2.ref-labs.near for a
+// concentrated one -- and those views ARE the executable figure, computed by the contract that will run the swap. This
+// is that same engine (LumosCore-NEAR/_tools/browser/nearswap.js route()/quoteOnce()), server side:
+//   * direct: the 3 deepest classic pools holding both tokens, and each DCL fee tier;
+//   * two hops through wNEAR, USDC or USDt (2 deepest classic pools per leg);
+//   * DCL wins only when it gives more than 1% more, as on the page;
+//   * the 0.2% platform fee comes off the input first, as on the page, and every output is for the net amount;
+//   * price impact = this route at the trade size against the same route at a tiny size.
+// NOT here: the page's last resort, a two-transaction route mixing a classic and a DCL leg through a hub. It costs up
+// to ~36 more reads, a Worker request is allowed ~50 sub-requests, and it is not atomic -- so "no route" here says the
+// page may still find one rather than claiming there is none.
+const REF = 'v2.ref-finance.near';
+const DCL = 'dclv2.ref-labs.near', DCL_FEES = [100, 400, 2000, 10000];
+const Q_USDC = '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1';
+const Q_USDT = 'usdt.tether-token.near';
+const HUBS = [WNEAR, Q_USDC, Q_USDT];
+const Q_FEE_BPS = 20, Q_SLIP_BPS = 50;
+const Q_RPCS = ['https://free.rpc.fastnear.com', 'https://near.drpc.org'];
+const Q_MAX_CALLS = 30;
+
+class QuoteBusy extends Error {}
+
+// One quote's RPC budget and concurrency. A free RPC answers a burst of 20 view calls from one IP with 429s, so at
+// most 4 run at once, a refused call retries once on the other host, and the whole quote is capped at Q_MAX_CALLS so
+// it can never run past the Worker's sub-request limit.
+function quoteSession() {
+  let live = 0, used = 0, failed = 0; const wait = [];
+  const slot = () => new Promise((res) => { if (live < 4) { live++; res(); } else wait.push(res); });
+  const free = () => { const n = wait.shift(); if (n) n(); else live--; };
+  async function once(host, contract, method, args) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(Q_RPCS[host], {
+        method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, signal: ctl.signal,
+        body: JSON.stringify({ jsonrpc: '2.0', id: 'q', method: 'query', params: {
+          request_type: 'call_function', finality: 'final', account_id: contract, method_name: method,
+          args_base64: btoa(JSON.stringify(args || {})) } }),
+      });
+      if (r.status === 429 || r.status >= 500) return { busy: true };
+      const j = await r.json().catch(() => null);
+      if (!j) return { busy: true };
+      if (j.error) {
+        const m = String((j.error.cause && j.error.cause.name) || j.error.message || '');
+        return /timeout|too many|rate|overload|unavailable|no_synced/i.test(m) ? { busy: true } : { error: m || 'RPC error' };
+      }
+      if (j.result && j.result.error) return { error: String(j.result.error) };   // the contract refused: an answer
+      const bytes = new Uint8Array((j.result && j.result.result) || []);
+      const txt = new TextDecoder().decode(bytes);
+      return { value: txt ? JSON.parse(txt) : null };
+    } catch (_) { return { busy: true }; } finally { clearTimeout(t); }
+  }
+  async function view(contract, method, args) {
+    if (used >= Q_MAX_CALLS) throw new QuoteBusy('read budget spent');
+    used++;
+    await slot();
+    try {
+      let r = await once(0, contract, method, args);
+      if (r.busy) r = await once(1, contract, method, args);
+      if (r.busy) { failed++; throw new QuoteBusy('NEAR RPC busy'); }
+      if (r.error) { const e = new Error(r.error); e.refused = true; throw e; }
+      return r.value;
+    } finally { free(); }
+  }
+  return { view, get failed() { return failed; }, get used() { return used; } };
+}
+
+const big = (s) => BigInt(String(s == null ? '0' : s));
+const minOutOf = (raw) => (big(raw) * BigInt(10000 - Q_SLIP_BPS) / BigInt(10000)).toString();
+
+// A decimal amount to the token's integer units, by string, so 24 decimals keep every digit a double gives.
+function toRaw(amount, dec) {
+  const n = +amount;
+  if (!isFinite(n) || n <= 0) return null;
+  let s = n.toFixed(Math.min(dec, 20));
+  const [w, f = ''] = s.split('.');
+  s = (w + f.padEnd(dec, '0').slice(0, dec)).replace(/^0+/, '');
+  return s || null;
+}
+
+async function decimalsOf(a, r, s) {
+  if (a.native || a.id === WNEAR) return 24;
+  if (a.decimals != null && isFinite(+a.decimals)) return +a.decimals;
+  const row = r.get(a.id);
+  if (row && row.dc != null) return +row.dc;
+  const m = await s.view(a.id, 'ft_metadata', {});
+  if (!m || m.decimals == null) throw new Error(`${a.id} did not answer as a fungible token`);
+  return +m.decimals;
+}
+
+// The pools that can hold a leg: the curated top 200, plus Rhea-wide rows for a token that has no pool in them --
+// the same two reads the page uses. A list we could not read is "busy", never "no pools".
+async function quotePools(a, b) {
+  let d;
+  try { d = await api('/lxapi/nearpools?n=200'); } catch (_) { throw new QuoteBusy('pool list unavailable'); }
+  if (!d || !d.ok || !d.rows) throw new QuoteBusy('pool list unavailable');
+  let rows = d.rows;
+  for (const id of [a, b]) {
+    if (id === WNEAR || rows.some((p) => (p.tokens || []).some((t) => t.i === id))) continue;
+    try {
+      const e = await api('/lxapi/nearpools?q=' + encodeURIComponent(id));
+      rows = rows.concat(((e && e.ok && e.rows) || []).filter((p) => (p.tokens || []).some((t) => t.i === id)));
+    } catch (_) { throw new QuoteBusy('pool lookup unavailable'); }
+  }
+  return rows;
+}
+function poolsBetween(rows, a, b, k) {
+  return rows.filter((p) => { const ids = (p.tokens || []).map((t) => t.i); return ids.includes(a) && ids.includes(b); })
+    .sort((x, y) => (y.liq || 0) - (x.liq || 0)).slice(0, k);
+}
+
+function legReturn(s, pool, tin, tout, amt) {
+  if (pool.dcl) {
+    return s.view(DCL, 'quote', { pool_ids: [pool.id], input_token: tin, output_token: tout, input_amount: String(amt), tag: null })
+      .then((r) => String((r && r.amount) || '0'));
+  }
+  return s.view(REF, 'get_return', { pool_id: +pool.id, token_in: tin, amount_in: String(amt), token_out: tout })
+    .then((r) => String(r || '0'));
+}
+// The best of several pools for one leg. A pool the contract REFUSES is "not this one"; a busy read propagates.
+async function bestLeg(s, cands, tin, tout, amt) {
+  const rs = await Promise.all(cands.map((p) => legReturn(s, p, tin, tout, amt)
+    .then((o) => ({ pool: p, out: o }), (e) => { if (e instanceof QuoteBusy) throw e; return null; })));
+  let best = null;
+  for (const x of rs) if (x && big(x.out) > 0n && (!best || big(x.out) > big(best.out))) best = x;
+  return best;
+}
+
+async function findRoute(s, rows, a, b, net) {
+  const tries = [];
+  tries.push(bestLeg(s, poolsBetween(rows, a, b, 3), a, b, net)
+    .then((x) => (x ? { hops: [{ pool: x.pool, tin: a, tout: b }], out: x.out } : null)));
+  for (const m of HUBS) {
+    if (m === a || m === b) continue;
+    const l1 = poolsBetween(rows, a, m, 2), l2 = poolsBetween(rows, m, b, 2);
+    if (!l1.length || !l2.length) continue;
+    tries.push(bestLeg(s, l1, a, m, net).then(async (x1) => {
+      if (!x1) return null;
+      const x2 = await bestLeg(s, l2, m, b, x1.out);
+      return x2 ? { hops: [{ pool: x1.pool, tin: a, tout: m }, { pool: x2.pool, tin: m, tout: b }], out: x2.out } : null;
+    }));
+  }
+  const pair = [a, b].sort().join('|');
+  const dcl = bestLeg(s, DCL_FEES.map((f) => ({ id: pair + '|' + f, dcl: 1 })), a, b, net)
+    .then((x) => (x ? { hops: [{ pool: x.pool, tin: a, tout: b }], out: x.out } : null));
+  const [classic, d] = await Promise.all([Promise.all(tries), dcl]);
+  let best = null;
+  for (const r of classic) if (r && (!best || big(r.out) > big(best.out))) best = r;
+  if (d && (!best || big(d.out) * 100n > big(best.out) * 101n)) best = d;
+  return best;
+}
+
+async function along(s, hops, amt) {
+  let x = String(amt);
+  for (const h of hops) x = await legReturn(s, h.pool, h.tin, h.tout, x);
+  return x;
+}
+
+// { quote } or { error }. `f`/`t` are resolved assets.
+async function nearQuote(f, t, amount, r) {
+  const s = quoteSession();
+  const a = f.native ? WNEAR : f.id, b = t.native ? WNEAR : t.id;
+  if (a === b) return { error: 'NEAR and wNEAR are the same asset wrapped and unwrapped — that is a wrap, not a swap, and has no price.' };
+  try {
+    const [fd, td] = await Promise.all([decimalsOf(f, r, s), decimalsOf(t, r, s)]);
+    const amtRaw = toRaw(amount, fd);
+    if (!amtRaw) return { error: 'amount must be a positive number.' };
+    const fee = (big(amtRaw) * BigInt(Q_FEE_BPS) / 10000n).toString();
+    const net = (big(amtRaw) - big(fee)).toString();
+    if (big(net) <= 0n) return { error: 'That amount is too small to swap.' };
+    const rows = await quotePools(a, b);
+    const route = await findRoute(s, rows, a, b, net);
+    if (!route) {
+      if (s.failed) throw new QuoteBusy('a read failed');
+      return { error: `No direct or one-hop route between ${label(f, r)} and ${label(t, r)} on Rhea was found. `
+        + 'The trade page also tries a two-transaction route through a hub token, which this server does not; '
+        + `check ${web('/trade/near/' + (isNearSide(f) ? t.id : f.id))} before calling the pair untradeable.` };
+    }
+    // Spot along the same route: a thousandth of the trade, bumped (twice at most) until the output is big enough
+    // to be a price.
+    let impact = null;
+    try {
+      let tiny = big(net) / 1000n; if (tiny < 1n) tiny = 1n;
+      let o = await along(s, route.hops, tiny), n = 0;
+      while (big(o) < 100000n && n < 2 && tiny * 10n <= big(net) / 100n) { tiny *= 10n; o = await along(s, route.hops, tiny); n++; }
+      if (big(o) > 0n) {
+        const ex = Number(route.out) / Number(net), sp = Number(o) / Number(tiny);
+        if (sp > 0) impact = Math.max(0, (1 - ex / sp) * 100);
+      }
+    } catch (e) { if (!(e instanceof QuoteBusy)) throw e; }
+    const outH = fromRaw(route.out, td), minH = fromRaw(minOutOf(route.out), td);
+    const fc = label(f, r), tc = label(t, r);
+    const sym = (id) => (id === WNEAR ? 'wNEAR' : id === Q_USDC ? 'USDC' : id === Q_USDT ? 'USDt' : ((r.get(id) || {}).n || id));
+    const quote = {
+      chain: 'near',
+      from: { asset: f.native ? 'NEAR' : f.id, code: fc, amount: fromRaw(amtRaw, fd) },
+      to: { asset: t.native ? 'NEAR' : t.id, code: tc },
+      platform_fee: { amount: fromRaw(fee, fd), asset: fc, rate_pct: Q_FEE_BPS / 100,
+        note: 'Taken from the input before the swap. Wallets holding 250,000+ LUMOS pay 0.1%; the page applies that at signing.' },
+      amount_out: outH,
+      minimum_out: minH,
+      slippage_pct: Q_SLIP_BPS / 100,
+      price: nf(+outH / +fromRaw(net, fd), 12),
+      price_unit: `${tc} per ${fc}, after the fee`,
+      price_impact_pct: impact == null ? null : nf(impact, 2),
+      route: route.hops.map((h) => ({ pool: String(h.pool.id), venue: h.pool.dcl ? 'Rhea concentrated (DCL)' : 'Rhea classic',
+        from: sym(h.tin), to: sym(h.tout) })),
+      source: 'Rhea\'s own contracts on chain: get_return (v2.ref-finance.near) and quote (dclv2.ref-labs.near) — the same reads the LumosCore trade page quotes with.',
+      quoted_at: new Date().toISOString(),
+      note: 'Executable at the moment it was read. Pools move; the page re-quotes at signing, and the minimum_out there is what the transaction enforces.',
+      page: web('/trade/near/' + (isNearSide(f) ? t.id : f.id)),
+    };
+    if (impact != null && impact >= 5) {
+      quote.warning = `This trade moves the price by about ${nf(impact, 1)}% — the pool is shallow for this size. `
+        + 'Tell the person before they swap, and suggest a smaller amount.';
+    }
+    return { quote };
+  } catch (e) {
+    if (e instanceof QuoteBusy) return { error: 'NEAR\'s public RPC is busy right now, so no quote was read. Try again in a moment — this is not a missing route.' };
+    return { error: 'The quote could not be read: ' + (e && e.message ? e.message : String(e)) };
+  }
+}
+
 async function getQuote({ from, to, amount }) {
   const rf = await wantNearAsset('from', from); if (rf.error) return fail(rf.error);
   const rt = await wantNearAsset('to', to);     if (rt.error) return fail(rt.error);
   if (!(+amount > 0)) return fail('amount must be a positive number.');
-  return fail('There is no swap quote for NEAR through this connector. LumosCore has no NEAR '
-    + 'swap-router endpoint — the one-click route it does have is cross-chain only (NEAR Intents), '
-    + 'and it will not price a swap between two NEAR tokens. Rather than derive a number from pool '
-    + 'reserves and present it as a quote, this refuses: use get_market for each side\'s price in '
-    + 'NEAR and list_pools for the liquidity behind the pair, and the executable price is quoted on '
-    + `/trade/near/${rt.want.native ? rf.want.id : rt.want.id} at signing time.`);
+  if (rf.want.id === rt.want.id) return fail('from and to are the same asset.');
+  const r = (await roster()).map;
+  const q = await nearQuote(rf.want, rt.want, amount, r);
+  return q.error ? fail(q.error) : ok(Object.assign(q.quote, CREDIT));
 }
 
 async function listCuratedAssets({ verified_only = false, limit = 100 }) {
@@ -497,8 +718,9 @@ async function swap({ from, to, amount }) {
     // `from` side of the swap -- so the precision cap is the FROM token's decimals, not the page's.
     const dec = f.native ? 24 : (f.decimals != null ? f.decimals : ((r.get(f.id) || {}).dc));
     const amt = plainAmount(amount, dec);
-    const q = `?side=${side}` + (amt ? `&amount=${amt}` : '');
-    return prepared('swap', summary, web('/trade/near/' + page.id) + q, {
+    const qs = `?side=${side}` + (amt ? `&amount=${amt}` : '');
+    const q = await nearQuote(f, t, amount, r);
+    return prepared('swap', summary, web('/trade/near/' + page.id) + qs, {
       enter_on_page: amt ? undefined : { side, amount: +amount, pair: `${fc} → ${tc}` },
       opens: `The ${label(page, r)} trade page on NEAR.`,
       // Measured, not assumed: lx-tradeprefill is present on this page and reads ?side= and ?amount=.
@@ -506,10 +728,11 @@ async function swap({ from, to, amount }) {
         ? `The side and amount ride in the link — /trade/near/<contract> reads ?side= and ?amount=.`
         : 'The amount is not carried: it does not survive this page\'s plain-digits check at this '
           + 'token\'s precision, so enter it on the page.',
-      quote: null,
-      quote_note: 'No quote is attached. NEAR has no swap-router endpoint on LumosCore, so this '
-        + 'server will not put a number on it — the executable price is quoted on the page at '
-        + 'signing time. See get_quote.',
+      quote: q.quote || null,
+      quote_note: q.quote
+        ? 'Read from Rhea\'s contracts just now; the page re-quotes at signing and enforces its own minimum.'
+          + (q.quote.warning ? ' ' + q.quote.warning : '')
+        : 'No quote is attached: ' + q.error,
     });
   }
 
@@ -526,6 +749,7 @@ async function swap({ from, to, amount }) {
       + 'network your wallet last connected to — so this link deliberately stops at the NEAR trade '
       + 'page rather than risk opening the Stellar dashboard for a NEAR swap.',
     prefill: NOFILL,
+    ...(await (async () => { const q2 = await nearQuote(f, t, amount, r); return q2.quote ? { quote: q2.quote } : { quote: null, quote_note: 'No quote is attached: ' + q2.error }; })()),
   });
 }
 
