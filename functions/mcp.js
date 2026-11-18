@@ -243,10 +243,13 @@ async function handle(msg, origin, ctx) {
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: 'lumoscore', title: 'LumosCore', version: VERSION },
       instructions:
-        'Live Stellar market data from LumosCore. The read tools answer directly. The write tools '
-        + '(swap, add_liquidity, remove_liquidity, bridge, launch_token) DO NOT sign anything: they '
-        + 'validate the request and return an approve_url the person opens to sign in their own '
-        + 'wallet. Never tell a user a transaction has been sent — it has not been, until they approve it.',
+        'Live market data and transaction preparation from LumosCore on three networks: Stellar, the XRP Ledger '
+        + 'and NEAR. Every tool takes chain: "stellar" | "xrpl" | "near" (default stellar), and all of them '
+        + 'work on all three -- the two exceptions on NEAR (get_orderbook, get_quote) say so when called. '
+        + 'The read tools answer directly. The write tools (swap, add_liquidity, remove_liquidity, bridge, '
+        + 'launch_token) DO NOT sign anything: they validate the request and return an approve_url the person '
+        + 'opens to sign in their own wallet. Never tell a user a transaction has been sent before they approve '
+        + 'it -- and after they have, do not insist it was not: ask what the page showed and check get_portfolio.',
     });
   }
 

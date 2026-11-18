@@ -603,6 +603,9 @@ function prepared(action, summary, url, extra) {
     next_step: 'Open approve_url. LumosCore will show the prepared transaction and your wallet will ask you to sign it. '
       + 'Nothing moves until you approve it there.',
     why: 'This server never holds a key and never signs. It prepares the action and hands it back to you.',
+    after_approval: 'Do not assume the outcome either way once the person has been to approve_url. Ask what the '
+      + 'LumosCore page showed, and check with get_portfolio for their address: balances change once it lands. '
+      + 'A cross-chain transfer can take several minutes to arrive after the page says it was sent.',
   }, extra || {}));
 }
 
@@ -846,7 +849,7 @@ const ASSET = (extra) => ({
 });
 
 export const TOOLS = [
-  { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for an asset on Stellar or the XRP Ledger',
+  { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for an asset on Stellar, the XRP Ledger or NEAR',
     schema: { chain: CHAIN,
               asset: ASSET() }, required: ['asset'], run: route(getMarket, XRPL.getMarket, NEAR.getMarket) },
   { name: 'list_pools', title: 'Liquidity pools, optionally filtered to one asset (Stellar by TVL, XRP Ledger by 24h volume)',

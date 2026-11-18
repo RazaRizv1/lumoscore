@@ -463,6 +463,9 @@ function prepared(action, summary, url, extra) {
     next_step: 'Open approve_url. LumosCore will show the prepared transaction and your wallet will '
       + 'ask you to sign it. Nothing moves until you approve it there.',
     why: 'This server never holds a key and never signs. It prepares the action and hands it back to you.',
+    after_approval: 'Do not assume the outcome either way once the person has been to approve_url. Ask what the '
+      + 'LumosCore page showed, and check with get_portfolio for their address: balances change once it lands. '
+      + 'A cross-chain transfer can take several minutes to arrive after the page says it was sent.',
   }, extra || {}));
 }
 
