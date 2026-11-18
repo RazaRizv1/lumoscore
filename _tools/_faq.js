@@ -52,7 +52,7 @@ const WALLETS = 'Freighter, Rabet, Albedo, xBull and WalletConnect. There is no 
 
 const FAQ = {
   'landing': [
-    ["What is LumosCore?", "LumosCore is a non-custodial DeFi platform on Stellar. You can swap assets, provide liquidity to AMM pools, bridge USDC to and from eight other chains and issue your own token, all without giving up custody of your funds."],
+    ["What is LumosCore?", "LumosCore is a non-custodial, multichain DeFi platform. You can swap assets, provide liquidity to AMM pools, move assets cross-chain and launch your own token on the Launchpad — yourself, or by asking an AI assistant through the LumosCore MCP server. You keep custody of your funds and sign every transaction."],
     ["Is LumosCore secure?", "LumosCore is non-custodial: we never hold your assets or your keys, and every transaction is signed in your own wallet. There is no account to create. We record your public wallet address once per visit to count usage, and that address is already public on-chain."],
     ["Why trade on LumosCore?", "Low fees at 0.2%, halved for LUMOS holders. Non-custodial throughout, so there are no deposits or withdrawals to wait on. Listings verified by issuer rather than ticker. Trading, pools, token issuance and USDC bridging in one place."],
     ['Which wallets does LumosCore support?', WALLETS],

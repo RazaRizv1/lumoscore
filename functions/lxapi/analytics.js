@@ -275,7 +275,12 @@ export async function onRequestGet({ request, env }) {
         const dayStart = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
         const [now, tot, last, today] = await Promise.all([
           db.prepare(
-            'SELECT p.sid AS sid, p.ts AS ts, p.path AS path, p.country AS country, p.region AS region, p.city AS city, p.device AS device '
+            // HOW THEY LANDED (RAZA 2026-11-18: "see right here in Live now how this user landed here, what referred him"):
+            // the referring host and the page of the session's FIRST view, which is where the visit began. ref is stored only
+            // when the visitor came from another site, so empty means direct, a bookmark, or a link from an app.
+            'SELECT p.sid AS sid, p.ts AS ts, p.path AS path, p.country AS country, p.region AS region, p.city AS city, p.device AS device, '
+            + '(SELECT f.ref FROM pageview f WHERE f.sid = p.sid AND f.host = ?2 ORDER BY f.ts ASC LIMIT 1) AS ref, '
+            + '(SELECT f.path FROM pageview f WHERE f.sid = p.sid AND f.host = ?2 ORDER BY f.ts ASC LIMIT 1) AS landing '
             + 'FROM pageview p JOIN (SELECT sid, MAX(ts) AS t FROM pageview WHERE ts > ?1 AND host = ?2 GROUP BY sid) m '
             + 'ON m.sid = p.sid AND m.t = p.ts WHERE p.host = ?2 ORDER BY p.ts DESC LIMIT 100'
           ).bind(since, H2).all(),
@@ -295,6 +300,7 @@ export async function onRequestGet({ request, env }) {
           rows: ((now && now.results) || []).map((r) => ({
             id: String(r.sid || '').slice(0, 6), sid: r.sid, ts: r.ts, path: r.path,
             country: (r.country || '').toUpperCase(), region: r.region || '', city: r.city || '', device: r.device || '',
+            ref: r.ref || '', landing: r.landing || '',
           })),
         } }, 200);
       } catch (e) { return json({ live: { sessions: 0, views: 0, rows: [], error: String((e && e.message) || e) } }, 200); }

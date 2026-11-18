@@ -613,11 +613,18 @@ async function swap({ from, to, amount, address }) {
   if (f.native || t.native) {
     const page = f.native ? t : f;
     const side = t.native ? 'sell' : 'buy';
-    return prepared('swap', summary, web(`/trade/xrpl/${slug(page)}`), {
+    // PREFILLED NOW (RAZA 2026-11-18, ChatGPT: "XRPL links don't prefill amounts yet" -- the page opened on Buy with an
+    // empty box after "swap 10 LUMOS to XRP"). The XRPL Trade-Asset page carries lx-tradeprefill since then, the same
+    // layer as Stellar's: it reads ?side= and ?amount= and drives the page's own controls, so the rate, minimum received
+    // and fees beside the amount are the page's own. The amount is in the token being SPENT (the from side).
+    const amt = plainAmount(amount);
+    return prepared('swap', summary, web(`/trade/xrpl/${slug(page)}`) + `?side=${side}` + (amt ? `&amount=${amt}` : ''), {
       quote, quote_error: quoteError,
-      enter_on_page: { side, amount: +amount, pair: `${f.code} → ${t.code}` },
-      opens: `The ${page.code} trade page on the XRP Ledger.`,
-      prefill: NOFILL,
+      enter_on_page: amt ? undefined : { side, amount: +amount, pair: `${f.code} → ${t.code}` },
+      opens: `The ${page.code} trade page on the XRP Ledger, with ${side === 'sell' ? 'Sell' : 'Buy'} ${page.code} selected`
+        + (amt ? ` and ${amt} ${f.code} in the amount box.` : '.'),
+      prefill: amt ? 'The side and amount ride in the link (?side= and ?amount=); the page fills them in and computes the rest.'
+        : 'The amount is not carried: at six decimals it rounds to nothing, so enter it on the page.',
     });
   }
 
@@ -758,3 +765,6 @@ export const XRPL = {
   getMarket, listPools, getPortfolio, getQuote, listCuratedAssets, getOrderbook, getRewards,
   swap, addLiquidity, removeLiquidity, bridge, launchToken,
 };
+
+// Used by find_arbitrage (arb.js): the same hop reading and walking as the public-market quote above.
+export { readHop as xrplReadHop, hopOut as xrplHopOut };

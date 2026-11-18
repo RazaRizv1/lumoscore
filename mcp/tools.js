@@ -10,6 +10,7 @@
 // here with a reason rather than in a wallet the user has already been asked to trust.
 import { api, horizon, parseAsset, G_RE, web, ApiError } from './api.js';
 import { XRPL } from './xrpl.js';
+import { ARB } from './arb.js';
 import { NEAR, isNearAccount as NEAR_ACCOUNT } from './near.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
@@ -857,6 +858,25 @@ function route(stellarFn, xrplFn, nearFn) {
       if (/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)) args.chain = 'xrpl';
       else if (!G_RE.test(a) && (/^[0-9a-f]{64}$/.test(a) || (a.includes('.') && NEAR_ACCOUNT(a.toLowerCase())))) args.chain = 'near';
     }
+    // AN ASSET ID NAMES ITS NETWORK TOO (RAZA 2026-11-18, ChatGPT: "the NEAR test still rejected wrap.near" -- it passed
+    // asset "wrap.near" with no chain, so Stellar answered "not an asset id"; the same happened to LUMOS-r…). Stellar
+    // ids are CODE-G…, XRPL ids CODE-r…, NEAR ids a dotted contract account (wrap.near) or 64-hex -- none can be
+    // mistaken for another. A bare code (XRP, LUMOS) names nothing and keeps the default. Arguments that point at two
+    // different networks are refused rather than guessed between.
+    if (!args.chain) {
+      let found = null;
+      for (const k of ['asset', 'from', 'to', 'a', 'b']) {
+        const v = typeof args[k] === 'string' ? args[k].trim() : '';
+        if (!v) continue;
+        let c = null;
+        if (/^[A-Za-z0-9]{1,40}-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(v)) c = 'xrpl';
+        else if (/^[0-9a-f]{64}$/.test(v) || (v.includes('.') && !v.includes('-') && NEAR_ACCOUNT(v.toLowerCase()))) c = 'near';
+        if (!c) continue;
+        if (found && found !== c) return fail(`Arguments name two different networks (${found} and ${c}). Use one chain per call.`);
+        found = c;
+      }
+      if (found) args.chain = found;
+    }
     const p = pickChain(args);
     if (p.error) return fail(p.error);
     if (p.chain === 'stellar') return withHint(await stellarFn(args), nativeHint(args, !!(args && args.chain)));
@@ -923,6 +943,10 @@ export const TOOLS = [
   { name: 'get_quote', title: 'Best-route price for a swap, from the chain\'s own path finder',
     schema: { chain: CHAIN, from: ASSET('The asset being sold.'), to: ASSET('The asset being bought.'), amount: { type: 'number', description: 'How much of `from` to sell' },
               address: { type: 'string', description: 'XRP Ledger only, optional: with it, the ledger router quotes for that account (its trustlines and balances); without it, the quote is the public market (order book and AMM) and says so' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote, NEAR.getQuote) },
+  { name: 'find_arbitrage', title: 'Live check for price gaps: loops that return more than they cost, at your amount (Stellar: XLM; XRP Ledger: RLUSD; NEAR: NEAR)',
+    schema: { chain: CHAIN, amount: { type: 'number', description: 'How much to start with (XLM on Stellar). Loops are checked at exactly this amount.' },
+              asset: { type: 'string', description: 'The asset the loop starts and ends in. Stellar: XLM (the default). XRP Ledger: RLUSD (the default; an XRP-to-XRP loop cannot be one transaction there). NEAR: NEAR (the default).' } }, required: ['amount'],
+    run: route(ARB.stellar, ARB.xrpl, ARB.near) },
   { name: 'list_curated_assets', title: 'Assets LumosCore lists, with their verification state',
     schema: { chain: CHAIN,
               include_mints: { type: 'boolean', description: 'Stellar only: also include launchpad mints (not curated)' },

@@ -28,10 +28,10 @@ const BRAND = 'LumosCore';
 // same page and will share one canonical url)
 const PAGES = {
   'landing': {
-    title: 'LumosCore — Trade, Pool and Bridge on Stellar',
+    title: 'LumosCore — Multichain DEX, Bridge and Token Launchpad',
     desc: LZ_LIVE
-      ? 'Swap tokens, provide liquidity, bridge assets across 52 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
-      : 'Swap tokens, provide liquidity, bridge USDC across 8 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
+      ? 'Swap, provide liquidity, move assets cross-chain and launch tokens on the Launchpad — yourself or through your AI assistant (MCP). Non-custodial: you sign everything.'
+      : 'Swap, provide liquidity, move assets cross-chain and launch tokens on the Launchpad — yourself or through your AI assistant (MCP). Non-custodial: you sign everything.',
   },
   'home': {
     title: 'Dashboard — Your Stellar Portfolio | ' + BRAND,

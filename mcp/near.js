@@ -248,6 +248,8 @@ async function listPools({ limit = 20, asset }) {
   const d = await api('/lxapi/nearpools?n=' + n + (tok ? '&token=' + encodeURIComponent(tok) : ''));
   const rows = (d && d.rows) || [];
   const side = (s) => ({ asset: (s || {}).i || null, code: (s || {}).s || null, amount: nf((s || {}).v, 6) });
+  const feedUsd = d && +d.usd > 0 ? +d.usd : null;
+  const usdOfNear = (v, dp) => (v == null || feedUsd == null ? null : nf(+v * feedUsd, dp));
   // THE CONCENTRATED (DCL) POOLS OF A TOKEN (RAZA 2026-11-18: ChatGPT called NEAR's liquidity "not visible"). The
   // list above is Rhea's classic pools only, so for LUMOS it showed one pool worth $0.57 -- while get_quote filled
   // 21 NEAR into 158,304 LUMOS at 0% impact through dclv2 `lumos.lumoscore.near|wrap.near|2000`, a pool this tool
@@ -312,16 +314,24 @@ async function listPools({ limit = 20, asset }) {
     ranked_by: 'liquidity, as the Pools page ranks it',
     curation_note: 'Anyone can create a pool on Rhea. A pool appearing here is not a LumosCore '
       + 'endorsement of either token — check list_curated_assets for what is actually vouched for.',
+    // THE FEED'S liq / vol / fees ARE IN NEAR, NOT DOLLARS (RAZA 2026-11-18, ChatGPT: "get_market says the LUMOS pool
+    // is $1.90, list_pools says $0.58"). /lxapi/nearpools computes USD and then divides by NEAR/USD (nearpools.js:124),
+    // because the Pools page shows NEAR. This tool printed those NEAR figures as liquidity_usd / volume_24h_usd /
+    // fees_24h_usd -- every NEAR pool, and the network total, ~3.3x too low. Both units are given now, converted with
+    // the feed's OWN usd, the rate it divided by. (get_market's pool rows are DexScreener's, in dollars, and agree.)
     network_summary: d && d.summary ? {
-      liquidity_usd: nf(d.summary.liquidity, 2), volume_24h_usd: nf(d.summary.vol24, 2),
-      fees_24h_usd: nf(d.summary.fees24, 4), pools: d.summary.pools ?? null,
+      liquidity_near: nf(d.summary.liquidity, 2), liquidity_usd: usdOfNear(d.summary.liquidity, 2),
+      volume_24h_near: nf(d.summary.vol24, 2), volume_24h_usd: usdOfNear(d.summary.vol24, 2),
+      fees_24h_near: nf(d.summary.fees24, 4), fees_24h_usd: usdOfNear(d.summary.fees24, 4), pools: d.summary.pools ?? null,
     } : null,
     pools: rows.map((p) => ({
       id: p.id, kind: p.kind || null,
       pair: ((p.tokens || []).map((t) => t.s || t.i).join(' / ')),
       tokens: (p.tokens || []).map(side),
-      fee_pct: nf(p.fee, 4), liquidity_usd: nf(p.liq, 2), volume_24h_usd: nf(p.vol, 2),
-      fees_24h_usd: nf(p.fees, 4), apr_pct: nf(p.apr, 4), trades_24h: p.trades ?? null,
+      fee_pct: nf(p.fee, 4),
+      liquidity_near: nf(p.liq, 4), liquidity_usd: usdOfNear(p.liq, 2),
+      volume_24h_near: nf(p.vol, 4), volume_24h_usd: usdOfNear(p.vol, 2),
+      fees_24h_near: nf(p.fees, 6), fees_24h_usd: usdOfNear(p.fees, 4), apr_pct: nf(p.apr, 4), trades_24h: p.trades ?? null,
       liquidity_providers: p.lps ?? null,
       page: web('/pools/near/id/' + p.id),
     })),
@@ -400,6 +410,9 @@ async function getPortfolio({ address }) {
       };
     });
 
+  const ps = quoteSession();
+  const [pos, ord] = await Promise.all([nearPositions(addr, ps, map, nearUsd), nearOrders(addr, ps, map)]);
+
   return ok(Object.assign({
     chain: 'near',
     address: addr, exists: true,
@@ -413,14 +426,14 @@ async function getPortfolio({ address }) {
     tokens,
     token_source: ft ? 'FastNEAR account index' : 'unavailable — token balances could not be read, '
       + 'and an empty list here would have been a false "holds no tokens"',
-    // NOT COMPUTED, AND SAID SO. An account's LP positions would mean reading the provider list of
-    // every one of ~183 pools, since NEAR has no account-to-pools index; the Pools page does it for
-    // the connected wallet. A silently missing field would read as "no positions".
-    pool_positions: 'Not included — NEAR has no account-to-pools index, so finding them means '
-      + 'scanning every pool\'s provider list. Your positions are shown on the Pools page when your '
-      + 'wallet is connected.',
-    open_orders: 'Not applicable — NEAR trading on LumosCore is AMM-only, so there is no resting '
-      + 'order to list.',
+    // POSITIONS AND ORDERS ARE READ NOW (RAZA 2026-11-18, ChatGPT: "returns explanatory text instead of actual
+    // pool-position and open-order collections"). They used to be sentences: "no account-to-pools index", and
+    // "AMM-only, no resting order" -- the second was simply wrong, since the NEAR trade page places DCL limit orders.
+    // See nearPositions() / nearOrders() below. A list that could not be read is null with the reason, never [].
+    pool_positions: pos.rows,
+    pool_positions_note: pos.note,
+    open_orders: ord.rows,
+    open_orders_note: ord.note,
     near_usd: nearUsd ? nf(nearUsd, 6) : null,
     page: web('/account/near/' + addr),
   }, CREDIT));
@@ -697,6 +710,111 @@ async function nearQuote(f, t, amount, r) {
   }
 }
 
+// ---- an account's pool positions and limit orders --------------------------------------------------
+//
+// THE SITE'S METHOD, SERVER SIDE (LumosCore-NEAR/_tools/browser/nearcore.js positions()). Rhea keeps LP shares per
+// pool with no call that lists an account's pools, so the candidates are FOUND first:
+//   * get_deposits: adding liquidity pulls both sides from Rhea deposits, so a pool the account is in has ALL its
+//     tokens registered there -- that narrows the pool list to a handful;
+//   * the boost farm's list_farmer_seeds: pools whose shares are STAKED (they leave get_pool_shares);
+//   * LumosCore's pool indexer (/who): every pool the account added to since 2026-10-29, including small pools the
+//     list leaves out (the treasury's LUMOS/wNEAR 9001 was one).
+// Then get_pool_shares per candidate, deepest first, at most POS_CAP (a Worker request has ~50 sub-requests), and
+// get_pool for the ones that hold shares. Value = the account's fraction of the pool's own liquidity figure.
+// DCL range positions are counted from list_liquidities but not valued (that needs the tick math per range).
+const POS_CAP = 14;
+const POOL_IDX = 'https://near-pool-indexer.usa282.workers.dev';
+async function nearPositions(addr, s, roster, nearUsd) {
+  try {
+    const [rowsD, deps, seeds, who, dclLiq] = await Promise.all([
+      api('/lxapi/nearpools?n=200').catch(() => null),
+      s.view(REF, 'get_deposits', { account_id: addr }).catch((e) => { if (e instanceof QuoteBusy) throw e; return {}; }),
+      s.view('boostfarm.ref-labs.near', 'list_farmer_seeds', { farmer_id: addr }).catch((e) => { if (e instanceof QuoteBusy) throw e; return {}; }),
+      fetch(POOL_IDX + '/who?id=' + encodeURIComponent(addr)).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      s.view(DCL, 'list_liquidities', { account_id: addr }).catch((e) => { if (e instanceof QuoteBusy) throw e; return null; }),
+    ]);
+    const rows = (rowsD && rowsD.rows) || [];
+    const byId = new Map(rows.map((p) => [String(p.id), p]));
+    const reg = deps || {};
+    const staked = {};
+    for (const [k, v] of Object.entries(seeds || {})) {
+      const m = /^v2\.ref-finance\.near@(\d+)$/.exec(k);
+      if (m) staked[m[1]] = big((v || {}).free_amount || '0') + big((v || {}).locked_amount || '0');
+    }
+    const cand = rows.filter((p) => (p.tokens || []).length && (p.tokens || []).every((t) => Object.prototype.hasOwnProperty.call(reg, t.i)))
+      .sort((a, b) => (b.liq || 0) - (a.liq || 0)).map((p) => String(p.id));
+    for (const id of Object.keys(staked)) if (!cand.includes(id)) cand.unshift(id);
+    for (const id of ((who && who.ok && who.pools) || []).map(String)) if (/^\d{1,7}$/.test(id) && !cand.includes(id)) cand.unshift(id);
+    const capped = cand.length > POS_CAP;
+    const ask = cand.slice(0, POS_CAP);
+    const shares = await Promise.all(ask.map((id) => s.view(REF, 'get_pool_shares', { pool_id: +id, account_id: addr })
+      .then((v) => ({ id, s: big(v || '0') + (staked[id] || 0n) }), (e) => { if (e instanceof QuoteBusy) throw e; return { id, s: null }; })));
+    const held = shares.filter((x) => x.s != null && x.s > 0n);
+    const out = [];
+    for (const h of held) {
+      const p = await s.view(REF, 'get_pool', { pool_id: +h.id });
+      const total = big((p && p.shares_total_supply) || '0');
+      if (total <= 0n) continue;
+      const frac = Number(h.s * 1000000000n / total) / 1e9;
+      const row = byId.get(h.id);
+      const toks = await Promise.all((p.token_account_ids || []).map(async (t, k) => {
+        const dec = await decimalsOf({ id: t }, roster, s).catch(() => null);
+        const amt = dec == null ? null : fromRaw(p.amounts[k], dec);
+        return { asset: t, code: t === WNEAR ? 'wNEAR' : ((roster.get(t) || {}).n || t), your_amount: amt == null ? null : nf(+amt * frac, 8) };
+      }));
+      const liqNear = row && row.liq != null ? row.liq * frac : null;
+      out.push({
+        pool: h.id, pair: toks.map((t) => t.code).join(' / '),
+        share_pct: nf(frac * 100, 6), staked_in_farm: !!staked[h.id],
+        tokens: toks,
+        value_near: nf(liqNear, 6), value_usd: liqNear != null && nearUsd ? nf(liqNear * nearUsd, 2) : null,
+        page: web('/pools/near/id/' + h.id),
+      });
+    }
+    out.sort((a, b) => (b.value_near || 0) - (a.value_near || 0));
+    const nDcl = Array.isArray(dclLiq) ? dclLiq.length : null;
+    const unread = shares.filter((x) => x.s == null).length;
+    return {
+      rows: out,
+      note: `Classic Rhea pools: ${ask.length} candidate pool(s) checked (pools where every token is in your Rhea deposits, `
+        + 'farm-staked pools, and pools LumosCore\'s indexer saw you add to)'
+        + (capped ? `, the deepest ${POS_CAP} of ${cand.length}` : '') + (unread ? `; ${unread} could not be read` : '') + '. '
+        + (nDcl == null ? 'Concentrated (DCL) range positions could not be read.' : `Concentrated (DCL) range positions: ${nDcl}${nDcl ? ' (not valued here; see the Pools page)' : ''}.`),
+    };
+  } catch (e) {
+    return { rows: null, note: e instanceof QuoteBusy ? 'NEAR\'s public RPC is busy, so pool positions were not read — try again; this is not "no positions".'
+      : 'Pool positions could not be read: ' + (e && e.message) };
+  }
+}
+
+// RESTING LIMIT ORDERS, from the DCL contract (the orders the NEAR trade page places). Price = 1.0001^point, adjusted
+// for the two tokens' decimals, in buy-token per sell-token.
+async function nearOrders(addr, s, roster) {
+  try {
+    const list = await s.view(DCL, 'list_active_orders', { account_id: addr });
+    const rows = [];
+    for (const o of list || []) {
+      const [x] = String(o.pool_id || '').split('|');
+      const [ds, db] = await Promise.all([decimalsOf({ id: o.sell_token }, roster, s), decimalsOf({ id: o.buy_token }, roster, s)]);
+      const pxXinY = Math.pow(1.0001, +o.point) * Math.pow(10, (o.sell_token === x ? ds - db : db - ds));
+      const price = o.sell_token === x ? pxXinY : 1 / pxXinY;
+      const code = (id) => (id === WNEAR ? 'wNEAR' : id === Q_USDC ? 'USDC' : id === Q_USDT ? 'USDt' : ((roster.get(id) || {}).n || id));
+      rows.push({
+        order_id: o.order_id, pool: o.pool_id,
+        sell: code(o.sell_token), sell_asset: o.sell_token, buy: code(o.buy_token), buy_asset: o.buy_token,
+        price: nf(price, 12), price_unit: `${code(o.buy_token)} per ${code(o.sell_token)}`,
+        original_amount: fromRaw(o.original_amount, ds), remaining_amount: fromRaw(o.remain_amount, ds),
+        filled_proceeds_unclaimed: o.unclaimed_amount != null ? fromRaw(o.unclaimed_amount, db) : null,
+      });
+    }
+    return { rows, note: 'Resting limit orders on Rhea\'s concentrated-liquidity (DCL) contract, the orders the NEAR trade page '
+      + 'places. Filled proceeds stay in the contract until claimed on the trade page.' };
+  } catch (e) {
+    return { rows: null, note: e instanceof QuoteBusy ? 'NEAR\'s public RPC is busy, so open orders were not read — try again; this is not "no orders".'
+      : 'Open orders could not be read: ' + (e && e.message) };
+  }
+}
+
 async function getQuote({ from, to, amount }) {
   const rf = await wantNearAsset('from', from); if (rf.error) return fail(rf.error);
   const rt = await wantNearAsset('to', to);     if (rt.error) return fail(rt.error);
@@ -964,3 +1082,6 @@ export const NEAR = {
   getMarket, listPools, getPortfolio, getQuote, listCuratedAssets, getOrderbook, getRewards,
   swap, addLiquidity, removeLiquidity, bridge, launchToken,
 };
+
+// Used by find_arbitrage (arb.js): the same Rhea reads as the swap quote above.
+export { quoteSession as nearQuoteSession, along as nearAlong, QuoteBusy as NearQuoteBusy };

@@ -440,8 +440,16 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  if(/^lx:(ni|om|wh)$/.test(mo))return "bridge";'
 +'  if(mo==="lx:sw"||/^LumosCore (platform|limit order) fee/.test(mo))return "trade";'
 +'  return "other"; }'
+// ASKED AGAIN WHILE IT IS PARTIAL (RAZA 2026-11-18: the Revenue page showed "NEAR still being read ... reload to try
+// again" and dashes after an admin deploy). /lxapi/nearfees reads twenty transactions a call on a cold cache and says
+// partial until it has them all -- measured: partial on calls 1-4, complete on 5 -- but this asked once. Up to 12 asks,
+// 600 ms apart, each with a cache-buster so the browser does not hand back the same partial answer. A partial last
+// answer still shows the warning, exactly as before.
 +'function loadNear(){ NOK=true; NPART=false; NSELF=0;'
-+'  return j("/lxapi/nearfees").then(function(d){'
++'  function ask(n){ return j("/lxapi/nearfees"+(n?("?r="+n+"-"+Date.now()):"")).then(function(d){'
++'    if(d&&d.ok&&d.partial&&n<12)return new Promise(function(res){ setTimeout(res,600); }).then(function(){ return ask(n+1); });'
++'    return d; }); }'
++'  return ask(0).then(function(d){'
 +'    if(!d||!d.ok||!d.rows||typeof d.rows.filter!=="function"){ NOK=false; return []; }'
 +'    NSELF=+d.self||0; if(d.partial){ NPART=true; NOK=false; }'
 +'    return d.rows.filter(function(p){ return p&&p.to===NFEE&&p.from!==NFEE; }).map(function(p){ p.chain="near"; return p; }); })'
@@ -759,8 +767,14 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'    var pending=keys.length, usdAll=0, usdMonth=0, priced=0, unpriced=[], noread=[];'
 +'    function render(){'
 +'      var tb2=q("#lxRevByAsset tbody"); if(!tb2)return;'
-+'      var tot=keys.reduce(function(s,k){ return s+(byA[k].usd||0); },0);'
-+'      tb2.innerHTML = keys.length ? keys.sort(function(x,y){ return (byA[y].usd||0)-(byA[x].usd||0); }).map(function(k){ var a=byA[k];'
+// NEAR FEES ARE wNEAR NOW (RAZA 2026-11-18: "now that we're only using wNEAR on NEAR, please remove the remaining NEAR
+// assets"). Fees used to be taken in whatever token was swapped, which left dust rows (GEAR, AURORA, DARK, QTC, NEARLY,
+// LUMOS -- about $0.0002 together) in this table. Only NEAR and wNEAR are listed for NEAR now. The others are still
+// revenue: they stay in the totals above and in the fee ledger below, and the table subtitle says how many are not listed.
++'      var shown=keys.filter(function(k){ var a=byA[k]; return a.chain!=="near"||a.code==="wNEAR"||a.code==="NEAR"; });'
++'      var hidN=keys.length-shown.length, hidUsd=keys.filter(function(k){ return shown.indexOf(k)<0; }).reduce(function(s,k){ return s+(byA[k].usd||0); },0);'
++'      var tot=shown.reduce(function(s,k){ return s+(byA[k].usd||0); },0);'
++'      tb2.innerHTML = shown.length ? shown.sort(function(x,y){ return (byA[y].usd||0)-(byA[x].usd||0); }).map(function(k){ var a=byA[k];'
 +'          var sh=tot>0&&a.usd!=null?((a.usd/tot*100).toFixed(1)+"%"):"\\u2014";'
 +'          return "<tr><td><span class=\\"lxadm-asset\\"><span class=\\"lxadm-ico\\" data-lxc=\\""+esc(a.code)+"\\"><img src=\\""+(LG[k]||avatar(a.code))+"\\" alt=\\"\\"></span>"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+chainTag(a.chain)+"</span></span></td>"'
 +'            +"<td style=\\"text-align:right\\" class=\\"mono\\">"+esc(num(a.amt))+"</td>"'
@@ -784,7 +798,8 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'      var nrd=noread.length?(" \\u00b7 "+noread.length+" price"+(noread.length>1?"s":"")+" could not be read"):"";'
 +'      if(s1)s1.textContent="across "+keys.length+" asset"+(keys.length===1?"":"s")+uns+nrd;'
 +'      if(s2)s2.textContent=new Date().toLocaleString(undefined,{month:"long"})+uns+nrd;'
-+'      var bs=q("#lxRevBySub"); if(bs)bs.textContent="exact on-chain amounts"+(unpriced.length?" \\u00b7 USD shown where a spot price exists":"")+nrd;'
++'      var bs=q("#lxRevBySub"); if(bs)bs.textContent="exact on-chain amounts"+(unpriced.length?" \\u00b7 USD shown where a spot price exists":"")+nrd'
++'        +(hidN?(" \\u00b7 "+hidN+" older NEAR fee token"+(hidN>1?"s":"")+" not listed ("+usd(hidUsd)+", still in the totals and the ledger)"):"");'
 +'    }'
 +'    if(!pending){ render(); return; }'
 +'    keys.forEach(function(k){ var a=byA[k];'
@@ -947,6 +962,29 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
         route:br?(br.route||"CCTP"):"",bridgeTo:br?(br.destName||""):""}); });
     VOL={rows:out,missing:miss}; return VOL; })
    .catch(function(){ VOL={rows:[],missing:-1}; return VOL; }); }
+// EVERY LUMOSCORE TRANSACTION ON NEAR, priced (see the dashboard tiles). The list is decoded at lumoscore.com and cached
+// there; on a cold cache it answers complete:false and decodes 25 more per call, so it is asked again, a few times. NEAR
+// and wNEAR are worth NEAR/USD; any other token is its roster price (in NEAR) times NEAR/USD; a token outside the roster
+// stays unpriced and is counted as such, never guessed. null = NEAR could not be read at all.
+var NVOL=null;
+function loadNearVol(){ if(NVOL)return NVOL;
+  var B="https://lumoscore.com";
+  // Asked again while it is still decoding AND after an error: a cold cache answers an error page or ok:false on its
+  // first calls, then catches up (measured on staging). 20 calls at most; the last good answer, complete or not, is used.
+  var last=null;
+  function act(n){ return j(B+"/lxapi/nearactivity?all=1&r="+n+"-"+Date.now()).then(function(d){
+    if(d&&d.ok)last=d;
+    if((!d||!d.ok||!d.complete)&&n<20)return act(n+1); return last; }); }
+  // NEAR/USD falls back to the pools feed's own rate: nearmarket answers ok:false when DexScreener refuses it (seen on
+  // staging 2026-11-18), and NEAR itself -- most of the bridged value -- needs only that one rate.
+  NVOL=Promise.all([act(0),j(B+"/lxapi/nearmarket"),j(B+"/lxapi/nearpools?n=1")]).then(function(z){ var d=z[0], m=z[1], pl=z[2];
+    if(!d||!d.ok)return null;
+    var nu=(m&&+m.usd>0)?+m.usd:((pl&&+pl.usd>0)?+pl.usd:null), px={};
+    ((m&&m.rows)||[]).forEach(function(r){ if(r&&r.i&&+r.p>0)px[r.i]=+r.p; });
+    var rows=(d.rows||[]).map(function(r){ var p=(r.c==="near"||r.c==="wrap.near")?1:px[r.c];
+      return {t:+r.ts,kind:r.kind,route:r.via||"",usd:(nu&&p!=null&&r.v!=null)?(+r.v)*p*nu:null}; });
+    return {rows:rows,complete:!!d.complete}; }).catch(function(){ return null; });
+  return NVOL; }
 // Assets we cannot price are reported, never guessed at -- the rule the revenue table already follows.
 function volUsd(rows,since,cb){ var byA={};
   // a bridge whose fee rode a swap (every swap-first transfer, any route) is NOT swap volume: it is counted once, as
@@ -1066,9 +1104,19 @@ function fillDash(){
     ks.forEach(function(k){ var a=byA[k]; priceUsdOn(a.chain,a.code,a.iss,function(px){
       if(px!=null)tot+=a.amt*px; if(--pend===0)setT(q("#lxdRev"),usd(tot)); }); });
   });
-  loadVolume().then(function(v){
+  // NEAR VOLUME, FROM NEAR ITSELF (RAZA 2026-11-18: "the platform activity on NEAR shows a cross-chain swap worth ~$12, but
+  // the admin only shows $1.01 of cross-chain volume, which is prolly from Stellar"). A NEAR fee receipt enters loadVolume
+  // with its fee only -- no envelope, so no gross and no bridged value -- so every NEAR swap and bridge counted nothing.
+  // nearV is every LumosCore transaction on NEAR (lumoscore.com/lxapi/nearactivity?all=1, decoded from the chain) priced
+  // with NEAR's own roster. Added to these two tiles ONLY: the other readers of loadVolume price Stellar assets per wallet
+  // and per asset, and NEAR rows there would be a second unit mixed into the first.
+  Promise.all([loadVolume(),loadNearVol()]).then(function(z){ var v=z[0], nearV=z[1];
+    var nSwapP=0,nSwapA=0,nUnp=0;
+    if(nearV)nearV.rows.forEach(function(r){ if(r.kind!=="swap")return; if(r.usd==null){ if(!since||r.t>=since)nUnp++; return; }
+      nSwapA+=r.usd; if(!since||r.t>=since)nSwapP+=r.usd; });
+    var nearNote=nearV?(nearV.complete?"":" · NEAR still being read"):" · <b>NEAR could not be read</b>";
     if(v.missing<0){ var e=q("#lxdVolF"); if(e)e.textContent="could not read the transaction envelopes"; return; }
-    volUsd(v.rows,since,function(t,un){ setT(q("#lxdVol"), usd(t));
+    volUsd(v.rows,since,function(t,un){ setT(q("#lxdVol"), usd(t+nSwapP)); un=(un||0)+nUnp;
       // Some fee receipts carry no swap in their envelope -- real revenue, but not volume. That is why
       // revenue/volume lands above the 0.2% fee rate, so the count is shown rather than left to puzzle
       // over: an unexplained ratio invites someone to trust the wrong number.
@@ -1084,20 +1132,25 @@ function fillDash(){
       // VOL_CAPPED already existed and was printed on the revenue BREAKDOWN subtitle only -- so the one
       // number a reader would quote was the one that never admitted its limit. Same fault as the
       // bridge table and the pool chart that day: a surface stating something it has not established.
-      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):"")+(VOL_CAPPED?" \u00b7 <b>most recent 200 receipts only</b>":""); });
+      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(nSwapP?(" \u00b7 NEAR "+usd(nSwapP)):"")+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):"")+(VOL_CAPPED?" \u00b7 <b>most recent 200 receipts only</b>":"")+nearNote; });
     // THE ALL-TIME TILE IS THE ONE THAT LIED. Its foot is static markup reading "every swap since
     // launch" and nothing ever rewrote it, so the capped figure carried an explicit claim to be
     // complete. Corrected here rather than in kpiTile, because it is only untrue while capped.
-    volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t));
+    volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t+nSwapA));
       var af=q("#lxdVolAF");
       if(af)af.innerHTML=VOL_CAPPED?"<b>most recent 200 receipts only</b> · not every swap":"every swap since launch"; });
     // Straight sum, no pricing step: CCTP moves USDC and nothing else.
     var brP=0,brA=0,brN=0,byR={};   // every bridged figure is already in dollars (see bridged); split by route
     v.rows.forEach(function(r){ var b=+r.bridged||0; if(!b)return;
       brA+=b; brN++; if(!since||r.t>=since){ brP+=b; byR[r.route||"CCTP"]=(byR[r.route||"CCTP"]||0)+b; } });
+    // NEAR's bridges, labelled "(from NEAR)" so they never merge with Stellar's NEAR Intents route. A refunded transfer
+    // (kind bridge_refunded / bridge_failed) moved nothing and is left out.
+    var nBrUnp=0;
+    if(nearV)nearV.rows.forEach(function(r){ if(r.kind!=="bridge")return; if(r.usd==null){ if(!since||r.t>=since)nBrUnp++; return; }
+      var rk=r.route+" (from NEAR)"; brA+=r.usd; brN++; if(!since||r.t>=since){ brP+=r.usd; byR[rk]=(byR[rk]||0)+r.usd; } });
     setT(q("#lxdBrVol"), usd(brP)); setT(q("#lxdBrVolA"), usd(brA));
-    var bf=q("#lxdBrVolF"); if(bf){ var parts=["CCTP","LayerZero","NEAR Intents"].filter(function(k){ return byR[k]; }).map(function(k){ return k+" "+usd(byR[k]); });
-      bf.innerHTML=parts.length?parts.join(" · "):"bridged via CCTP, LayerZero or NEAR Intents"; }
+    var bf=q("#lxdBrVolF"); if(bf){ var parts=Object.keys(byR).sort(function(a,b){ return byR[b]-byR[a]; }).map(function(k){ return k+" "+usd(byR[k]); });
+      bf.innerHTML=(parts.length?parts.join(" · "):"bridged via CCTP, LayerZero, NEAR Intents, Wormhole or Omni")+(nBrUnp?(" · "+nBrUnp+" unpriced"):"")+nearNote; }
     var bfa=q("#lxdBrVolAF"); if(bfa)bfa.textContent=brN?("every bridge since launch \u00b7 "+brN+" transfer"+(brN===1?"":"s")):"no bridges recorded yet";
   });
   loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014");
@@ -1453,11 +1506,18 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 // upstream requests a day and /lxapi/xrplprices spends three of them on a miss (it pages the top 300);
 // /lxapi/xrpltoken spends one, caches for 60s, and answers the same question -- does our XRPL data
 // path work. A status panel that eats the budget it is meant to be watching would be its own outage.
+// THE PUBLIC SITE'S PATH, NOT THE ADMIN'S (RAZA 2026-11-18: "xrpl.to market data -- unreachable" for days, while
+// lumoscore.com/lxapi/xrpltoken answered at once). lumoscore-admin is a separate Pages project with its own secrets and
+// its own colo quota, so its copy of the endpoint can be starved while visitors are fine -- the same split that broke
+// the admin's XRPL prices on 2026-10-29, fixed then by reading lumoscore.com first. The light means "is the XRPL data
+// path our visitors use working", so it asks that one (it sends access-control-allow-origin: *), and the admin's own
+// copy only if the public site cannot be reached at all.
++'    function xrplToOk(d){ return (d&&d.ok)?d:null; }'
 +'    var SVC=[["Horizon (Stellar RPC)",H+"/assets?limit=1"],'
 +'      ["stellar.expert index","https://api.stellar.expert/explorer/public/asset?search=XLM&limit=1"],'
 +'      ["CoinGecko prices","https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd"],'
 +'      ["XRP Ledger (xrplcluster)",function(){ return xrpc("server_info",{}).then(function(d){ return (d&&d.result&&d.result.info)?d:null; }); }],'
-+'      ["xrpl.to market data",function(){ return j("/lxapi/xrpltoken?id=XRP").then(function(d){ return (d&&d.ok)?d:null; }); }]];'
++'      ["xrpl.to market data",function(){ return j("https://lumoscore.com/lxapi/xrpltoken?id=XRP").then(function(d){ return d?xrplToOk(d):j("/lxapi/xrpltoken?id=XRP").then(xrplToOk); }); }]];'
 +'    var b2=cardBody(c2,SVC.map(function(x,i){ return "<div class=\\"lxstat-row\\" id=\\"lxsvc"+i+"\\"><span class=\\"lxstat-dot\\"></span><span class=\\"lxstat-name\\">"+esc(x[0])+"</span><span class=\\"lxstat-val\\">checking\u2026</span></div>"; }).join(""));'
 +'    b2.style.padding="0";'
 +'    SVC.forEach(function(x,i){ var t0=Date.now();'
@@ -3007,7 +3067,7 @@ function paintAssets(){
 +'      rb.innerHTML="<div class=\\"lxadm-empty\\">Nothing scores wallets for risk. Flags like sanctions screening or unusual-activity detection need a monitoring service and somewhere to record findings \u2014 neither exists yet.</div>"; } }'
 +'  qa(".up-tabs, .mob-up-tabs").forEach(function(t){ t.remove(); });'
 +'}'
-+'function boot(){ try{ paintRevenue(); }catch(e){} try{ paintSources(); }catch(e){} try{ var _sa=q("#lxSrcAdd"); if(_sa&&!_sa.__lx){ _sa.__lx=1; _sa.addEventListener("click",addManual); } }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} try{ paintChrome(); }catch(e){} }'
++'function boot(){ try{ paintRevenue(); }catch(e){} try{ paintSources(); }catch(e){} try{ var _sa=q("#lxSrcAdd"); if(_sa&&!_sa.__lx){ _sa.__lx=1; _sa.addEventListener("click",addManual); } }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} try{ paintChrome(); }catch(e){} try{ document.documentElement.classList.add("lxadm-ready"); }catch(e){} }'
 +'if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);'
 +'})();</'+'script>';
 
@@ -3065,6 +3125,11 @@ function blankAssets(h, mobile) {
   return h;
 }
 
+// The head rule for the load flash (see where it is inserted, below). Two fail-safes, either of which reveals the area:
+// the CSS reveal at 8s, and a tiny head timer independent of the data layer -- a hidden or background tab can freeze
+// CSS animation clocks (measured in the browser pane: the reveal sat at currentTime 0).
+const NOFLASH='<style id="lx-admin-noflash">html:not(.lxadm-ready) main.admin-main,html:not(.lxadm-ready) main.mob-main{visibility:hidden;animation:lxadm-reveal 0s linear 8s forwards}@keyframes lxadm-reveal{to{visibility:visible}}</style>'
+  +'<script id="lx-admin-noflash-js">setTimeout(function(){document.documentElement.classList.add("lxadm-ready")},8000)</script>';
 let pages=0, made=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
@@ -3138,6 +3203,15 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       h=h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-create-pool[^"]*"[\s\S]*?<\/a>\s*/g, '');
       const bi=h.lastIndexOf('</body>');
       if(bi>=0) h=h.slice(0,bi)+CSS+SCRIPT+h.slice(bi);
+      // NO PLACEHOLDER ON SCREEN WHILE THE PAGE LOADS (RAZA 2026-11-18, a screenshot of "Tokens launched 492 · Aptos ·
+      // USDC / APT" mid-load: "WTH is this"). The design's invented figures are in the HTML and this layer sits ~1.1 MB
+      // into a 1.3 MB page, so a slow load painted them until boot() ran at DOMContentLoaded. The main area is held back
+      // from the FIRST paint by a rule in <head>, and boot() marks the page ready when it has painted. Fail-safe: the
+      // rule reveals the area on its own after 8s, so a script that never runs cannot leave a blank page. Idempotent.
+      h=h.replace(/<style id="lx-admin-noflash">[\s\S]*?<\/style>/g,'');
+      h=h.replace(/<script id="lx-admin-noflash-js">[\s\S]*?<\/script>/g,'');
+      const hd=h.indexOf('</head>');
+      if(hd>=0) h=h.slice(0,hd)+NOFLASH+h.slice(hd);
       json[k]=h; changed=true; pages++;
     }
 

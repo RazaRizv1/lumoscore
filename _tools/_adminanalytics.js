@@ -184,6 +184,12 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-rows .lxan-row:last-child{border-bottom:0}
 .lxan-name{flex:1 1 auto;min-width:0;font-size:var(--lxan-r);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lxan-name .m{color:var(--text-muted);font-size:var(--lxan-s)}
+.lxan-src{flex:0 1 auto;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--lxan-s);color:var(--accent,#ea6a2c);margin-right:14px}
+.lxan-src.d{color:var(--text-muted)}
+.lxan-arrive{border-top:1px dashed var(--border,rgba(255,255,255,.08))}
+@media (max-width:640px){.lxan-src{max-width:90px;margin-right:8px}}
+.lxan-open{display:inline-flex;align-items:center;vertical-align:middle;margin-left:6px;padding:2px;border-radius:4px;color:var(--text-muted);opacity:.85}
+.lxan-open:hover{color:var(--accent,#ea6a2c);opacity:1;background:rgba(234,106,44,.10)}
 .lxan-n{flex:0 0 auto;min-width:44px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--lxan-r);color:var(--text)}
 .lxan-pc{flex:0 0 58px;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--lxan-s);color:var(--text-muted)}
 /* Unique visitors beside the page views. Muted and narrower than .lxan-n so the two read as a pair
@@ -1018,7 +1024,10 @@ function liveTick(){
     }
     el.innerHTML=rows.map(function(r){
       var where=[r.city,r.region&&r.region!==r.city?r.region:"",cname(r.country)].filter(Boolean).join(", ");
-      return "<div class='lxan-row lxan-livrow' tabindex='0' role='button' aria-expanded='false' data-sid='"+esc(r.sid||"")+"'><span class='lxan-chev'>\u25b6</span>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span></div>"
+      return "<div class='lxan-row lxan-livrow' tabindex='0' role='button' aria-expanded='false' data-sid='"+esc(r.sid||"")+"' data-ref='"+esc(r.ref||"")+"' data-land='"+esc(r.landing||"")+"'><span class='lxan-chev'>\u25b6</span>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span>"+openIcon(r.path||"/")+"</div>"
+        // HOW THIS VISIT BEGAN (RAZA 2026-11-18): the referring site of the session's first page view, or "direct" when there
+        // was none (typed, a bookmark, or a link from an app). The landing page is in the tooltip and in the opened journey.
+        +"<div class='lxan-src"+(r.ref?"":" d")+"' title='"+esc("Arrived "+(r.ref?("from "+r.ref):"directly (no referring site)")+(r.landing?(", landing on "+r.landing):""))+"'>"+esc(r.ref||"direct")+"</div>"
         +"<div class='lxan-dev'>"+esc(r.device||"")+"</div><div class='lxan-id' title='a random id for this browsing session'>"+esc(r.id||"")+"</div><div class='lxan-ago'>"+esc(ago(r.ts))+"</div></div>"; }).join("");
     flagFallback(el);
     if(window.__lxLiveOpen){ var row=q(".lxan-livrow[data-sid='"+window.__lxLiveOpen+"']",el); if(row) toggleLive(el,row,true); }
@@ -1026,6 +1035,11 @@ function liveTick(){
 }
 // THE VISITOR'S JOURNEY (RAZA 2026-09-22: "show their live activity, for eg: clicks and pages. just like ... Plausible"):
 // the pages of this visit and the links and buttons pressed, newest first, from our own records.
+// A small open-in-a-new-tab icon after a page path: the page as visitors see it, on lumoscore.com. Only for a real site
+// path (starting with "/"); anything else gets no icon rather than a link somewhere unexpected.
+function openIcon(p){ p=String(p||""); if(p.charAt(0)!=="/"||p.charAt(1)==="/") return "";
+  return " <a class='lxan-open' href='https://lumoscore.com"+esc(p)+"' target='_blank' rel='noopener' title='Open this page' aria-label='Open this page in a new tab'>"
+    +"<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 4h6v6'/><path d='M10 14L20 4'/><path d='M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5'/></svg></a>"; }
 function toggleLive(el,row,keep){
   var open=keep?true:!row.classList.contains("open");
   qa(".lxan-livrow.open",el).forEach(function(r){ if(r!==row){ r.classList.remove("open"); r.setAttribute("aria-expanded","false"); var n2=r.nextElementSibling; if(n2&&n2.classList.contains("lxan-jrn")) n2.parentNode.removeChild(n2); } });
@@ -1042,8 +1056,13 @@ function toggleLive(el,row,keep){
     if(!rows.length){ box.innerHTML="<div class='lxan-cnote'>Nothing recorded for this visit yet.</div>"; return; }
     box.innerHTML=rows.map(function(r){
       var when=new Date(r.ts).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-      var what=r.kind==="page"?("<b>viewed</b> "+esc(r.path||"/")):("<b>clicked</b> \u201c"+esc(r.label||"a link")+"\u201d"+(r.href?(" <span class='m'>\u2192 "+esc(r.href)+"</span>"):"")+" <span class='m'>on "+esc(r.path||"/")+"</span>");
+      var what=r.kind==="page"?("<b>viewed</b> "+esc(r.path||"/")+openIcon(r.path||"/")):("<b>clicked</b> \u201c"+esc(r.label||"a link")+"\u201d"+(r.href?(" <span class='m'>\u2192 "+esc(r.href)+"</span>"):"")+" <span class='m'>on "+esc(r.path||"/")+"</span>"+openIcon(r.path||"/"));
       return "<div class='lxan-row'><div class='lxan-name' style='white-space:normal'>"+what+"</div><div class='lxan-ago'>"+esc(when)+"</div></div>"; }).join("")
+      // Where the visit began, last because the list runs newest first.
+      +(function(){ var rf=row.getAttribute("data-ref")||"", ld=row.getAttribute("data-land")||"";
+        return "<div class='lxan-row lxan-arrive'><div class='lxan-name' style='white-space:normal'><b>arrived</b> "
+          +(rf?("from <b>"+esc(rf)+"</b>"):"directly <span class='m'>(no referring site: typed, a bookmark, or a link from an app)</span>")
+          +(ld?(" <span class='m'>landing on "+esc(ld)+"</span>"+openIcon(ld)):"")+"</div></div>"; })()
       +"<div class='lxan-cnote'>Pages and the labels of links and buttons pressed \u00b7 last 6 hours of this visit.</div>";
   }).catch(function(e){ if(box.parentNode) box.innerHTML="<div class='lxan-cnote'>Could not read this visit: "+esc(e.message)+"</div>"; });
 }
@@ -1081,6 +1100,10 @@ function boot(){
   // (lumoscore-lumosnav-row-hijack). Every click this page owns is handled here and then stopped, so it never sees them.
   if(!window.__lxAnRouter){ window.__lxAnRouter=1;
     function route(e){ var t=e.target; if(!t||!t.closest||!t.closest(".lxan-box,.lxan-drawer,.lxan-live")) return false;
+      // THE OPEN-PAGE ICON (RAZA 2026-11-18: "add a link icon which leads to the page the user is visiting ... it's a hassle to
+      // copy the link and then open it"). Opened here, in a new tab on lumoscore.com, and the click stopped: left to the
+      // page, the design's navigator would turn "/mcp" into a load on the ADMIN host, which 404s.
+      var op=t.closest("a.lxan-open"); if(op){ window.open(op.getAttribute("href"),"_blank","noopener"); return true; }
       if(t.closest("a[href]")) return false;                                  // real links inside a row keep working
       var box=t.closest(".lxan-box"), b=t.closest("button[data-p]"), r;
       if(b&&box){ if(!b.disabled){ box.__pg=(box.__pg||0)+(+b.getAttribute("data-p")); if(box.__redraw) box.__redraw(); var rw=q(".lxan-rows",box); if(rw) rw.scrollTop=0; } return true; }
