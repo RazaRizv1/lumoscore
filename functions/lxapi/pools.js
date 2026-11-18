@@ -243,7 +243,12 @@ const K = {
 // is. Bonus on the Free plan: KV operations do not count against the 50-subrequest budget, Cache API
 // calls do.
 function mkStore(env) {
-  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  // CONTENT_KV ADDED 2026-11-18 (RAZA: "on staging, first of all its taking awfully long to load the pools, and
+  // when it does, it doesnt show anything in volume and fees"). LUMOS_KV was never created, so this ran on the
+  // per-colo Cache API: every data centre cold-built the 11,000-pool ranking for its first visitor and swept
+  // volume from nothing on its own. CONTENT_KV is what this project has bound (assetsearch, assetmeta, holders
+  // use it); every key here is prefixed pools: and carries a TTL, so nothing collides with its content.
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV || env.CONTENT_KV);
   if (kv) {
     return {
       kind: 'kv',
