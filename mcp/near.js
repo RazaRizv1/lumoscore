@@ -396,7 +396,8 @@ const Q_USDT = 'usdt.tether-token.near';
 const HUBS = [WNEAR, Q_USDC, Q_USDT];
 const Q_FEE_BPS = 20, Q_SLIP_BPS = 50;
 const Q_RPCS = ['https://free.rpc.fastnear.com', 'https://near.drpc.org'];
-const Q_MAX_CALLS = 30;
+const Q_MAX_CALLS = 40;
+const POOR_PCT = 2;
 
 class QuoteBusy extends Error {}
 
@@ -526,6 +527,40 @@ async function findRoute(s, rows, a, b, net) {
   let best = null;
   for (const r of classic) if (r && (!best || big(r.out) > big(best.out))) best = r;
   if (d && (!best || big(d.out) * 100n > big(best.out) * 101n)) best = d;
+  if (!best) return null;
+  // A ROUTE THAT MOVES THE PRICE A LOT IS NOT THE END OF THE SEARCH (RAZA 2026-11-18, "fix the LUMOS route through the
+  // tiny pool"): 10 USDC -> LUMOS took classic 4512 > 9001 ($0.57) for 2,153 LUMOS at 91% impact, while DCL > DCL through
+  // wNEAR, one transaction, gives ~22,500 at 0%. Same rule as the page's route(): past POOR_PCT impact, also try the
+  // all-DCL hub routes, and keep the better. Narrower than the page, to stay inside the read budget: hubs wNEAR and USDC
+  // only, atomic routes only (the page may also offer a two-transaction split, and only when it gives >1% more).
+  // A hub search that runs out of reads keeps the route already found.
+  try {
+    if (await poorRoute(s, best, net)) {
+      const h = await dclHubRoute(s, a, b, net);
+      if (h && big(h.out) > big(best.out)) best = h;
+    }
+  } catch (e) { if (!(e instanceof QuoteBusy)) throw e; }
+  return best;
+}
+
+async function poorRoute(s, r, net) {
+  let t = big(net) / 1000n; if (t < 1n) t = 1n;
+  let o = await along(s, r.hops, t), n = 0;
+  while (big(o) < 100000n && n < 2 && t * 10n <= big(net) / 100n) { t *= 10n; o = await along(s, r.hops, t); n++; }
+  if (!(big(o) > 0n)) return true;
+  const ex = Number(r.out) / Number(net), sp = Number(o) / Number(t);
+  return sp > 0 && (1 - ex / sp) * 100 > POOR_PCT;
+}
+
+async function dclHubRoute(s, a, b, net) {
+  let best = null;
+  for (const m of [WNEAR, Q_USDC]) {
+    if (m === a || m === b) continue;
+    const x1 = await bestLeg(s, DCL_FEES.map((f) => ({ id: [a, m].sort().join('|') + '|' + f, dcl: 1 })), a, m, net);
+    if (!x1) continue;
+    const x2 = await bestLeg(s, DCL_FEES.map((f) => ({ id: [m, b].sort().join('|') + '|' + f, dcl: 1 })), m, b, x1.out);
+    if (x2 && (!best || big(x2.out) > big(best.out))) best = { hops: [{ pool: x1.pool, tin: a, tout: m }, { pool: x2.pool, tin: m, tout: b }], out: x2.out };
+  }
   return best;
 }
 
