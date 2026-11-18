@@ -100,6 +100,11 @@ const MAIN = `
         <div class="adm-card-body" style="padding:0"><div id="lxanExits" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
       </div>
 
+      <div class="adm-card lxan-card" style="margin-bottom:18px" id="lxanSearchCard">
+        <div class="adm-card-head"><div><div class="adm-card-title">Search queries</div><div class="adm-card-sub" id="lxanSearchSub">what people searched on Google and Bing (and DuckDuckGo, which runs largely on Bing) when LumosCore showed up</div></div></div>
+        <div class="adm-card-body" style="padding:0"><div id="lxanSearchStatus" class="lxan-sqstat"></div><div id="lxanSearch" class="lxan-sq"><div class="lxadm-empty">Loading&hellip;</div></div></div>
+      </div>
+
       <div class="lxan-about" id="lxanAbout"></div>
 `;
 
@@ -184,6 +189,16 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-rows .lxan-row:last-child{border-bottom:0}
 .lxan-name{flex:1 1 auto;min-width:0;font-size:var(--lxan-r);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lxan-name .m{color:var(--text-muted);font-size:var(--lxan-s)}
+.lxan-sqstat{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));font-size:var(--lxan-s);color:var(--text-muted)}
+.lxan-sqe b{color:var(--text);margin-right:8px;font-weight:600}.lxan-sqe .bad{color:#e5484d}
+.lxan-sqe:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--text-muted);margin-right:8px;vertical-align:middle;opacity:.6}
+.lxan-sqe.on:before{background:#30a46c;opacity:1}
+.lxan-sq{max-height:460px;overflow:auto}
+.lxan-sqt{width:100%;border-collapse:collapse;font-size:var(--lxan-r)}
+.lxan-sqt th{position:sticky;top:0;background:var(--card,#16161a);text-align:right;font-weight:600;font-size:var(--lxan-s);color:var(--text-muted);padding:9px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
+.lxan-sqt td{text-align:right;padding:9px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.05));white-space:nowrap}
+.lxan-sqt th:first-child,.lxan-sqt td.qq{text-align:left}.lxan-sqt td.qq{white-space:normal;word-break:break-word;color:var(--text)}
+@media (max-width:640px){.lxan-sqt th:nth-child(6),.lxan-sqt td:nth-child(6){display:none}}
 .lxan-src{flex:0 1 auto;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--lxan-s);color:var(--accent,#ea6a2c);margin-right:14px}
 .lxan-src.d{color:var(--text-muted)}
 .lxan-arrive{border-top:1px dashed var(--border,rgba(255,255,255,.08))}
@@ -1068,7 +1083,35 @@ function toggleLive(el,row,keep){
 }
 function liveStart(){ if(window.__lxLiveT) return; liveTick(); window.__lxLiveT=setInterval(function(){ if(document.visibilityState==="visible") liveTick(); },20000);
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") liveTick(); }); }
+// SEARCH QUERIES (RAZA 2026-11-18: "a section where all searched search engine queries that referred to LumosCore
+// should be recorded"). Not from referrers -- every engine strips the terms -- but from Google Search Console and Bing
+// Webmaster Tools, synced and kept by /lxapi/searchqueries. The page's range drives it; Google runs ~2 days behind, so
+// 24H shows the last 7 days and says so.
+function loadSearch(){
+  var box=q("#lxanSearch"), st=q("#lxanSearchStatus"); if(!box) return;
+  var map={"24h":"7d","7d":"7d","30d":"30d","90d":"90d"}, rg=map[RANGE]||"30d";
+  box.innerHTML="<div class='lxadm-empty'>Reading search queries"+String.fromCharCode(8230)+"</div>";
+  fetch("/lxapi/searchqueries?range="+rg+"&t="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
+    if(!d||!d.ok){ box.innerHTML="<div class='lxadm-empty'>Could not read search queries"+(d&&d.error?(": "+esc(d.error)):"")+".</div>"; return; }
+    var S=d.status||{}, names={google:"Google",bing:"Bing (and DuckDuckGo)"};
+    st.innerHTML=Object.keys(names).map(function(k){ var s=S[k]||{};
+      var txt=!s.connected?esc(s.note||"not connected")
+        :(s.error?("<span class='bad'>"+esc(s.error)+"</span>")
+          :((s.backfilling?"reading history"+String.fromCharCode(8230)+" ":"")+(s.through?("data through "+esc(s.through)):"no data yet")));
+      return "<div class='lxan-sqe"+(s.connected&&!s.error?" on":"")+"'><b>"+names[k]+"</b><span>"+txt+"</span></div>"; }).join("");
+    var tot={}; (d.totals||[]).forEach(function(t){ tot[t.engine]=t; });
+    var sub=q("#lxanSearchSub");
+    if(sub) sub.textContent=(RANGE==="24h"?"last 7 days (search engines report about 2 days late)":("last "+rg.replace("d"," days")))
+      +" "+String.fromCharCode(183)+" "+Object.keys(tot).map(function(k){ return (names[k]||k)+": "+num(tot[k].queries||0)+" queries, "+num(tot[k].clicks||0)+" clicks"; }).join(" "+String.fromCharCode(183)+" ");
+    var rows=d.rows||[];
+    if(!rows.length){ box.innerHTML="<div class='lxadm-empty'>"+((S.google&&S.google.connected)||(S.bing&&S.bing.connected)?"No search queries recorded in this period yet.":"Connect Google Search Console or Bing Webmaster Tools to see search queries here.")+"</div>"; return; }
+    box.innerHTML="<table class='lxan-sqt'><thead><tr><th>Query</th><th>Engine</th><th>Clicks</th><th>Impressions</th><th>Avg position</th><th>First seen</th></tr></thead><tbody>"
+      +rows.map(function(r){ return "<tr><td class='qq'>"+esc(r.query)+"</td><td>"+esc(r.engine==="google"?"Google":"Bing")+"</td><td>"+num(r.clicks||0)+"</td><td>"+num(r.impressions||0)+"</td><td>"+(r.position!=null?esc(String(r.position)):"&ndash;")+"</td><td>"+esc(r.first_seen||"")+"</td></tr>"; }).join("")
+      +"</tbody></table>";
+  }).catch(function(e){ box.innerHTML="<div class='lxadm-empty'>Could not read search queries: "+esc(e.message)+"</div>"; });
+}
 function load(){
+  try{ loadSearch(); }catch(_){}
   qa("#lxanRange button").forEach(function(b){ b.classList.toggle("on",b.getAttribute("data-r")===RANGE); b.setAttribute("aria-selected",b.getAttribute("data-r")===RANGE?"true":"false"); });
   setT("#lxanSub","Reading Cloudflare Web Analytics\\u2026");
   qa(".lxan-box").forEach(function(b){ b.__pg=0; });
