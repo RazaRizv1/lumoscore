@@ -34,7 +34,12 @@
 //
 // Reads no secret, touches no funds, GET only, fixed upstream hosts.
 
-const HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'];
+// LOBSTR FIRST (2026-11-18, RAZA: "why are stellar pools empty"). SDF's Horizon answered a /trades page in
+// 7.7s against LOBSTR's 1.9s; a deep step (VOL_DEEP_PAGES x pages, sequential per pool) then ran past the
+// ~30s a background step is allowed, was killed before it saved, and the same 51 busy pools -- XLM/USDC,
+// SHX, LDEX, VELO... -- stayed pending for good with Vol/Fees showing a dash. j() alternates hosts per
+// attempt, so SDF is still the retry.
+const HOSTS = ['https://horizon.stellar.lobstr.co', 'https://horizon.stellar.org'];
 const USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 const XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
 const PAGE = 200;            // Horizon max per request
