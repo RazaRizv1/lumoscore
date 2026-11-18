@@ -10,7 +10,7 @@
 // here with a reason rather than in a wallet the user has already been asked to trust.
 import { api, horizon, parseAsset, G_RE, web, ApiError } from './api.js';
 import { XRPL } from './xrpl.js';
-import { NEAR } from './near.js';
+import { NEAR, isNearAccount as NEAR_ACCOUNT } from './near.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
 
@@ -847,6 +847,16 @@ function route(stellarFn, xrplFn, nearFn) {
     const sp = splitPrefixes(rawArgs);
     if (sp.error) return fail(sp.error);
     const args = sp.args;
+    // AN ADDRESS NAMES ITS NETWORK (RAZA 2026-11-18: ChatGPT reported get_portfolio "rejects XRPL r… and NEAR account
+    // ids" -- it passed the address and no chain, so the call went to Stellar). The three shapes cannot be confused:
+    // Stellar G… (56, base32), XRPL r… (25-35, base58), NEAR a dotted account or a 64-hex implicit one. With no chain
+    // given, the address picks it; an explicit chain is never overridden, and a mismatch is left to that chain's own
+    // check, which names the shape it expected.
+    if (!args.chain && typeof args.address === 'string') {
+      const a = args.address.trim();
+      if (/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)) args.chain = 'xrpl';
+      else if (!G_RE.test(a) && (/^[0-9a-f]{64}$/.test(a) || (a.includes('.') && NEAR_ACCOUNT(a.toLowerCase())))) args.chain = 'near';
+    }
     const p = pickChain(args);
     if (p.error) return fail(p.error);
     if (p.chain === 'stellar') return withHint(await stellarFn(args), nativeHint(args, !!(args && args.chain)));
@@ -902,17 +912,17 @@ export const TOOLS = [
   { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for an asset on Stellar, the XRP Ledger or NEAR',
     schema: { chain: CHAIN,
               asset: ASSET() }, required: ['asset'], run: route(getMarket, XRPL.getMarket, NEAR.getMarket) },
-  { name: 'list_pools', title: 'Liquidity pools, optionally filtered to one asset (Stellar by TVL, XRP Ledger by 24h volume)',
+  { name: 'list_pools', title: 'Liquidity pools, optionally filtered to one asset (Stellar by TVL, XRP Ledger by 24h volume, NEAR by liquidity; on NEAR an asset filter also lists its concentrated pools)',
     schema: { chain: CHAIN,
               limit: { type: 'number', description: 'Max pools to return (default 20, max 100)' },
               page: { type: 'number', description: 'Stellar only: page of the TVL ranking, 25 per page (default 1)' },
               asset: ASSET('Only pools containing this asset.') }, required: [], run: route(listPools, XRPL.listPools, NEAR.listPools) },
   { name: 'get_portfolio', title: 'Balances, pool positions and open orders for an account',
     schema: { chain: CHAIN,
-              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…)' } }, required: ['address'], run: route(getPortfolio, XRPL.getPortfolio, NEAR.getPortfolio) },
+              address: { type: 'string', description: 'Stellar public key (G…), XRP Ledger account (r…) or NEAR account (alice.near, or a 64-hex implicit account). Without chain, the address shape picks the network.' } }, required: ['address'], run: route(getPortfolio, XRPL.getPortfolio, NEAR.getPortfolio) },
   { name: 'get_quote', title: 'Best-route price for a swap, from the chain\'s own path finder',
     schema: { chain: CHAIN, from: ASSET('The asset being sold.'), to: ASSET('The asset being bought.'), amount: { type: 'number', description: 'How much of `from` to sell' },
-              address: { type: 'string', description: 'XRP Ledger only, and required there: ripple_path_find answers per account, because which routes exist depends on that account\'s trustlines and balances' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote, NEAR.getQuote) },
+              address: { type: 'string', description: 'XRP Ledger only, optional: with it, the ledger router quotes for that account (its trustlines and balances); without it, the quote is the public market (order book and AMM) and says so' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote, NEAR.getQuote) },
   { name: 'list_curated_assets', title: 'Assets LumosCore lists, with their verification state',
     schema: { chain: CHAIN,
               include_mints: { type: 'boolean', description: 'Stellar only: also include launchpad mints (not curated)' },
@@ -920,7 +930,7 @@ export const TOOLS = [
               limit: { type: 'number', description: 'XRP Ledger only: how many of the top tokens by volume (default 100, max 100)' } }, required: [], run: route(listCuratedAssets, XRPL.listCuratedAssets, NEAR.listCuratedAssets) },
   { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against the chain\'s native coin',
     schema: { chain: CHAIN,
-              asset: ASSET('Quoted against XLM on Stellar, against XRP on the XRP Ledger.'),
+              asset: ASSET('Quoted against XLM on Stellar, against XRP on the XRP Ledger. NEAR has no order book: its limit orders sit inside Rhea concentrated pools, which list_pools with this asset shows.'),
               limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: route(getOrderbook, XRPL.getOrderbook, NEAR.getOrderbook) },
   { name: 'list_blog_posts', title: 'LumosCore blog posts, newest first',
     schema: { chain: CHAIN,
@@ -931,10 +941,10 @@ export const TOOLS = [
     schema: { slug: { type: 'string', description: 'Post slug from list_blog_posts' } }, required: ['slug'], run: getBlogPost },
   { name: 'get_rewards', title: 'LUMOS reward programs and the incentivized pool roster',
     schema: { chain: CHAIN,
-              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…), optional' } }, required: [], run: route(getRewards, XRPL.getRewards, NEAR.getRewards) },
+              address: { type: 'string', description: 'Stellar public key (G…), XRP Ledger account (r…) or NEAR account, optional. Without chain, the address shape picks the network.' } }, required: [], run: route(getRewards, XRPL.getRewards, NEAR.getRewards) },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',
     schema: { chain: CHAIN, from: ASSET('The asset being sold.'), to: ASSET('The asset being bought.'), amount: { type: 'number', description: 'How much of `from` to sell' },
-              address: { type: 'string', description: 'XRP Ledger only: your r… account, so the swap can carry a real quote' } }, required: ['from', 'to', 'amount'], run: route(swap, XRPL.swap, NEAR.swap) },
+              address: { type: 'string', description: 'XRP Ledger only, optional: your r… account, so the attached quote is for that wallet (without it, a public-market quote is attached)' } }, required: ['from', 'to', 'amount'], run: route(swap, XRPL.swap, NEAR.swap) },
   { name: 'add_liquidity', title: 'Prepare an AMM deposit for you to approve (does not sign)',
     schema: { chain: CHAIN, a: ASSET('One side of the pool.'), b: ASSET('The other side of the pool.'),
               amount_a: { type: 'number', description: 'How much of `a` to deposit' },

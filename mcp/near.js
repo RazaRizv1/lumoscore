@@ -248,10 +248,63 @@ async function listPools({ limit = 20, asset }) {
   const d = await api('/lxapi/nearpools?n=' + n + (tok ? '&token=' + encodeURIComponent(tok) : ''));
   const rows = (d && d.rows) || [];
   const side = (s) => ({ asset: (s || {}).i || null, code: (s || {}).s || null, amount: nf((s || {}).v, 6) });
+  // THE CONCENTRATED (DCL) POOLS OF A TOKEN (RAZA 2026-11-18: ChatGPT called NEAR's liquidity "not visible"). The
+  // list above is Rhea's classic pools only, so for LUMOS it showed one pool worth $0.57 -- while get_quote filled
+  // 21 NEAR into 158,304 LUMOS at 0% impact through dclv2 `lumos.lumoscore.near|wrap.near|2000`, a pool this tool
+  // never mentioned. The two answers contradicted each other. With an asset filter, the token's DCL pools against
+  // the three hubs are read from the contract (4 fee tiers each, the reads get_quote makes) and reported with what
+  // each side holds -- including how much of it is resting limit orders, which is what makes one side deep and the
+  // other empty. Without a filter there is no cheap way to list every DCL pool, and the note says so.
+  let dcl = null;
+  if (tok) {
+    try {
+      const s = quoteSession(), r = (await roster()).map;
+      const nearUsd = d && +d.usd ? +d.usd : null;
+      const usdOf = (id, amt) => {
+        if (amt == null) return null;
+        if (id === Q_USDC || id === Q_USDT) return amt;
+        if (id === WNEAR) return nearUsd ? amt * nearUsd : null;
+        const row = r.get(id); return row && nearUsd && +row.p > 0 ? amt * +row.p * nearUsd : null;
+      };
+      const pairs = HUBS.filter((h) => h !== tok).flatMap((h) => DCL_FEES.map((f) => [tok, h].sort().join('|') + '|' + f));
+      const got = await Promise.all(pairs.map((id) => s.view(DCL, 'get_pool', { pool_id: id }).catch((e) => { if (e instanceof QuoteBusy) throw e; return null; })));
+      const decs = {};
+      const dec = async (id) => (decs[id] != null ? decs[id] : (decs[id] = await decimalsOf({ id }, r, s)));
+      dcl = [];
+      for (const p of got) {
+        if (!p || p.state !== 'Running') continue;
+        const [dx, dy] = await Promise.all([dec(p.token_x), dec(p.token_y)]);
+        const h = (raw, dd) => { const v = fromRaw(raw, dd); return v == null ? null : +v; };
+        const x = h(p.total_x, dx), y = h(p.total_y, dy), ox = h(p.total_order_x, dx), oy = h(p.total_order_y, dy);
+        if (!(x > 0 || y > 0)) continue;
+        const ux = usdOf(p.token_x, x), uy = usdOf(p.token_y, y);
+        const code = (id) => (id === WNEAR ? 'wNEAR' : id === Q_USDC ? 'USDC' : id === Q_USDT ? 'USDt' : ((r.get(id) || {}).n || id));
+        dcl.push({
+          id: p.pool_id, kind: 'DCL (concentrated liquidity)', pair: `${code(p.token_x)} / ${code(p.token_y)}`,
+          fee_pct: nf(+p.fee / 10000, 4),
+          tokens: [
+            { asset: p.token_x, code: code(p.token_x), amount: nf(x, 6), of_which_limit_orders: nf(ox, 6) },
+            { asset: p.token_y, code: code(p.token_y), amount: nf(y, 6), of_which_limit_orders: nf(oy, 6) },
+          ],
+          range_liquidity_active: big(p.liquidity) > 0n,
+          liquidity_usd: ux != null && uy != null ? nf(ux + uy, 2) : null,
+        });
+      }
+      dcl.sort((p, q) => (q.liquidity_usd || 0) - (p.liquidity_usd || 0));
+    } catch (e) { dcl = null; }
+  }
   return ok(Object.assign({
     chain: 'near',
     count: rows.length, network_total: d && d.summary && d.summary.pools != null ? d.summary.pools : null,
     filtered_to: tok,
+    concentrated_pools: tok ? dcl : undefined,
+    concentrated_note: tok
+      ? (dcl == null
+        ? 'The concentrated (DCL) pools could not be read just now (NEAR RPC busy), so only the classic pools are listed.'
+        : 'Rhea also runs concentrated-liquidity (DCL) pools, listed separately because they work differently: a side can be '
+          + 'deep and the other empty, especially when most of a pool is resting limit orders. get_quote routes through both '
+          + 'kinds, so read these before judging how deep a token is. Read against wNEAR, USDC and USDt only.')
+      : 'Classic Rhea pools only. Pass asset to also see that token\'s concentrated (DCL) pools, which get_quote can route through.',
     near_usd: d && +d.usd ? nf(+d.usd, 6) : null,
     // Stated because it changes what the list means, and on NEAR it is the stronger warning of the
     // three chains: Rhea lets anyone open a pool, and the newest ones include outright honeypots.
@@ -628,6 +681,15 @@ async function nearQuote(f, t, amount, r) {
       quote.warning = `This trade moves the price by about ${nf(impact, 1)}% — the pool is shallow for this size. `
         + 'Tell the person before they swap, and suggest a smaller amount.';
     }
+    // ZERO IMPACT ON A CONCENTRATED POOL IS USUALLY LIMIT ORDERS (RAZA 2026-11-18: ChatGPT saw 0.1, 10 and 100 NEAR ->
+    // LUMOS all at 0% and one rate, and asked whether to trust it). A DCL pool can hold resting limit orders at one
+    // price -- LUMOS/wNEAR is ~100M LUMOS of them and no range liquidity -- and those fill at that price until they run
+    // out, so the rate really is flat. Said in the answer, with where to see how much is left.
+    if (impact != null && impact < 0.05 && route.hops.some((h) => h.pool.dcl)) {
+      quote.impact_note = 'Price impact is ~0 because this route fills from a concentrated (DCL) pool, which can hold '
+        + 'resting limit orders at a single price: those fill at that price until they run out, so the rate stays flat '
+        + 'across sizes. list_pools with this asset shows how much is resting on each side.';
+    }
     return { quote };
   } catch (e) {
     if (e instanceof QuoteBusy) return { error: 'NEAR\'s public RPC is busy right now, so no quote was read. Try again in a moment — this is not a missing route.' };
@@ -681,11 +743,11 @@ async function getOrderbook({ asset }) {
   const ra = await wantNearAsset('asset', asset);
   if (ra.error) return fail(ra.error);
   const a = ra.want;
-  return fail('NEAR has no order book on LumosCore. Trading here goes through Rhea\'s AMM pools, '
-    + 'which hold reserves rather than resting bids and asks, so there is no book to quote — an '
-    + 'empty one would read as "no liquidity", which would be false. Use list_pools'
-    + (a.native ? '' : ` with asset: "${a.id}"`) + ' to see the pools and their depth, and '
-    + 'get_market for the current price.');
+  return fail('NEAR has no central order book. Trading goes through Rhea: classic AMM pools, and concentrated (DCL) '
+    + 'pools that can also hold resting limit orders — the limit orders the NEAR trade page places live inside those '
+    + 'pools, not in a separate book. Use list_pools'
+    + (a.native ? ' with a token' : ` with asset: "${a.id}"`) + ' to see both kinds, including how much of each side '
+    + 'is resting limit orders, get_quote for an executable figure, and get_market for the current price.');
 }
 
 async function getRewards({ address }) {

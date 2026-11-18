@@ -325,11 +325,64 @@ async function getPortfolio({ address }) {
 // ripple_path_find takes a source ACCOUNT, because the routes available depend on that account's own
 // trustlines and balances -- the same swap is routable for one account and not for another.
 //
-// The tempting shortcut is to walk book_offers instead and skip the address. Measured, that is wrong:
-// the XRP/RLUSD AMM holds about 1.9M XRP, and the AMM account does not appear in the top of
-// book_offers at all. A book-only quote would price a swap against a few thousand XRP of resting
-// offers and ignore the pool that would actually fill it. A number that confident and that wrong is
-// worse than asking for one more argument.
+// A book-only quote would be wrong: the XRP/RLUSD AMM holds about 1.9M XRP, and the AMM account does not
+// appear in book_offers at all, so it would price a swap against a few thousand XRP of resting offers
+// and ignore the pool that would actually fill it.
+//
+// SO WITHOUT AN ADDRESS, THE BOOK AND THE AMM, BOTH (RAZA 2026-11-18: ChatGPT reported XRPL quoting as
+// broken because it would not quote without a wallet -- "what would 100 XRP buy?" usually has no account
+// behind it). The public market is the same for everyone: the resting offers (book_offers) and the pool
+// (amm_info) for each hop. Each hop is walked at the exact amount, taking the better of the two -- the
+// payment engine can also MIX them within one hop, so a real fill is this or better. The direct pair is
+// compared with the route through XRP, the bridge the engine itself uses (autobridging). Price impact is
+// the same route at a thousandth of the size, from the same reads. With an address, the router answers
+// for that account exactly (below), and that is still the number to sign against.
+const AMM_FEE_UNIT = 100000;                                  // amm_info trading_fee: 1000 = 1%
+const amtOf = (v) => (v && typeof v === 'object' ? +v.value : +v / 1e6);
+async function readHop(f, t) {
+  const [amm, book] = await Promise.all([
+    xrplRpc('amm_info', { asset: rippled(f), asset2: rippled(t), ledger_index: 'validated' }).catch(() => null),
+    xrplRpc('book_offers', { taker_gets: rippled(t), taker_pays: rippled(f), limit: 200, ledger_index: 'validated' }).catch(() => null),
+  ]);
+  let pool = null;
+  const a = amm && amm.amm;
+  if (a && a.amount && a.amount2) {
+    const side = (v) => (typeof v === 'object' ? v.currency === (f.native ? 'XRP' : f.currency) && v.issuer === f.issuer : f.native);
+    const inR = side(a.amount) ? amtOf(a.amount) : amtOf(a.amount2);
+    const outR = side(a.amount) ? amtOf(a.amount2) : amtOf(a.amount);
+    if (inR > 0 && outR > 0) pool = { inR, outR, fee: (+a.trading_fee || 0) / AMM_FEE_UNIT, account: a.account };
+  }
+  // Each offer: we pay TakerPays to get TakerGets; the funded figures are what the owner can actually cover.
+  const offers = ((book && book.offers) || []).map((o) => ({
+    gets: amtOf(o.taker_gets_funded || o.TakerGets), pays: amtOf(o.taker_pays_funded || o.TakerPays),
+  })).filter((o) => o.gets > 0 && o.pays > 0);
+  return { pool, offers };
+}
+function hopOut(h, x) {
+  let p = 0;
+  if (h.pool) { const xin = x * (1 - h.pool.fee); p = h.pool.outR * xin / (h.pool.inR + xin); }
+  let left = x, got = 0;
+  for (const o of h.offers) { if (left <= 0) break; if (left >= o.pays) { got += o.gets; left -= o.pays; } else { got += o.gets * left / o.pays; left = 0; } }
+  const b = left > 1e-12 ? 0 : got;
+  return p >= b ? { out: p, via: p > 0 ? 'AMM' : null } : { out: b, via: 'order book' };
+}
+async function marketQuote(f, t, amt) {
+  const XRPA = { native: true, id: 'XRP', code: 'XRP' };
+  const routes = [[f, t]];
+  if (!f.native && !t.native) routes.push([f, XRPA, t]);
+  const read = await Promise.all(routes.map((r) => Promise.all(r.slice(0, -1).map((a, i) => readHop(a, r[i + 1])))));
+  const walk = (hops, x) => { const via = []; for (const h of hops) { const s = hopOut(h, x); if (!(s.out > 0)) return null; via.push(s.via); x = s.out; } return { out: x, via }; };
+  let best = null;
+  read.forEach((hops, i) => {
+    const w = walk(hops, amt); if (!w) return;
+    if (!best || w.out > best.out) best = { ...w, hops, assets: routes[i] };
+  });
+  if (!best) return null;
+  const tiny = walk(best.hops, amt / 1000);
+  const impact = tiny && tiny.out > 0 ? Math.max(0, (1 - (best.out / amt) / (tiny.out / (amt / 1000))) * 100) : null;
+  return { best, impact };
+}
+
 async function getQuote({ from, to, amount, address }) {
   const rf = await wantXrplAsset('from', from); if (rf.error) return fail(rf.error);
   const rt = await wantXrplAsset('to', to);     if (rt.error) return fail(rt.error);
@@ -338,11 +391,36 @@ async function getQuote({ from, to, amount, address }) {
   if (!isFinite(amt) || amt <= 0) return fail('amount must be a positive number.');
   if (f.id === t.id) return fail('from and to are the same asset.');
   const addr = String(address || '').trim();
-  if (!R_RE.test(addr)) {
-    return fail('On the XRP Ledger a quote needs `address` — your r… account. The ledger\'s own router '
-      + '(ripple_path_find) answers per account, because which routes exist depends on the trustlines '
-      + 'and balances that account holds. Pass address to get the real executable number. '
-      + 'get_market gives an indicative price without one.');
+  if (addr && !R_RE.test(addr)) return fail('address must be an XRP Ledger account (r…), or left out for a public-market quote.');
+  if (!addr) {
+    const q = await marketQuote(f, t, amt);
+    if (!q) {
+      return fail(`No order book or AMM on the XRP Ledger can fill ${amt} ${f.code} → ${t.code}, directly or through XRP. `
+        + 'Pass address for the ledger\'s own router, which also searches longer paths for that account.');
+    }
+    const r = q.best;
+    const res = {
+      chain: 'xrpl', from: f.id, to: t.id, amount_in: amt,
+      amount_out: nf(r.out, 8), rate: nf(r.out / amt, 10),
+      price_impact_pct: q.impact == null ? null : nf(q.impact, 2),
+      route: r.assets.map((a) => a.code).join(' → '),
+      venues: r.via,
+      quote_basis: 'public market: each hop walked at this amount through the order book and the AMM pool, the '
+        + 'better of the two; the direct pair compared with the route through XRP.',
+      wallet_specific: false,
+      wallet_note: 'Not tied to an account. Pass address (r…) for the ledger router\'s answer for that wallet, '
+        + 'which accounts for its trustlines and can find longer paths. The ledger may also mix book and AMM in '
+        + 'one hop, so a real fill is this figure or better.',
+      trading_fee_pct: 0.2,
+      fee_note: 'LumosCore charges 0.2%, or 0.1% if you hold 250,000+ LUMOS. The XRP Ledger network fee is a fraction of a drop.',
+      quote_source: 'XRP Ledger book_offers and amm_info, from a validated ledger',
+      note: 'Indicative. The executed price is quoted again at signing time.',
+      page: web('/trade/xrpl/' + slug(t.native ? f : t)),
+    };
+    if (q.impact != null && q.impact >= 5) {
+      res.warning = `This trade moves the price by about ${nf(q.impact, 1)}% — the market is shallow for this size. Tell the person before they swap, and suggest a smaller amount.`;
+    }
+    return ok(res);
   }
 
   // destination_amount "-1" asks the router for the most it can deliver. For an IOU the -1 goes in
@@ -520,18 +598,13 @@ async function swap({ from, to, amount, address }) {
   if (!(+amount > 0)) return fail('amount must be a positive number.');
   if (f.id === t.id) return fail('from and to are the same asset.');
 
-  // A quote needs an account on this chain (see getQuote). Without one the swap is still prepared --
-  // the link is the useful part -- and the response says plainly that no number was obtained, rather
-  // than quietly omitting the field and letting the agent assume it failed to matter.
+  // The quote: for that account when an address is given (the ledger router), otherwise the public-market
+  // quote (book + AMM), which getQuote labels as not wallet-specific (see getQuote, 2026-11-18). A quote that
+  // cannot be read does not stop the swap -- the link is the useful part -- and the reason is said plainly.
   let quote = null, quoteError = null;
-  if (address) {
-    const q = await getQuote({ from, to, amount, address });
-    if (q.isError) quoteError = q.content[0].text;
-    else quote = JSON.parse(q.content[0].text);
-  } else {
-    quoteError = 'No `address` was given, so no executable quote was fetched. '
-      + 'ripple_path_find answers per account on the XRP Ledger.';
-  }
+  const q = await getQuote({ from, to, amount, address });
+  if (q.isError) quoteError = q.content[0].text;
+  else quote = JSON.parse(q.content[0].text);
 
   const summary = `Swap ${amount} ${f.code} for ${t.code} on the XRP Ledger`
     + (quote ? ` — about ${quote.amount_out} ${t.code}` : '');
