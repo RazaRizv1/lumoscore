@@ -479,7 +479,10 @@ function runtime() {
     var pill = step.querySelector('[data-lxs2dest]');
     if (pill) {
       var ic = pill.querySelector('.lx-s2ic'), nm = pill.querySelector('.lx-s2nm');
-      if (nm && nm.textContent !== d.name) nm.textContent = d.name || 'Choose network';
+      // Compared against what it WRITES, not against d.name: with the destination emptied (a source that
+      // reaches no chosen network) 'Choose network' never equals '', so every write fired this observer
+      // and wrote again, freezing the page. Same fix as NEAR (ticket 355, 11-12) and XRPL (11-18).
+      if (nm && nm.textContent !== (d.name || 'Choose network')) nm.textContent = d.name || 'Choose network';
       var want = d.icon ? '<img src="' + esc(d.icon) + '" alt="">' : '';
       if (ic && ic.getAttribute('data-src') !== d.icon) { ic.innerHTML = want; ic.setAttribute('data-src', d.icon); }
     }

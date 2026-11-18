@@ -727,7 +727,9 @@ const netParam = (v) => {
 };
 const addrParam = (v) => {
   const s = String(v || '').trim();
-  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s) ? s : '';
+  // Third shape: a NEAR named account (lumoscore-near-testing.near) -- see the same rule in tools.js.
+  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s)
+    || /^(?=.{2,64}$)[a-z0-9]+([_-][a-z0-9]+)*(\.[a-z0-9]+([_-][a-z0-9]+)*)+$/.test(s) ? s : '';
 };
 
 async function bridge({ asset, to_network, amount, recipient }) {
@@ -741,11 +743,23 @@ async function bridge({ asset, to_network, amount, recipient }) {
   return prepared('bridge', `Bridge ${amount} ${asset} from the XRP Ledger to ${to_network}`,
     web('/bridge/xrpl') + (q.length ? '?' + q.join('&') : ''),
     { ...(recipient ? { recipient } : {}), to_network,
-      // Axelar is the corridor that reaches XRPL, and it carries the TOKEN rather than the name: XRP
-      // lands on the far side as wXRP. Saying so here stops an agent reporting that "XRP arrived".
-      note: 'The XRP Ledger corridor is Axelar. It carries the token, not the name — XRP arrives on '
-        + 'the destination chain as a wrapped representation (wXRP), not as native XRP. The route and '
-        + 'its fee are shown before you approve.'
+      // WHAT CAN GO WHERE, measured on the page 2026-11-18 (a ChatGPT agent asked for USDC -> NEAR and
+      // the page cleared NEAR the moment USDC was picked). XRP reaches every listed network through
+      // NEAR Intents, THORChain or Axelar. An issued token in Axelar's registry -- Circle USDC is one --
+      // can ONLY travel by Axelar, to the chains it is registered on (USDC: XRPL EVM), and the page
+      // offers it no swap-first path. Any other issued token is swapped to XRP on the ledger first and
+      // then reaches what XRP reaches. The old note said "the corridor is Axelar", which was true only
+      // of that registered case and made every XRP transfer sound like a wXRP one.
+      ...(/^USDC$/i.test(String(asset).trim()) && !/xrpl[ -]?evm/i.test(String(to_network))
+        ? { route_warning: 'USDC on the XRP Ledger (Circle) is an Axelar-registered token and can only be '
+          + 'bridged to XRPL EVM. For ' + to_network + ', swap the USDC to XRP first (swap tool), then '
+          + 'bridge XRP — the page clears the destination if USDC is picked.' } : {}),
+      note: 'From the XRP Ledger, XRP reaches every listed network (NEAR Intents, THORChain or Axelar). '
+        + 'An Axelar-registered issued token travels only by Axelar, to the chains it is registered on, '
+        + 'and arrives as that token (XRP sent by Axelar arrives as wXRP). Other issued tokens are '
+        + 'swapped to XRP on the ledger first. With a wallet connected the link selects the network, '
+        + 'the asset (when exactly one asset in the picker has that ticker) and the receiving address; the '
+        + 'route and its fee are shown before you approve.'
         + (recipient ? '' : ' No destination address was given, so enter the receiving address on the page.') });
 }
 

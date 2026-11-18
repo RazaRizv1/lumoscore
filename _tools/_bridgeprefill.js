@@ -32,6 +32,17 @@
 //     cost someone money, so the amount is written ONLY into a real input, and only once the card is
 //     already showing the asset that was asked for. Where that never happens nothing is written, and
 //     the MCP reply still states the asset and the amount in words.
+//
+// 2026-11-18, A CONNECTED WALLET NOW GETS THE ASSET TOO (a ChatGPT agent testing the MCP: the XRPL link
+// "doesn't prefill the selections"). With a wallet connected the picker IS readable: both clients
+// build `#lx-br-amenu`, one button per asset, the ticker in `.anm`. So BEFORE the network (the asset
+// decides which networks are reachable), the layer opens the FROM chip, and clicks a row only when EXACTLY ONE row's ticker equals ?asset= -- two USDs
+// from two issuers is a choice for the person, not for a query string. The menu is hidden for the
+// one tick it is open, so nothing flashes. No wallet, no menu, nothing picked: the old behaviour.
+// Picking can clear the network (an asset that cannot reach it); that is left visible, never undone.
+// A destination the current asset cannot reach (`data-lxunreach`) is no longer clicked at all.
+// The recipient also takes NEAR named accounts (lumoscore-near-testing.near), which the 20-100
+// alphanumeric rule threw away.
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
@@ -46,12 +57,13 @@ const SCRIPT = '<script id="lx-bridgeprefill">(function(){try{'
   + 'if(as&&!/^[A-Za-z0-9._-]{1,40}$/.test(as))as="";'
   + 'if(am&&!/^[0-9]+(\\.[0-9]+)?$/.test(am))am="";'
   + 'if(am&&+am<=0)am="";'
-  + 'if(rc&&!(/^[A-Za-z0-9]{20,100}$/.test(rc)||/^0x[0-9a-fA-F]{40}$/.test(rc)))rc="";'
-  + 'if(!to&&!am&&!rc)return;'
+  + 'if(rc&&!(/^[A-Za-z0-9]{20,100}$/.test(rc)||/^0x[0-9a-fA-F]{40}$/.test(rc)'
+  + '||/^(?=.{2,64}$)[a-z0-9]+([_-][a-z0-9]+)*(\\.[a-z0-9]+([_-][a-z0-9]+)*)+$/.test(rc)))rc="";'
+  + 'if(!to&&!as&&!am&&!rc)return;'
   + 'var tries=0,touched=false,timer=null;'
   // net: 0 not attempted yet, 1 set, -1 cannot be set. opened counts trigger clicks so a menu that
   // refuses to open is abandoned instead of being clicked once every 250ms.
-  + 'var net=to?0:1,opened=0,didAm=false;'
+  + 'var net=to?0:1,opened=0,nwait=0,didAm=false;'
   // Any TRUSTED event inside the wizard ends this for good. A synthetic event has isTrusted false,
   // so we cannot stop ourselves by writing.
   + '["input","keydown","pointerdown"].forEach(function(ev){'
@@ -85,17 +97,28 @@ const SCRIPT = '<script id="lx-bridgeprefill">(function(){try{'
   + '  var c=chip();if(!c)return;'
   + '  var menu=document.querySelector(".br-wizard .brd-menu");'
   + '  if(!menu)return;'
+  + '  function find(){var opts=[].slice.call(menu.querySelectorAll(".brd-opt")),want=U(to),h=null;'
+  + '    for(var i=0;i<opts.length&&!h;i++){'
+  + '      if(U(opts[i].getAttribute("data-net"))===want)h=opts[i];}'
+  + '    for(var j=0;j<opts.length&&!h;j++){'
+  + '      if(U(txt(opts[j]))===want)h=opts[j];}'
+  + '    return {n:opts.length,h:h};}'
+  // XRPL flags an option `data-lxunreach` until it knows what the source can reach, and XRPL EVM stays
+  // flagged until Axelar's registry lands -- AFTER the page calls itself ready. Refusing it then refused
+  // a good network (measured on staging 2026-11-18), so an unreachable option is WAITED on, without
+  // opening the menu, for up to 20s. Stellar never sets the flag.
+  + '  var pre=find();'
+  + '  if(pre.h&&pre.h.hasAttribute("data-lxunreach")){'
+  + '    if(nwait++<80){if(vis(menu)){try{c.click();}catch(_){}}return;}'
+  + '    pre.h=null;}'
   + '  if(!vis(menu)){'
   + '    if(opened++>3){net=-1;return;}'
   + '    try{c.click();}catch(_){}'
   + '    return;}'
-  + '  var opts=[].slice.call(menu.querySelectorAll(".brd-opt"));'
-  + '  if(!opts.length)return;'
-  + '  var want=U(to),hit=null;'
-  + '  for(var i=0;i<opts.length&&!hit;i++){'
-  + '    if(U(opts[i].getAttribute("data-net"))===want)hit=opts[i];}'
-  + '  for(var j=0;j<opts.length&&!hit;j++){'
-  + '    if(U(txt(opts[j]))===want)hit=opts[j];}'
+  + '  var f=find();'
+  + '  if(!f.n)return;'
+  + '  var hit=f.h;'
+  + '  if(hit&&hit.hasAttribute("data-lxunreach"))hit=null;'
   + '  if(!hit){'
   // No such destination from this chain. Close the menu we opened -- leaving a 53-row dropdown hanging
   // open over the card is worse than doing nothing -- and stop touching the wizard.
@@ -127,10 +150,48 @@ const SCRIPT = '<script id="lx-bridgeprefill">(function(){try{'
   + '  var cur=String(i.value||"").trim();'
   + '  if(cur&&!/^0(\\.0+)?$/.test(cur)){didAm=true;return;}'
   + '  put(i,am);didAm=true;}'
+  // STEP 2 -- the asset, from the connected wallet's own picker. asSt: 0 pending, 1 done, -1 given up.
+  // ASSET BEFORE NETWORK: what the asset can reach decides which networks are offered, so a network
+  // picked first can be cleared by the pick. No connected wallet means no picker: skipped at once,
+  // so a visitor without one gets the network with no delay. lumos.address is the one key every
+  // chain uses ([[lumos-address-is-a-shared-key-across-chains]]).
+  + 'var asSt=as?0:1,asTries=0;'
+  + 'try{if(as&&!localStorage.getItem("lumos.address"))asSt=-1;}catch(_){asSt=-1;}'
+  + 'function menu(){var m=document.getElementById("lx-br-amenu");'
+  + '  return m&&m.isConnected&&m.style.display!=="none"?m:null;}'
+  // Returns true only when it ACTED (opened the picker), so a tick with no picker to read falls
+  // through to the network: the network never waits on an asset that may never become pickable
+  // (staging 2026-11-18: an address the page could not read held the network back for 25s).
+  + 'var zero=0;'
+  + 'function doAs(){'
+  + '  var f=fromSide();if(!f)return false;'
+  + '  var a=f.querySelector(".br-asset");if(!a)return false;'
+  // The asset is in place: the network is tried once more against what THIS asset reaches, since a
+  // network attempted while the source was still XRP may have timed out or been cleared by the pick.
+  + '  if(U(txt(a.querySelector(".nm")))===U(as)){asSt=1;'
+  + '    if(to&&net!==1){net=0;opened=0;nwait=0;}return false;}'
+  // Holdings measured at up to ~9s, and a rate-limited read is retried after the ~16s the limiter names.
+  + '  if(asTries++>100){asSt=-1;return false;}'
+  + '  if(menu())return false;'                             // someone else's menu is open: wait
+  + '  try{a.click();}catch(_){}'
+  + '  var m=menu();if(!m)return false;'                    // no wallet / balances not in yet
+  + '  m.style.visibility="hidden";'
+  + '  var hit=[].slice.call(m.querySelectorAll("button")).filter(function(b){'
+  + '    var n=b.querySelector(".anm");'
+  + '    return n&&b.style.display!=="none"&&U(txt(n))===U(as);});'
+  + '  if(hit.length===1){try{hit[0].click();}catch(_){}}'
+  + '  if(menu()){try{a.click();}catch(_){}}'               // still open: shut it again
+  + '  m.style.visibility="";'
+  // The picker opened and the asset is not in it: a few more looks (the curated rows land late),
+  // then stop opening it.
+  + '  if(!hit.length&&++zero>8)asSt=-1;'
+  + '  if(hit.length>1)asSt=-1;'
+  + '  return true;}'
   + 'function tick(){'
-  + '  if(touched||tries++>60){stop();return;}'
+  + '  if(touched||tries++>160){stop();return;}'
   + '  if(!document.querySelector(".br-wizard"))return;'
-  + '  if(net===0){doNet();return;}'                       // one step per tick; let the page react
+  + '  if(asSt===0&&doAs())return;'                         // one step per tick; let the page react
+  + '  if(net===0){doNet();return;}'
   + '  if(rc)doRc();'
   + '  if(am&&!didAm)doAm();'
   + '}'

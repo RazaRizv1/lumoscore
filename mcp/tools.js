@@ -728,7 +728,10 @@ const netParam = (v) => {
 };
 const addrParam = (v) => {
   const s = String(v || '').trim();
-  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s) ? s : '';
+  // The third shape is a NEAR named account (lumoscore-near-testing.near), which the 20-100 alphanumeric
+  // rule dropped from the link without a word (2026-11-18). Same rule as the page's prefill layer.
+  return /^[A-Za-z0-9]{20,100}$/.test(s) || /^0x[0-9a-fA-F]{40}$/.test(s)
+    || /^(?=.{2,64}$)[a-z0-9]+([_-][a-z0-9]+)*(\.[a-z0-9]+([_-][a-z0-9]+)*)+$/.test(s) ? s : '';
 };
 
 async function bridge({ asset, to_network, amount, recipient }) {
