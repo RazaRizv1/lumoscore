@@ -545,13 +545,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // worse than before if the proxy is ever unavailable -- including on the local dev server.
   function seaIdx(q,limit){
     var qs="search="+encodeURIComponent(q)+"&limit="+(limit||12);
-    function direct(){
-      return fetch("https://api.stellar.expert/explorer/public/asset?"+qs)
-        .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); });
-    }
+    // NO DIRECT stellar.expert FALLBACK (2026-11-19). From a page on lumoscore.com the browser always blocks it (CORS), and
+    // the API is paid now, so it only added a failed request before every error. A 400 from our proxy means the QUERY was
+    // refused (symbols such as < > ! or an emoji), not that the index is down, so it is tagged and reported as such.
     return fetch("/lxapi/assetsearch?"+qs)
-      .then(function(r){ if(!r.ok)throw new Error("p"+r.status); return r.json(); })
-      .catch(direct);
+      .then(function(r){ if(r.status===400){ var e=new Error("p400"); e.bad=1; throw e; } if(!r.ok)throw new Error("p"+r.status); return r.json(); });
   }
   
     function seaFetch(q,cb){
@@ -587,7 +585,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         out.sort(function(a,b){ return (b.tl||0)-(a.tl||0); });   // the widely-held one first; an unmeasured count sorts last rather than making the comparator NaN
         SEA_CACHE[q]=out; cb(out);
       })
-      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
+      // "bad" = the query itself was refused; cached so focus or keyup re-renders do not re-ask and flicker back to
+      // "Searching". null = the index failed (distinct from "no results"), never cached.
+      .catch(function(e){ if(e&&e.bad){ SEA_CACHE[q]="bad"; cb("bad"); return; } cb(null); });
   }
   function render(){
     var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
@@ -614,6 +614,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // neither of which needs the index at all. That is the whole "the pool appears, then vanishes,
         // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
         // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
+        if(remote==="bad"){
+          var _leadB = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
+          paint(list, _leadB + '<div class="sp-seaempty">No matches. Search by name, ticker or address; symbols like &lt; &gt; ! are not searched.</div>');
+          return; }
         if(remote===null){
           // One transient failure should not wipe the results. Retry once, quietly, before saying
           // the index is down -- this message was showing up far more often than the index is
