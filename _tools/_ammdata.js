@@ -926,7 +926,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // When the local pass leaves nothing, ask the network: resolve the code to its issuers through the
   // asset index, then ask Horizon for the pools holding that reserve. Debounced, sequence-guarded so a
   // slower earlier query cannot overwrite a newer one, and cached per query.
-  var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="";
+  var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="", LXPS_PEND="";   // LXPS_PEND: the query already scheduled (bug S40)
   // A search that cannot finish in this long is queued behind the page's own Horizon traffic, not
   // working. Say so rather than spinning: the answer is still cached if it lands later.
   var LXPS_TIMEOUT=12000;
@@ -980,11 +980,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     if(qq.length<2){ host.innerHTML=""; host.style.display="none"; return; }
     // Only go to the network when the page itself has nothing to show for it.
     if(hits){ host.innerHTML=""; host.style.display="none"; return; }
+    // A RE-APPLY IS NOT A NEW SEARCH (bug S40, 2026-11-19): the list re-renders faster than the 260 ms debounce, and
+    // restarting it each time meant the request was never sent. Same query already pending: leave it running.
+    if(LXPS_PEND===qq&&LXPS_CACHE[qq]===undefined){ host.style.display=""; return; }
     var seq=++LXPS_SEQ;
     host.style.display="";
     if(LXPS_CACHE[qq]!==undefined){ lxPsPaint(host,LXPS_CACHE[qq],qq); return; }
     host.innerHTML='<div class="lx-psnote">Searching Stellar for pools with \u201c'+esc(qq)+'\u201d\u2026</div>';
-    clearTimeout(LXPS_T);
+    clearTimeout(LXPS_T); LXPS_PEND=qq;
     LXPS_T=setTimeout(function(){
       lxPsRace(fetch("/lxapi/assetsearch?search="+encodeURIComponent(qq)+"&limit=12")
         .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
@@ -1077,6 +1080,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var v=(inp.value||"").trim();
       if(v.length<2)return;
       try{ delete LXPS_CACHE[v]; }catch(_){}      // a retry must not be answered from the failed attempt
+      LXPS_PEND="";                                 // and must not be mistaken for the pending one (bug S40)
       try{ lxPoolSearch(v); }catch(_){}
     });
   }
@@ -4177,7 +4181,18 @@ function maxShares(dd){
       // until an amount exists — and while it sat there empty-handed it displayed the design's baked
       // 620.30 / 1,860.90, which reads as a real quote. Hide the whole field until there is an amount.
       var _host=(e.A&&e.A.a.closest&&e.A.a.closest(".dw-field"))||(e.B&&e.B.a.closest&&e.B.a.closest(".dw-field"))||null;
-      if(_host)_host.style.display=(sh>0)?"":"none";
+      // S57 (2026-11-19): an amount above your LP is not a withdrawal you can make, so it gets no quote. It used
+      // to show "You receive 25 USDC + 183 XLM" under "Your LP: 0". A quiet line under the field says why instead.
+      // Every write is diff-guarded: the #dwWithdraw observer re-runs this after each change.
+      var _over=sh>d.myShares*(1+1e-6)+1e-4;
+      if(_host){ var _hd=(sh>0&&!_over)?"":"none"; if(_host.style.display!==_hd)_host.style.display=_hd; }
+      try{ var _wf=(w&&w.closest)?w.closest(".dw-field"):null;
+        if(_wf&&_wf.parentNode){ var _wp=q("#dwWithdraw"), _wn=_wp?_wp.querySelector(".lx-wover"):null;
+          if(!_wn){ _wn=document.createElement("div"); _wn.className="lx-wover"; _wn.style.cssText="font-size:12px;line-height:1.4;color:var(--red,#ef4444);margin:6px 2px 0"; }
+          if(_wn.previousSibling!==_wf)_wf.parentNode.insertBefore(_wn,_wf.nextSibling);
+          var _wt=_over?("More than your LP ("+famt(d.myShares||0)+")"):"";
+          if(_wn.textContent!==_wt)_wn.textContent=_wt;
+          var _wv=_over?"":"none"; if(_wn.style.display!==_wv)_wn.style.display=_wv; } }catch(_){}
       var sideA=d.nonXlm?d.a0:{code:d.code,issuer:d.issuer}, sideB=d.nonXlm?d.a1:{code:"XLM",native:true};
       var amtA=(d.nonXlm?d.a0.amt:d.tok)*frac, amtB=(d.nonXlm?d.a1.amt:d.xlm)*frac;
       wrSide(e.A,sideA,famt(amtA)); wrSide(e.B,sideB,famt(amtB));
@@ -4187,6 +4202,20 @@ function maxShares(dd){
     // reasons -- they mean FIELD 1 and FIELD 2, which are only token/XLM on an XLM pool.
     function maxBal(){ var from1=r>0?bal1()/r:0; var t=Math.min(bal0(),from1); return {tok:t,xlm:t*r}; }
     function dInputs(){ return qa("#dwDeposit .dw-field input"); }   // re-query each time (design may re-create them)
+    // SAY IT WHILE TYPING (bugs S54 / S55, 2026-11-19): 500 USDC against 0 USDC, or "-3", sat in the field with nothing
+    // said until Add Liquidity was pressed. A raw XLM balance of 0 means the account was not read (a funded account
+    // always holds XLM), so the hints stay quiet rather than claim a 0 balance.
+    function depHints(){ if(!myAddr()||!(d.balXlmRaw>0||d.balXlm>0))return; var di=dInputs();
+      [0,1].forEach(function(k){ var inp=di[k]; if(!inp)return; var f=inp.closest?inp.closest(".dw-field"):null; if(!f||!f.parentNode)return;
+        var raw=String(inp.value||"").split(",").join("").trim(), v=parseFloat(raw), b=k===0?bal0():bal1(), c=k===0?code0():code1(), t="";
+        if(raw.charAt(0)==="-")t="Amounts can"+String.fromCharCode(8217)+"t be negative.";
+        else if(v>0&&v>b+1e-7)t="More than your balance ("+famt(b)+" "+c+((k===1&&!d.nonXlm)?" after the account reserve":"")+")";
+        var n=f.parentNode.querySelector(".lx-dhint"+k);
+        if(!t){ if(n&&n.style.display!=="none")n.style.display="none"; return; }
+        if(!n){ n=document.createElement("div"); n.className="lx-dhint"+k; n.style.cssText="font-size:12px;line-height:1.4;color:var(--red,#ef4444);margin:6px 2px 14px"; }
+        if(n.previousSibling!==f)f.parentNode.insertBefore(n,f.nextSibling);
+        if(n.textContent!==t)n.textContent=t; if(n.style.display!=="")n.style.display=""; }); }
+    var _dpH=q("#dwDeposit"); if(_dpH&&!_dpH.__lxDH){ _dpH.__lxDH=1; _dpH.addEventListener("input",function(){ setTimeout(depHints,0); }); }
     function setDep(t,x){ var di=dInputs(); if(di[0])di[0].value=fmtIn(t); if(di[1])di[1].value=fmtIn(x); shareAfter(); }
     // Delegated on the deposit panel so it survives the design re-rendering its inputs: edit one -> compute the other.
     var dpanel=q("#dwDeposit"); if(dpanel&&!dpanel.__lxDIn){ dpanel.__lxDIn=1; dpanel.addEventListener("input",function(e){ if(!e.target||e.target.tagName!=="INPUT")return; var di=dInputs(); if(e.target===di[0]){ var t=parseFloat(String(di[0].value).replace(/,/g,""))||0; if(di[1])di[1].value=fmtIn(t*r); shareAfter(); } else if(e.target===di[1]){ var x=parseFloat(String(di[1].value).replace(/,/g,""))||0; if(di[0])di[0].value=fmtIn(r>0?x/r:0); shareAfter(); } }); }
@@ -4411,7 +4440,7 @@ function maxShares(dd){
         });
         // Say so rather than showing an empty box that reads as a broken list.
         var em=dd.querySelector(".lx-cpnone");
-        if(!hit){ if(!em){ em=document.createElement("div"); em.className="lx-cpnone"; em.textContent="No asset matches that ticker";
+        if(!hit){ if(!em){ em=document.createElement("div"); em.className="lx-cpnone"; em.textContent="No asset in your wallet matches that ticker.";   /* the list is held assets only: bug S47 */
             em.style.cssText="padding:14px 12px;font-size:12.5px;color:var(--text-muted,#8b8b97)";
             var lst=dd.querySelector(".ad-list"); if(lst)lst.appendChild(em); } }
         else if(em&&em.parentNode)em.parentNode.removeChild(em);

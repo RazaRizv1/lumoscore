@@ -174,14 +174,14 @@ const PAGES = {
     desc: 'What LumosCore records and what it does not. No cookies, no account, non-custodial — and a plain account of the one thing we do store.',
   },
   'list-token': {
-    title: 'List Your Token — Curated Stellar Listings | ' + BRAND,
-    desc: 'Apply for a curated listing on LumosCore. $250, paid in XLM, refunded in full if the listing is declined. Reviewed by a person, not a script.',
+    title: 'List Your Token — Curated Listings on Stellar, XRP Ledger and NEAR | ' + BRAND,
+    desc: 'Apply for a curated listing on LumosCore for a Stellar, XRP Ledger or NEAR token. $250, refunded in full if the listing is declined. Reviewed by a person, not a script.',
   },
   // The blog INDEX. Individual posts are titled at the edge from KV (blogSeo in the middleware), so
   // this entry must never describe a specific post -- it is the list page.
   'blog': {
-    title: 'Blog — Stellar DeFi Guides and Product News | ' + BRAND,
-    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, and what we have shipped.',
+    title: 'Blog — DeFi Guides and Product News | ' + BRAND,
+    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, the XRP Ledger and NEAR, and what we have shipped.',
   },
   // SOMEONE ELSE'S ADDRESS, read off the public ledger, one page per account. Deliberately generic:
   // the real title is written at the edge where the address is known, and a baked title must not
@@ -271,8 +271,8 @@ const PAGES = {
   // post failed to load. It replaces a 14-character "LumosCore Blog", which was the title the old
   // soft-404 served for every nonexistent slug.
   'blog-post': {
-    title: 'Blog — Stellar DeFi Guides and Product News | ' + BRAND,
-    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, and what we have shipped.',
+    title: 'Blog — DeFi Guides and Product News | ' + BRAND,
+    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, the XRP Ledger and NEAR, and what we have shipped.',
   },
   // /faq AND /docs/faq are the same page; the canonical points at /faq. One entry covers both,
   // because baseName() keys on the file and the file is shared.

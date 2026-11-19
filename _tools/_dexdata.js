@@ -934,7 +934,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function labelFilterInput(){
     var want="Filter curated pairs";
     qa(".mdx-mk-search input,.dex-mk-search input,.search-box.inline-filter input,input.lx-mkq,.lx-mkq input").forEach(function(i){
-      if(i.getAttribute("placeholder")!==want)i.setAttribute("placeholder",want);
+      var w2=(i.id==="mdxMkSearch")?"Filter curated":want;   // phone box is 105 px at the 16px floor (bug S85)
+      if(i.getAttribute("placeholder")!==w2)i.setAttribute("placeholder",w2);
     });
   }
   // ---- the Curated chip is a three-way dropdown -------------------------------------------------
@@ -1154,7 +1155,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
     if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
   function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
-    if(x>=1e-8)return trimZ(x.toFixed(8));
+    if(x>=1e-4)return trimZ(x.toFixed(8));   // bug S26, 2026-11-19: plain only down to 0.0001; below it always the subscript form (was 1e-8, so one column mixed 0.00000002 with 0.0₈602)
     var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
     if(i<0)return String(x);
     var mant=trimZ(e.slice(0,i)).split(".").join(""), exp=-parseInt(e.slice(i+1),10);
@@ -1162,7 +1163,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     return "0.0"+zsub(exp-1)+mant; }
   function usdSmall(x){ x=+x||0; if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2}); if(x>=0.01)return "$"+x.toFixed(4); if(x>0)return "$"+smallNum(x,4); return "$0"; }
   function abbrUsd(n){ n=+n||0; var a=Math.abs(n); if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K"; if(a>=1)return "$"+n.toFixed(2); return usdSmall(n); }
-  function fmtAmt(n){ n=+n||0; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toFixed(0); }
+  function fmtAmt(n){ n=+n||0; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; if(n>0&&n<1)return n>=0.01?trimZ(n.toFixed(2)):"<0.01"; return n.toFixed(0); }   // under 1 is not "0": bug S24
   // #1: this is the function the mint rows have been calling all along, and it did not exist.
   //
   // One ReferenceError on the FIRST row aborted the entire forEach, and renderMints is called inside a
@@ -1695,8 +1696,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // cannot disagree again.
       var pct=card.querySelector(".dex-mover-pct");
       if(pct){
-        var _ptxt=(_cu!=null)?((up?"+":"")+_cu.toFixed(2)+"%"):"\\u2014";
-        var _pcls="dex-mover-pct"+(_cu!=null?(up?" up":" down"):"");
+        var _ptxt=(_cu!=null)?((Math.abs(_cu)<0.005?"0.00":(up?"+":"")+_cu.toFixed(2))+"%"):"\\u2014";
+        var _pcls="dex-mover-pct"+(_cu!=null&&Math.abs(_cu)>=0.005?(up?" up":" down"):"");
         if(pct.__lxPct!==_ptxt||pct.className!==_pcls){
           pct.__lxPct=_ptxt; pct.className=_pcls; pct.textContent=_ptxt;
         }
@@ -1845,7 +1846,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     try{ renderPager(pages); }catch(_){}
     // rebuild the skeleton ONLY when the filter/search changes (user action) or our rows were clobbered
     if(tb.__lxsig!==sig || (!tb.querySelector("tr[data-tkr]")&&!tb.querySelector("tr.lx-dex-empty-row"))){
-      if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
+      // A FILTER THAT MATCHES NOTHING IS NOT TEMPORARY (bug S17, 2026-11-19): same words as XRPL and NEAR when a query is typed.
+      if(!data.length){ var _sq0=(((q("#dexMkSearch")||{}).value)||"").trim(); tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">'+(_sq0?("No pair matches "+String.fromCharCode(8220)+_sq0.replace(/[&<>"]/g,function(c){return "&#"+c.charCodeAt(0)+";";})+String.fromCharCode(8221)+"."):"No matching markets on Stellar right now.")+'</div></td></tr>'; }
       else tb.innerHTML=data.map(function(a,_i){
         return '<tr data-tkr="'+(a.tkr||a.code)+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
           +'<td><a class="dex-mk-pair-link" href="'+assetHref(a)+'"><div class="dex-mk-pair-cell">'
@@ -1870,6 +1872,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       qa(".dex-mk-action-btn",tb).forEach(function(btn){ btn.addEventListener("click",function(e){ e.stopPropagation(); var a=byCode[btn.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       var shown=q("#dexMkShown"); if(shown)setTxt(shown,data.length===0?"0":(start+1)+"\\u2013"+(start+data.length));
       var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(all.length));
+      // ONE PAIR, NOT 1 PAIRS (bug S19, 2026-11-19); and the phone filter box is 105 px wide, so its placeholder is short (S85).
+      if(strongs[1]){ var tn=strongs[1].nextSibling; if(tn&&tn.nodeType===3){ var w=tn.nodeValue.replace(/pairs?/,all.length===1?"pair":"pairs"); if(w!==tn.nodeValue)tn.nodeValue=w; } }
+      var ms=document.getElementById("mdxMkSearch"); if(ms&&ms.getAttribute("placeholder")!=="Filter curated")ms.setAttribute("placeholder","Filter curated");
       if(sortReady)tb.classList.add("lxd");
     }
     if(sortReady&&!tb.classList.contains("lxd"))tb.classList.add("lxd");
@@ -1879,11 +1884,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       var _cu=chgShown(a); var up=(_cu||0)>=0;
       var pu=priceUsd(a), vu=a.vol!=null?a.vol*xlmUsd:null, hi=a.high!=null?a.high:a.px, lo=a.low!=null?a.low:a.px;
       setHTML(q(".dex-mk-price",tr),pxPair(a.px,pu,lcmExact));
-      var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null?(up?" up":" down"):""); setTxt(chg,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\\u2014"); }
+      var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null&&Math.abs(_cu)>=0.005?(up?" up":" down"):""); setTxt(chg,_cu!=null?(Math.abs(_cu)<0.005?"0.00":(up?"+":"")+_cu.toFixed(2))+"%":"\\u2014"); }
       setHTML(q(".dex-mk-vol",tr),(a.vol!=null?fmtAmt(a.vol)+" XLM":"\\u2014")+'<span class="sub">'+(vu!=null?lcm(vu):"")+'</span>');
       setTxt(q(".dex-mk-trades",tr),a.trades!=null?num(a.trades):"\\u2014");
       setHTML(q(".dex-mk-tvl",tr),a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014");
-      setTxt(q(".v-h",tr),fmtPrice(hi)); setTxt(q(".v-l",tr),fmtPrice(lo));
+      setTxt(q(".v-h",tr),hi>0?fmtPrice(hi):String.fromCharCode(8212)); setTxt(q(".v-l",tr),lo>0?fmtPrice(lo):String.fromCharCode(8212));   // no "H 0 L 0": bug S25
       fillSpark(tr,a.spark,up); paintIcons(tr);
     });
   }

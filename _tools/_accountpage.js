@@ -440,7 +440,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     if(a>=1)return "$"+n.toFixed(2);
     if(a>=0.01)return "$"+n.toFixed(4);          // cents matter; hundred-millionths of a cent do not
     if(a>0)return "$"+smallNum(n,4); return "$0"; }
-  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+DASH+a.slice(-4)):a; }
+  // An ellipsis, as everywhere else on the site; the em dash read as a range (bug S65, 2026-11-19).
+  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+String.fromCharCode(8230)+a.slice(-4)):a; }
   function ago(t){ var s=Math.max(0,(Date.now()-t)/1000);
     if(s<60)return Math.floor(s)+"s ago"; if(s<3600)return Math.floor(s/60)+"m ago";
     if(s<86400)return Math.floor(s/3600)+"h ago"; if(s<2592000)return Math.floor(s/86400)+"d ago";

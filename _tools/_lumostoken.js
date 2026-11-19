@@ -1432,8 +1432,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     },{passive:true});
   }
   function updateChartLegend(){
-    var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return; var mc=supply*priceUsd;
-    setText(q("#ctPriceAptos"), usd(priceUsd)); setText(q("#ctMcAptos"), "MC "+abbrUsd(mc));
+    var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return; var _cs=circSupply(), mc=(_cs!=null?_cs:supply)*priceUsd;   // circulating, as the header (bug S73)
+    if(!(mc>0)&&(updateChartLegend.__n=(updateChartLegend.__n||0)+1)<20)setTimeout(updateChartLegend,1500);   // supply not in yet: draw again, never MC 0
+    setText(q("#ctPriceAptos"), usd(priceUsd)); setText(q("#ctMcAptos"), mc>0?("MC "+abbrUsd(mc)):("MC "+String.fromCharCode(8212)));
     // single-network: blank the 2nd (Xrpl) legend entry + its label
     setText(q("#ctPriceXrpl"),""); setText(q("#ctMcXrpl"),"");
     qa(".ct-net, .cc-legend .nm, .ct-name").forEach(function(e){ var t=(e.textContent||""); if(/Xrpl|XRPL/i.test(t)||/Stellar/.test(t)){} });

@@ -1242,7 +1242,10 @@ function lxBrValidateStep2(){
   var wrap=(dstIn&&dstIn.closest)?dstIn.closest('.br-wallet'):null;
   if(wrap){ if(addr&&!addrOk) wrap.classList.add('lx-invalid'); else wrap.classList.remove('lx-invalid'); }
   // inline error (balance-exceeded takes priority over a malformed address)
-  if(overBal) lxBrStep2Err("Amount exceeds your balance ("+lxBrFmt(lxBrFloor(bal,bal>=1000?2:4),bal>=1000?2:4)+" "+k+").");
+  // AN AMOUNT OF 0 GETS A REASON (bug S71, 2026-11-19): it only dimmed Review transfer, with no message.
+  var zRaw=((amtIn?amtIn.value:'')||'').split(',').join('').trim(), zero=(zRaw!=='' && /^[0-9.]+$/.test(zRaw) && !(amt>0));
+  if(zero) lxBrStep2Err("Enter an amount greater than 0.");
+  else if(overBal) lxBrStep2Err("Amount exceeds your balance ("+lxBrFmt(lxBrFloor(bal,bal>=1000?2:4),bal>=1000?2:4)+" "+k+").");
   else if(routeMsg) lxBrStep2Err(routeMsg);
   else if(addr && !addrOk) lxBrStep2Err("That doesn't look like a valid "+(net||'destination')+" address.");
   else lxBrStep2Err("");
@@ -1750,7 +1753,7 @@ function lxBrAddRecentTx(o){
   var srcIco=srcImg?('<img class="lx-netimg" src="'+srcImg+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'):sIcon;
   var tr=document.createElement('tr'); tr.className="lx-newtx";
   tr.innerHTML='<td>'+(o.when||'Just now')+'</td>'
-    +'<td><span class="br-asschip">'+lxBrChipIco(o.srcKey,"",sIcon)+'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
+    +'<td><span class="br-asschip">'+lxBrChipIco(o.srcKey,"",sIcon)+'<span><span class="am">'+((o.srcAmount!==''&&o.srcAmount!=null&&isFinite(+o.srcAmount))?lxBrFmt(+o.srcAmount,(+o.srcAmount>0&&+o.srcAmount<1)?6:2):o.srcAmount)+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
     // A record with no source account gets a dash, not an empty link to /account/undefined.
     +'<td class="mono">'+(o.src?('<a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener" title="View source wallet on Stellar Expert">'+lxBrShort(o.src)+'</a>'):'\\u2014')+'</td>'
     // A burn whose destination is not known yet says so. It used to draw a broken image for the network, "0 USDC"
@@ -1845,7 +1848,7 @@ function lxBrMobCard(o){
       +'<a class="br-xplink" style="margin-left:auto" href="'+(o.bridge==="LayerZero"?('https://layerzeroscan.com/tx/'+o.hash):('https://stellar.expert/explorer/public/tx/'+o.hash))+'" target="_blank" rel="noopener" title="View burn on Stellar Expert">'+lxBrXpIcon()+'</a></div>'
     +'<div class="brm-flow">'
       +'<span class="br-asschip">'+lxBrChipIco(o.srcKey,"",lxBrStellarIcon())
-        +'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span>'
+        +'<span><span class="am">'+((o.srcAmount!==''&&o.srcAmount!=null&&isFinite(+o.srcAmount))?lxBrFmt(+o.srcAmount,(+o.srcAmount>0&&+o.srcAmount<1)?6:2):o.srcAmount)+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span>'
       +'<span class="br-ar">→</span>'
       +'<span class="br-asschip">'+lxBrChipIco((o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC")),o.net,lxBrStellarIcon())
         +'<span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span>'

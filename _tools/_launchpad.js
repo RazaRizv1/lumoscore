@@ -839,7 +839,7 @@ function lxLpWireReview(){
     // transaction fails on op_underfunded after the wallet has already signed it.
     var curMin=(2+(a.subentry_count||0))*0.5, required=curMin+total+0.5+0.6+parseFloat(C.issuerFundXlm||"2")+LXLP_POOL_RESERVE; // +0.5 = the minter's new CODE trustline, +0.6 = fees/margin, +issuerFund + pool-account reserveount
     balKnown=true; underfunded=(bal<required);
-    if(underfunded){ lxLpSetBtnEnabled(false); lxLpRevErr("Not enough XLM to launch. You need about "+lxLpFmt(required,2)+" XLM (this wallet holds "+lxLpFmt(bal,2)+" XLM). Add funds"+(extra>0?" or lower the extra liquidity":"")+" and try again."); }
+    if(underfunded){ lxLpSetBtnEnabled(false); lxLpRevErr("Not enough XLM to launch. The launch needs about "+lxLpFmt(required-curMin,2)+" XLM, and this account must keep "+lxLpFmt(curMin,2)+" XLM locked as its reserve: about "+lxLpFmt(required,2)+" XLM in all, against "+lxLpFmt(bal,2)+" XLM held. Add funds"+(extra>0?" or lower the extra liquidity":"")+" and try again.");   /* names the reserve: bug S79 */ }
     else { lxLpSetBtnEnabled(true); lxLpRevErr(""); }
   }).catch(function(e){ if(e&&e.code==="NOTESTNET"){ notOnTestnet=true; lxLpSetBtnEnabled(false); lxLpRevErr(TESTNET_MSG); } }); }
   if(btn) btn.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();

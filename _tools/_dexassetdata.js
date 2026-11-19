@@ -2497,9 +2497,13 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // now restores them. Each has its own internal signature, so this costs nothing when nothing changed.
     var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):"";
       // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
-      var _it = all.length
-        ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+" recent trades"+ft)
-        : ("Showing 0 recent trades"+ft);
+      // MY TRADES SAYS WHOSE TRADES, AND THAT IT IS STILL LOOKING (bug S35, 2026-11-19): "Showing 0 recent trades" sat there
+      // for the whole lookup and read as "you have none".
+      var _what = MY_TRADES ? " trades from this wallet" : " recent trades";
+      var _it = (MY_TRADES&&MY_BUSY&&!all.length) ? ("Looking up your trades"+String.fromCharCode(8230))
+        : all.length
+        ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+_what+ft)
+        : ("Showing 0"+_what+ft);
       if(info.textContent!==_it) info.textContent=_it; }
     renderExPager(all.length, pages);
 
@@ -2524,7 +2528,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var reassert=function(){ if(!(tb.querySelector("[data-lxda]")||tb.querySelector(".lxda-ex-empty"))){ tb.__lxexsig=null; renderExchanges(); } };
       new MutationObserver(reassert).observe(tb,{childList:true});
       var inf=q("#dxaPanelInfo");
-      if(inf)new MutationObserver(function(){ if(!/recent trades/.test(inf.textContent||"")){ tb.__lxexsig=null; renderExchanges(); } }).observe(inf,{childList:true,characterData:true,subtree:true});
+      if(inf)new MutationObserver(function(){ if(!/recent trades|from this wallet|your trades/.test(inf.textContent||"")){ tb.__lxexsig=null; renderExchanges(); } }).observe(inf,{childList:true,characterData:true,subtree:true});
       // THE FOOTER NEEDED ONE TOO, and its absence is the reported bug. The table and the info line each
       // re-assert when the design repaints them; the pager did not, so the design's own control could come
       // back and simply stay -- carrying ITS page state and ITS total. That is how "Page 2 of 3" and
@@ -3670,7 +3674,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     _dxView.impact=dxImpTxt(mag,ra); _dxView.impUp=dxImpUp(mag,ra); reAssertView();
     if(mag<=100)return;                                   // a doubling of price is steep but still real
     dxSatCheck(pa,ra,net,best,function(sat){ if(seq!==_dxSeq||!_dxView||!sat)return;
-      _dxView.impact="\\u2014"; _dxView.impUp=false; _dxView.unfillable=1; reAssertView();
+      _dxView.impact="\\u2014"; _dxView.impUp=false; _dxView.unfillable=1; _dxView.rate=String.fromCharCode(8212); _dxView.minR=String.fromCharCode(8212); _dxView.recv=""; _dxView.usd=0; reAssertView();   // no quote beside "not enough liquidity": bug S29
       dxErr("Not enough liquidity to fill this size \\u2014 try a smaller amount");
       var c=q(".dxa-trade-cta"); if(c)c.setAttribute("data-lxdis","1"); }); }
 
@@ -3878,7 +3882,11 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var raw=(pin.value||"").trim(); _dxLastPay=raw;
     var pa=payAsset(), ra=recvAsset();
     var amt=dxNum(raw);
-    if(!(amt>0)){ _dxView=null; _dxQuoteOut=0; window.__lxDXASoro=null; dxErr(""); if(cta)cta.setAttribute("data-lxdis","1"); reAssertView(); return; }
+    // A TYPED 0 SAYS SO (bug S09, 2026-11-19); an empty box still says nothing.
+    if(!(amt>0)){ _dxView=null; _dxQuoteOut=0; window.__lxDXASoro=null; dxErr((raw!==""&&/^[0-9.,]+$/.test(raw))?(((raw.split(".")[1]||"").length>=7)?"The smallest Stellar amount is 0.0000001.":"Enter an amount greater than 0."):""); if(cta)cta.setAttribute("data-lxdis","1"); reAssertView(); return; }
+    // MORE DECIMALS THAN STELLAR HAS (bug S33, 2026-11-19): 0.00000001 was quoted as nothing, with no word on why.
+    var dpx=(raw.split(".")[1]||"").replace(/[^0-9]/g,"");
+    if(dpx.length>7){ _dxView=null; _dxQuoteOut=0; window.__lxDXASoro=null; dxErr("Stellar amounts stop at 7 decimal places."); if(cta)cta.setAttribute("data-lxdis","1"); reAssertView(); return; }
     // #24: the SPENDABLE figure, not the raw one.
     //
     // This guard read balOf -- the account total -- while the balance printed directly above it comes
@@ -3888,7 +3896,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // pass any amount up to the raw total and let someone sign a transaction the reserve makes
     // impossible, which comes back as op_underfunded after they have already approved it.
     var bal=spendOf(pa);
-    if(bal!=null&&amt>bal+1e-9){ dxErr("Insufficient "+(pa.native?"XLM":pa.code)+" balance \\u2014 you have "+xlmAmt(bal)); if(cta)cta.setAttribute("data-lxdis","1"); }
+    if(bal!=null&&amt>bal+1e-9){ dxErr("Insufficient "+(pa.native?"XLM":pa.code)+" balance \\u2014 you have "+xlmAmt(bal)+" "+(pa.native?"XLM":pa.code)); if(cta)cta.setAttribute("data-lxdis","1"); }   // unit: bug S30
     else { dxErr(""); if(cta)cta.removeAttribute("data-lxdis"); }
     var fee=amt*FEE_RATE(), net=amt-fee, spot=pa.native?(assetXlm>0?1/assetXlm:0):assetXlm; // receive per pay
     var rcode=ra.native?"XLM":ra.code, pcode=pa.native?"XLM":pa.code;

@@ -190,7 +190,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(x>=1e9)return (x/1e9).toFixed(2)+"B";
     if(x>=1e6)return (x/1e6).toFixed(2)+"M";
     if(x>=1e3)return (x/1e3).toFixed(2)+"K";return x.toFixed(2);}
-  function pct(v){return v==null?DASH:((v>=0?"+":"")+(+v).toFixed(2)+"%");}
+  function pct(v){return v==null?DASH:(Math.abs(+v)<0.005?"0.00%":((v>=0?"+":"")+(+v).toFixed(2)+"%"));}   // no -0.00%: bug S23 (phone list)
   // Below 1e-8 a plain decimal is an unreadable run of zeros and exponential notation is trader-hostile,
   // so the zeros get counted into a subscript instead: 0.000000001234 -> 0.0(8)1234. At 1e-8 and above we
   // stay plain and trim the padding.
@@ -202,7 +202,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
     if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
   function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
-    if(x>=1e-8)return trimZ(x.toFixed(8));
+    if(x>=1e-4)return trimZ(x.toFixed(8));   // bug S26, 2026-11-19: plain only down to 0.0001; below it always the subscript form (was 1e-8, so one column mixed 0.00000002 with 0.0₈602)
     var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
     if(i<0)return String(x);
     var mant=trimZ(e.slice(0,i)).split(".").join(""), exp=-parseInt(e.slice(i+1),10);

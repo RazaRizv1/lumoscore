@@ -69,6 +69,20 @@
     formErr('');
     ['ltCode', 'ltIssuer', 'ltDescr', 'ltLogo', 'ltSite'].forEach(function (id) { fieldErr(id, ''); });
   }
+  // A FIXED FIELD LOSES ITS ERROR AS YOU TYPE (bugs S81 / X28, 2026-11-19). The red line used to stay until the next
+  // Pay, so a corrected code or issuer still read as wrong. Editing a field clears its own message, and the form-level
+  // line goes once no field is marked. The full check still runs on Pay.
+  ['ltCode', 'ltIssuer', 'ltDescr', 'ltSite'].forEach(function (id) {
+    var inp = $(id);
+    if (!inp) return;
+    inp.addEventListener('input', function () {
+      var e = $(id + 'Err');
+      if (!e || !e.textContent) return;
+      fieldErr(id, '');
+      var left = ['ltCode', 'ltIssuer', 'ltDescr', 'ltSite', 'ltLogo'].some(function (k) { var x = $(k + 'Err'); return !!(x && x.textContent); });
+      if (!left) formErr('');
+    });
+  });
 
   // ---------------------------------------------------------------- the quote
   var quote = null;
