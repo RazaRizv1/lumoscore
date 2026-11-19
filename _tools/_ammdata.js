@@ -698,12 +698,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // BOTH class sets on purpose. The phone card CSS positions ".pair-icons .a/.b"; the layer's own rule
   // that actually paints the logo is scoped to ".pair-icons .pa.lx-ico/.pb.lx-ico". With only the mobile
   // names the icons had the right 32x32 box and no image in it.
-  function icoPairM(code,issuer){ var up=amTokUrl(code,issuer);
+  function icoPairM(code,issuer){ return icoPairG({code:"XLM",issuer:"",native:true},{code:code,issuer:issuer},true);   /* XLM first (S52) */ var up=amTokUrl(code,issuer);
     var tok= up ? ico1("a pa","url("+up+")",null,code,issuer)
                 : ico1("a pa",gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer);
     var xlm=ico1("b pb","url(/assets/tokens/xlm.png)",null);
     return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
-  function icoPair(code,issuer){ var up=amTokUrl(code,issuer); var tok= up ? ico1('pa','url('+up+')',null,code,issuer) : ico1('pa',gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer); var xlm=ico1('pb','url(/assets/tokens/xlm.png)',null); return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
+  function icoPair(code,issuer){ return icoPairG({code:"XLM",issuer:"",native:true},{code:code,issuer:issuer});   /* XLM first, as the network list (S52) */ var up=amTokUrl(code,issuer); var tok= up ? ico1('pa','url('+up+')',null,code,issuer) : ico1('pa',gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer); var xlm=ico1('pb','url(/assets/tokens/xlm.png)',null); return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
 
   // build a pool object from a raw Horizon /liquidity_pools/{id} record (for the user's positions
   // that aren't in the KNOWN launchpad set, so Pools "My Positions" matches the wallet's Liq Pools tab)
@@ -901,7 +901,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var vals={tokens:String(DATA.pools.length)};   // "top" handled below (has icons)
     if(volReady()){ vals.fees=usd(fees); vals.trades=num(trades); }
     qa(".lumos-promo.lm-pools .lm-chip .lx-hstat").forEach(function(el){ var k=el.getAttribute("data-k"),v=el.querySelector(".v"); if(!v)return;
-      if(k==="top"){ var want=topP?(topP.code+" / XLM"):"\\u2014"; if(v.getAttribute("data-top")!==want){ v.setAttribute("data-top",want); v.innerHTML=topP?(icoPair(topP.code,topP.issuer)+'<span class="lx-toptxt">'+esc(topP.code)+' / XLM</span>'):'<span class="lx-toptxt">\\u2014</span>'; } return; }
+      if(k==="top"){ var want=topP?("XLM / "+topP.code):"\\u2014"; if(v.getAttribute("data-top")!==want){ v.setAttribute("data-top",want); v.innerHTML=topP?(icoPair(topP.code,topP.issuer)+'<span class="lx-toptxt">'+'XLM / '+esc(topP.code)+'</span>'):'<span class="lx-toptxt">\\u2014</span>'; } return; }
       if(vals[k]!=null&&v.textContent!==vals[k]){ v.classList.remove("lx-hskel"); v.textContent=vals[k]; } });
   }
 
@@ -1091,7 +1091,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       :('<div class="v">'+qty(p.vol24Xlm)+'</div><div class="vs">'+usd(p.vol24Xlm*_xu)+'</div>');
     return '<a class="pool-card lx-ammcard" data-pool="'+p.id+'"'+pairAttr(p)+' href="'+detailUrl(p.id,null,pairVal(p))+'">'
       +'<div class="pc-head">'+icoPairM(p.code,p.issuer)
-      +'<div class="pc-info"><div class="pc-name">'+esc(p.code)+' / XLM</div>'
+      +'<div class="pc-info"><div class="pc-name">XLM / '+esc(p.code)+'</div>'
       +'<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div>'
       +'<div class="pc-idx">#'+idx+'</div></div>'
       +'<div class="pc-stats">'
@@ -1112,7 +1112,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // XLM leg, which must show both real assets rather than being labelled "… / XLM".
     var f=p.mineFrac||0, nonX=p.nonXlm&&p.a0&&p.a1;
     var pct=(f*100>=0.01?(f*100).toFixed(2):"<0.01")+"%";
-    var name=nonX?(esc(p.a0.code)+" / "+esc(p.a1.code)):(esc(p.code)+" / XLM");
+    var name=nonX?(esc(p.a0.code)+" / "+esc(p.a1.code)):("XLM / "+esc(p.code));
     var ico=nonX?icoPairG(p.a0,p.a1,true):icoPairM(p.code,p.issuer);
     var l1,v1,vs1,l2,v2;
     if(nonX){ l1=esc(p.a0.code); v1=qty(p.a0.amount*f); vs1=""; l2=esc(p.a1.code); v2=qty(p.a1.amount*f); }
@@ -1149,7 +1149,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function allRow(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
     return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
-      '<td><div class="pair-cell">'+icoPair(p.code,p.issuer)+'<div><div class="pair-name">'+esc(p.code)+' / XLM</div><div class="pair-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div></td>'+
+      '<td><div class="pair-cell">'+icoPair(p.code,p.issuer)+'<div><div class="pair-name">XLM / '+esc(p.code)+'</div><div class="pair-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div></td>'+
       '<td><div>'+num(p.xlm)+' XLM</div><div class="pair-sub">'+usd(p.tvlUsd)+'</div></td>'+
       (function(){ if(p.vol24Xlm==null)return '<td><div>\u2014</div></td><td><div>\u2014</div></td>';
         var _xu=(DATA&&DATA.xlmUsd)||0, _fx=(p.fees24XlmReal!=null?p.fees24XlmReal:p.vol24Xlm*p.fee/100);
@@ -1161,7 +1161,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var idx=(i+1<10?"0":"")+(i+1);
     var nonX=p.nonXlm&&p.a0&&p.a1;   // e.g. AQUA/EURC — no XLM side, so render both real reserves
     var pairIco=nonX?icoPairG(p.a0,p.a1):icoPair(p.code,p.issuer);
-    var pairName=nonX?(esc(p.a0.code)+' / '+esc(p.a1.code)):(esc(p.code)+' / XLM');
+    var pairName=nonX?(esc(p.a0.code)+' / '+esc(p.a1.code)):('XLM / '+esc(p.code));
     var liqMain,liqSub;
     // BOTH SIDES AS ASSETS, ON EVERY ROW (RAZA 2026-10-11: "the first 2 pools (USDC / XLM and
     // AQUA / XLM) show the grey value in dollars and the remaining in assets, fix it. I want it to
@@ -2258,7 +2258,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(nonXlm){ code=a1.code; issuer=a1.issuer; tok=a1.amt; xlm=0;
         pxA0perA1=a1.amt>0?a0.amt/a1.amt:0;
         if(a0.code==="USDC"&&a0.issuer===USDC_ISS){ tvlUsd=a0.amt*2; priceUsd=pxA0perA1; } }
-      var pairName=nonXlm?(a0.code+" / "+a1.code):(code+" / XLM");
+      var pairName=nonXlm?(a0.code+" / "+a1.code):("XLM / "+code);
       var now=Date.now();
       // getJSON resolves null on any failure, so null here means "we never got an answer" while an empty
       // records array means "this pool genuinely has none". Those are not the same claim and must not render
@@ -2474,7 +2474,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var name=q(".ph-name");
     if(name){
       // Rebuilt only when the pair changes, so the header guard's re-asserts cannot churn the links.
-      var _want=d.pairName||(d.code+" / XLM");
+      var _want=d.pairName||("XLM / "+d.code);
       if(name.getAttribute("data-lxpair")!==_want){
         name.setAttribute("data-lxpair",_want);
         // One side of the pair: a link when we hold its issuer, plain text otherwise.
@@ -2488,7 +2488,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         }
         var _l,_r;
         if(d.nonXlm&&d.a0&&d.a1){ _l=side(d.a0); _r=side(d.a1); }
-        else { _l=side({code:d.code,issuer:d.issuer},d.code); _r='<span>XLM</span>'; }
+        else { _l='<span>XLM</span>'; _r=side({code:d.code,issuer:d.issuer},d.code); }   /* XLM first (S52) */
         name.innerHTML=_l+'<span class="lx-phsep"> / </span>'+_r;
       }
     }
@@ -2518,8 +2518,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // other pair on the page. Key the guard on the pair itself so navigating pool->pool repaints.
     var pi=q(".ph-icons");
     if(pi){
-      var s0 = d.nonXlm&&d.a0 ? d.a0 : {code:d.code,issuer:d.issuer};
-      var s1 = d.nonXlm&&d.a1 ? d.a1 : {code:"XLM",issuer:"",native:true};
+      var s0 = d.nonXlm&&d.a0 ? d.a0 : {code:"XLM",issuer:"",native:true};   /* XLM first, as the name (S52) */
+      var s1 = d.nonXlm&&d.a1 ? d.a1 : {code:d.code,issuer:d.issuer};
       var sig=(s0.code||"?")+"|"+(s1.code||"?");
       if(pi.getAttribute("data-lxdet")!==sig){
         pi.setAttribute("data-lxdet",sig);
@@ -2558,7 +2558,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // The withdraw tab's "Withdraw from position" input row shows a baked "LUMOS / XLM" mock (the design re-creates
   // it on every tab switch, so it isn't corrected by pdCopy). Rewrite its text node to the real pair + fix its ico.
   // Guarded (data-lxpair) so it's a no-op once correct (the .dw-card observer would otherwise loop on our write).
-  function fixWithdrawPair(){ if(!DET)return; var row=q("#dwWithdraw .dw-field .row .asset"); if(!row)return; var want=DET.pairName||(DET.code+" / XLM");
+  function fixWithdrawPair(){ if(!DET)return; var row=q("#dwWithdraw .dw-field .row .asset"); if(!row)return; var want=DET.pairName||("XLM / "+DET.code);
     [].slice.call(row.childNodes).forEach(function(nd){ if(nd.nodeType===3&&nd.textContent.trim()&&nd.textContent.trim()!==want)nd.textContent=want; });
     // the design's data-logo painter hijacks this .ico (stamps data-logo="APT", paints a background and
     // EMPTIES it) — detect the hijack (or a missing img) and undo it; the re-inserted <img> makes the
@@ -3814,8 +3814,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   function pdCopy(){
     var d=DET;
-    try{ document.title=(d.pairName||(d.code+" / XLM"))+" liquidity pool on Stellar | LumosCore"; }catch(e){}
-    var cr=q(".crumb"); if(cr){ [].slice.call(cr.querySelectorAll("*")).forEach(function(e){ var t=e.textContent||""; if(e.children.length===0&&t.indexOf("LUMOS")>=0&&(t.indexOf("XLM")>=0||t.indexOf("APT")>=0))setText(e,d.pairName||(d.code+" / XLM")); }); }
+    try{ document.title=(d.pairName||("XLM / "+d.code))+" liquidity pool on Stellar | LumosCore"; }catch(e){}
+    var cr=q(".crumb"); if(cr){ [].slice.call(cr.querySelectorAll("*")).forEach(function(e){ var t=e.textContent||""; if(e.children.length===0&&t.indexOf("LUMOS")>=0&&(t.indexOf("XLM")>=0||t.indexOf("APT")>=0))setText(e,d.pairName||("XLM / "+d.code)); }); }
   }
   // AUDIT (user-reported, pool 344e66\\u2026): one painter throwing killed every LATER painter, so the whole
   // right rail (position, deposit/withdraw) stayed on the design mock — a fake $1,247.50 position on a real
