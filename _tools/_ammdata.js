@@ -4507,13 +4507,39 @@ function maxShares(dd){
     var sel=[null,null];
     // fair market rate (to per from) via a Horizon strict-send probe, cached per pair. Lets us auto-fill the
     // second amount so a NEW pool starts at the real market price (the ratio sets the price).
-    var _poolRate={};
-    function fairRate(from,to,cb){ if(!from||!to){cb(0);return;} var key=(from.native?"X":from.code+":"+from.issuer)+">"+(to.native?"X":to.code+":"+to.issuer); if(_poolRate[key]!=null){cb(_poolRate[key]);return;}
-      var srcP=from.native?"source_asset_type=native":("source_asset_type=credit_alphanum"+(from.code.length>4?"12":"4")+"&source_asset_code="+from.code+"&source_asset_issuer="+from.issuer);
-      var dstP="destination_assets="+encodeURIComponent(to.native?"native":(to.code+":"+to.issuer)); var probe=from.native?"10":"100";
-      getJSON(H+"/paths/strict-send?"+srcP+"&source_amount="+probe+"&"+dstP).then(function(pd){ var recs=(pd&&pd._embedded&&pd._embedded.records)||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; var rate=out>0?out/parseFloat(probe):0; _poolRate[key]=rate; cb(rate); }).catch(function(){cb(0);}); }
+    //
+    // ONE RATE PER PAIR, USED BOTH WAYS (S50, RAZA 2026-11-19 "Yes, fix it"). Each direction used to be probed on
+    // its own (10 XLM into TGM, 100 TGM into XLM) and on a thin market the two disagree: 158,386 against 282,646
+    // TGM per XLM, so the pool price came out of whichever late answer landed last. Now ONE probe, from the XLM
+    // side when there is one, and the other direction is its reciprocal -- as XRPL's dialog prices both sides from
+    // one figure. A pair asks Horizon ONCE however many keystrokes ask for it (the waiters share the answer), and a
+    // read that FAILED is not remembered as "no rate", so the next keystroke tries again.
+    var _poolRate={}, _poolWait={};
+    function rateKey(a){ return a.native?"X":(a.code+":"+a.issuer); }
+    function fairRate(from,to,cb){ if(!from||!to){cb(0);return;} var key=rateKey(from)+">"+rateKey(to); if(_poolRate[key]!=null){cb(_poolRate[key]);return;}
+      var flip=!from.native&&!!to.native, src=flip?to:from, dst=flip?from:to, pk=rateKey(src)+">"+rateKey(dst), rk=rateKey(dst)+">"+rateKey(src);
+      var ans=function(){ cb(_poolRate[key]||0); };
+      if(_poolWait[pk]){ _poolWait[pk].push(ans); return; }
+      _poolWait[pk]=[ans];
+      var srcP=src.native?"source_asset_type=native":("source_asset_type=credit_alphanum"+(src.code.length>4?"12":"4")+"&source_asset_code="+src.code+"&source_asset_issuer="+src.issuer);
+      var dstP="destination_assets="+encodeURIComponent(dst.native?"native":(dst.code+":"+dst.issuer)); var probe=src.native?"10":"100";
+      function done(r,read){ if(read){ _poolRate[pk]=r; _poolRate[rk]=r>0?1/r:0; } var w=_poolWait[pk]||[]; delete _poolWait[pk]; w.forEach(function(f){ try{ f(); }catch(_){} }); }
+      // LOBSTR's Horizon FIRST, the main one as the fallback: on this page the main host is busy with the page's own
+      // reads, and this probe sat 38s in the browser behind them while the same URL answers in 0.3s on its own.
+      var qs="/paths/strict-send?"+srcP+"&source_amount="+probe+"&"+dstP;
+      getJSON(H2+qs).then(function(pd){ return (pd&&pd._embedded)?pd:getJSON(H+qs); }).then(function(pd){ if(!pd||!pd._embedded){ done(0,false); return; } var recs=pd._embedded.records||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; done(out>0?out/parseFloat(probe):0,true); }).catch(function(){ done(0,false); }); }
     // fill the OTHER amount from the edited one at the fair rate (never clobbers the field being typed in)
-    function autofillOther(idx){ var a=amts&&amts[idx], other=amts&&amts[1-idx]; if(!a||!other||!sel[idx]||!sel[1-idx]){summary();return;} fairRate(sel[idx],sel[1-idx],function(rate){ if(rate>0){ var v=(parseFloat((a.value||"").replace(/,/g,""))||0)*rate; if(document.activeElement!==other)other.value=v>0?fmtIn(v):""; } summary(); }); }
+    //
+    // A LATE ANSWER NEVER OVERWRITES WHAT YOU TYPED (S50). The rate can land long after the keystroke that asked for
+    // it (30s measured, queued behind this page's own Horizon reads), and every keystroke queued its own fill: 5 XLM
+    // + 100 TGM became 2.8018 XLM + 791,929 TGM with nothing touched, one late fill computed from the other's.
+    // As on XRPL, an answer is used only if the box it was asked for still holds the same figure, is still the box
+    // last typed in, and both assets are still the ones picked.
+    var _cpLast=-1;
+    function autofillOther(idx){ var a=amts&&amts[idx], other=amts&&amts[1-idx]; _cpLast=idx; if(!a||!other||!sel[idx]||!sel[1-idx]){summary();return;}
+      var asked=a.value, s0=sel[idx], s1=sel[1-idx];
+      fairRate(s0,s1,function(rate){ if(_cpLast!==idx||a.value!==asked||sel[idx]!==s0||sel[1-idx]!==s1){ summary(); return; }
+        if(rate>0){ var v=(parseFloat((a.value||"").replace(/,/g,""))||0)*rate; if(document.activeElement!==other)other.value=v>0?fmtIn(v):""; } summary(); }); }
     // AUDIT (user-reported): both sides could be set to the same asset — a BROT/BROT "pool", which Stellar
     // rejects outright. Identity is code+issuer, so USDC from two different issuers is still a valid pair.
     function akey(a){ return a?(a.code+":"+(a.issuer||"")):""; }
@@ -4574,7 +4600,7 @@ function maxShares(dd){
       var field=modal.querySelectorAll(".asset-field")[idx];
       var dd=field&&field.querySelector(".asset-dropdown"); if(dd){ dd.classList.remove("open"); dd.style.display=""; }
       dds.forEach(function(d,i){ fill(d,i); });          // refresh both lists so the exclusion stays current
-      if(sel[0]&&sel[1]){ var _fi=(amts&&amts[0]&&(parseFloat(amts[0].value)||0)>0)?0:((amts&&amts[1]&&(parseFloat(amts[1].value)||0)>0)?1:-1); if(_fi>=0){ autofillOther(_fi); return; } }
+      if(sel[0]&&sel[1]){ var _fi=(amts&&amts[0]&&(parseFloat(amts[0].value)||0)>0)?0:((amts&&amts[1]&&(parseFloat(amts[1].value)||0)>0)?1:-1); if(_fi>=0){ autofillOther(_fi); return; } fairRate(sel[0],sel[1],function(){}); }   /* both picked, nothing typed yet: ask for the rate now, so it is here by the first keystroke (S50) */
       summary();
     }
     // the design's .ad-item handler calls lxNavigate (mock nav); our lxNavigate wrapper routes it here instead
