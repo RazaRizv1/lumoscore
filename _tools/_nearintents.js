@@ -401,6 +401,20 @@ function runtime(NI_SENDABLE) {
   // wallet's payments to that account ARE its NEAR Intents history; 1Click's status for each memo says what was
   // delivered, where and to whom. Missing ones are added to the store and the list is repainted. Read-only.
   var NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';
+  // HOT IDS NEAR INTENTS NO LONGER LISTS (2026-11-19): nep245:v2_1.omni.hot.tg:<chainId>_<base58 contract>. Named only from
+  // what the id proves: the chain, the native coin (all '1's = zero address), or a contract verified by decoding.
+  var HOT_CHAIN = { '1': ['eth', 'ETH'], '10': ['op', 'ETH'], '56': ['bsc', 'BNB'], '137': ['pol', 'POL'], '8453': ['base', 'ETH'],
+    '42161': ['arb', 'ETH'], '43114': ['avax', 'AVAX'] };
+  var HOT_TOKEN = { '43114_3atVJH3r5c4GqiSYmg9fECvjc47o': 'USDC', '43114_372BeH7ENZieCaabwkbWkBiTTgXp': 'USDT' };
+  function hotAsset(id) {
+    var s = String(id || ''), pre = 'nep245:v2_1.omni.hot.tg:';
+    if (s.indexOf(pre) !== 0) return null;
+    var rest = s.slice(pre.length), u = rest.indexOf('_');
+    if (u < 1) return null;
+    var cid = rest.slice(0, u), tail = rest.slice(u + 1), c = HOT_CHAIN[cid];
+    if (!c || !tail) return null;
+    return { chain: c[0], sym: tail.split('1').join('') === '' ? c[1] : (HOT_TOKEN[cid + '_' + tail] || '') };
+  }
   var NI_NET = {}; Object.keys(NI_CHAIN).forEach(function (n) { NI_NET[NI_CHAIN[n]] = n; });   // 'arb' -> 'Arbitrum'
   var syncing = false;
   window.lxNiSync = function () {
@@ -422,6 +436,8 @@ function runtime(NI_SENDABLE) {
             return status(NI_DEP, String(p.transaction.memo)).then(function (s) {
               var q = (s && s.quoteResponse) || {}, qr = q.quoteRequest || {}, sd = (s && s.swapDetails) || {};
               var tk = (TOK || []).filter(function (t) { return t.assetId === qr.destinationAsset; })[0];
+              // NOT DROPPED WHEN NEAR INTENTS STOPPED LISTING THE TOKEN (2026-11-19): decode the HOT id instead.
+              if (!tk) { var hk = hotAsset(qr.destinationAsset); if (hk && hk.sym) tk = { blockchain: hk.chain, symbol: hk.sym }; }
               if (!tk || !NI_NET[tk.blockchain]) return null;
               var code = (p.asset_type === 'native' || !p.asset_code) ? 'XLM' : p.asset_code;
               var out = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
