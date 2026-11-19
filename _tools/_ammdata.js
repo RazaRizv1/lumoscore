@@ -4053,7 +4053,14 @@ function maxShares(dd){
       +avail.toFixed(4)+" available."+why+" Add about "+(need-avail).toFixed(4)+" XLM and try again. Your "
       +"pool assets are untouched \u2014 nothing was sent.");
   }
-  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(300).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
+  // A WALLET THAT NEVER ANSWERS ENDS THE WAIT (S51, 2026-11-19). Swap and Send give up with "Signing timed out"; the
+  // pool actions (Create Pool, Add Liquidity, Withdraw) waited on "Confirm in wallet..." forever, and Cancel + reopen
+  // showed the same dead button until a reload. The transaction expires 300s after it is built (setTimeout(300) in
+  // wSend), so a signature after that could not land anyway: give up at the same moment. A late signature is ignored --
+  // nothing is sent once this has fired -- and wRun puts the button back with the reason under it.
+  var W_SIGN_MS=300000;
+  function wSignTimed(xdr,addr){ var tid; return Promise.race([Promise.resolve(wSign(xdr,addr)), new Promise(function(_,rej){ tid=setTimeout(function(){ rej(new Error("Signing timed out "+String.fromCharCode(8212)+" open your wallet and try again. Nothing was sent.")); },W_SIGN_MS); })]).then(function(v){ clearTimeout(tid); return v; },function(e){ clearTimeout(tid); throw e; }); }
+  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(300).build(); return wSignTimed(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
