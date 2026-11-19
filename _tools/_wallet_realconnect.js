@@ -790,7 +790,22 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
 }catch(_){}}
 lxPostConnectHome();
 }
+// A WALLET EXTENSION THAT IS NOT IN THIS BROWSER (RAZA 2026-11-19). The most common reason is not that the person lacks
+// it: links opened from ChatGPT or another assistant, or inside Telegram or X, load in that app's own browser, where
+// none of their extensions exist. "Install it, then try again" sent them to install something they already have.
+// One wording on every network: window.lxWalletMissingText, identical in XRPL connect.js and NEAR nearconnect.js.
+// The message stays on the connecting screen until Cancel, close or another wallet; then it is put back.
+window.lxWalletMissingText=window.lxWalletMissingText||function(name,phoneAlt){var phone=/Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent||'');return phone?{title:name+' is a desktop browser extension',text:'On a phone, connect with '+phoneAlt+' instead.'}:{title:name+' isn’t available here',text:'Opened from ChatGPT, another AI assistant, or an app like Telegram or X? Their built-in browsers can block wallet extensions, even ones you’ve installed. Open this link in your usual browser.'};};
+window.addEventListener('click',function(e){var x=e.target;if(!x||!x.closest||!x.closest('.lxw-cancel,.lxw-close,.lxw-row'))return;var st=q('.lxw-screen[data-screen="connecting"] .lxw-cstate');if(!st||!st.classList.contains('lxw-missing'))return;st.classList.remove('lxw-missing');var mt=q('.lxw-ctitle');if(mt)mt.style.color='';var mp=st.querySelector('p');if(mp&&mp.getAttribute('data-lxw-p')!=null)mp.textContent=mp.getAttribute('data-lxw-p');var sp=st.querySelector('.lxw-steps'),rg=st.querySelector('.lxw-ring');if(sp)sp.style.display='';if(rg)rg.style.display='';},true);
 function showErr(row,err){
+  if(err&&err.code==='NOT_INSTALLED'&&location.protocol!=='file:'&&window.lxWalletMissingText){
+    var mw=window.lxWalletMissingText((row.querySelector('.lxw-name')||{}).textContent||'Your wallet','LOBSTR or Albedo');
+    var st=q('.lxw-screen[data-screen="connecting"] .lxw-cstate'),mt=q('.lxw-ctitle'),mp=st&&st.querySelector('p');
+    if(mt){mt.textContent=mw.title;mt.style.color='#ff6b6b';}
+    if(mp){if(mp.getAttribute('data-lxw-p')==null)mp.setAttribute('data-lxw-p',mp.textContent);mp.textContent=mw.text;}
+    if(st){st.classList.add('lxw-missing');var sp=st.querySelector('.lxw-steps'),rg=st.querySelector('.lxw-ring');if(sp)sp.style.display='none';if(rg)rg.style.display='none';}
+    return;
+  }
   var t=q('.lxw-ctitle'),nm=row.querySelector('.lxw-name'),name=nm?nm.textContent:'wallet';
   var onFile=(location.protocol==='file:');
   var msg;
