@@ -831,7 +831,7 @@ function lxLpWireReview(){
   if(addr){ fetch(C.horizon+"/accounts/"+addr).then(function(r){ if(r.status===404){ var e404=new Error("NOTESTNET"); e404.code="NOTESTNET"; throw e404; } if(!r.ok) throw 0; return r.json(); }).then(function(a){
     var nb=(a.balances||[]).filter(function(b){return b.asset_type==="native";})[0]; if(!nb) return;
     var bal=parseFloat(nb.balance)||0;
-    var be=[].slice.call(document.querySelectorAll("[class*='balance']")).filter(function(e){return /balance/i.test(e.textContent||"");})[0]; if(be) be.textContent="Balance "+lxLpFmt(bal,2)+" XLM";
+    var be=[].slice.call(document.querySelectorAll("[class*='balance']")).filter(function(e){return /balance/i.test(e.textContent||"");})[0]; if(be){ var _spend=Math.max(0,bal-(2+(a.subentry_count||0))*0.5-(parseFloat(nb.selling_liabilities)||0)); be.textContent="Balance "+lxLpFmt(_spend,2)+" XLM"; be.title=lxLpFmt(bal,2)+" XLM held, "+lxLpFmt(bal-_spend,2)+" XLM locked as reserve or in open offers"; }   /* SPENDABLE, as Swap and NEAR (S80) */
     var _k=lxLpCosts(), total=_k.createFeeXlm+_k.poolFeeXlm+_k.liqXlm+extra; // XLM cost sized to the $25 target at live rate
     // Sized to the operations the launch actually performs. It now funds TWO new accounts — the issuer and the pool
     // account that holds the liquidity — and the minter's wallet opens ONE trustline rather than two, because the pool
