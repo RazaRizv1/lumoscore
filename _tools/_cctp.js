@@ -1047,7 +1047,10 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   XRPL:"https://xrpscan.com/account/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
-var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
+var LX_SRC_ADDR=""; // was a hard-coded demo address that the Review showed as YOUR source (bug S67, 2026-11-19)
+// The source address: the one the wallet handed over on this page, else the connected session address when it is a
+// real Stellar account, else nothing (the row shows a dash). Never a placeholder: it is shown on Review and saved in history.
+function lxBrSrc(){ var B=window.__lxBr||{}; if(B.pk) return B.pk; var a=lxCctpConnectedAddr(); return /^G[A-Z2-7]{55}$/.test(a)?a:""; }
 window.__lxBr=window.__lxBr||{srcKey:"USDC", amount:"", pk:null, bals:null, _loading:false};
 
 // ROUND DOWN for anything that is a balance. toLocaleString rounds half-up, so 0.03297 USDC showed as 0.033 and MAX
@@ -1342,7 +1345,7 @@ function lxBrRenderSource(){
     ain.addEventListener('keydown',function(e){ if(e.key==="Enter"){ e.preventDefault(); ain.blur(); } }); }
   var chip=side.querySelector('.br-asset');
   if(chip){ var nm=chip.querySelector('.nm'); if(nm)nm.textContent=k; var im=chip.querySelector('.lx-assetic img'); if(im){ if(im.getAttribute('src')!==A.logo) im.src=A.logo; } else { var ic=chip.querySelector('.lx-assetic')||chip.querySelector('.br-ic'); if(ic) ic.innerHTML='<img src="'+A.logo+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }
-  var addr=side.querySelector('.br-wallet .addr'); if(addr){ var full=window.__lxBr.pk||LX_SRC_ADDR, sh=lxBrShort(full); if(addr.textContent!==sh){ addr.textContent=sh; addr.title=full; } }
+  var addr=side.querySelector('.br-wallet .addr'); if(addr){ var full=lxBrSrc(), sh=lxBrShort(full); if(addr.textContent!==sh){ addr.textContent=sh; addr.title=full; } }
   var bal=side.querySelector('.bal');
   if(bal){ var b=lxBrBalOf(k); var maxEl=bal.querySelector('.max'); var bStr=(b==null?"—":lxBrFmt(lxBrFloor(b,b>=1000?2:4),b>=1000?2:4));
     var txt=bal.querySelector('.lx-bal-txt');
@@ -1655,7 +1658,7 @@ function lxBrReview(){
   var recvAm=legs[1].querySelector('[data-rv="recv"]'); if(recvAm) recvAm.textContent=recv+" USDC";
   var recvNet=legs[1].querySelector('[data-rv="recvnet"]'); if(recvNet) recvNet.textContent=net||"—";
   var rIc=legs[1].querySelector('.v .ic:not(.lx-rvnet)'); if(rIc) rIc.innerHTML='<img src="/assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
-  var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
+  var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(lxBrSrc())+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
   var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
   // Bridge fee row: show the actual amount, not just the rate. It always read "0.2%" and nothing else,
@@ -2409,14 +2412,14 @@ function lxBrConfirm(btn){
   function status(m){ lxBrProgUpdate(m); }
   try{ lxCctpBridgeFull(domain, amt, recipient, A.spec, status, window.__lxBr.netUsdc).then(function(res){
     lxBrProgDone(res); lxBrRefreshBalances();
-    var tx={src:(B.pk||LX_SRC_ADDR), recipient:recipient, srcAmount:amt, srcKey:k, amount:res.netUsdc, net:net, hash:res.burnHash, ts:Date.now(), minted:!!res.minted};
+    var tx={src:(lxBrSrc()), recipient:recipient, srcAmount:amt, srcKey:k, amount:res.netUsdc, net:net, hash:res.burnHash, ts:Date.now(), minted:!!res.minted};
     lxBrAddRecentTx(tx); lxBrSaveTx(tx);
   }).catch(function(e){
     // AUDIT #1/#3 (FUNDS): if the burn already happened, the transfer must still be recorded and shown —
     // previously an attestation timeout skipped both, leaving burned USDC with no trace anywhere.
     var bh=e&&e.__lxBurnHash;
     if(bh){
-      var tx2={src:(B.pk||LX_SRC_ADDR), recipient:recipient, srcAmount:amt, srcKey:k, amount:(window.__lxBr.netUsdc||amt), net:net, hash:bh, ts:Date.now(), minted:false};
+      var tx2={src:(lxBrSrc()), recipient:recipient, srcAmount:amt, srcKey:k, amount:(window.__lxBr.netUsdc||amt), net:net, hash:bh, ts:Date.now(), minted:false};
       try{ lxBrAddRecentTx(tx2); lxBrSaveTx(tx2); }catch(_){}
       lxBrProgFail(((e&&e.message)||"Attestation not ready")+" — your USDC is burned and recorded; it can be redeemed once Circle finalizes.");
     } else { lxBrProgFail((e&&e.message)||"Bridge failed."); }
