@@ -3669,13 +3669,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       .then(function(pd){ var r=(pd._embedded&&pd._embedded.records)||[]; var half=r.length?parseFloat(r[0].destination_amount):0;
         cb(!(out>0)||(half>0&&out<=half*1.01)); })
       .catch(function(){ cb(false); }); }
+  // OVER THE BALANCE OUTRANKS TOO BIG FOR THE POOL (X9, RAZA 2026-11-19 "balance first"): what you hold is the thing to fix first.
+  function dxOverBal(pa){ var b=spendOf(pa); return b!=null&&dxNum(_dxLastPay)>b+1e-9; }
   function dxSetImp(mag,ra,pa,net,best,seq){
     if(seq!==_dxSeq||!_dxView)return;
     _dxView.impact=dxImpTxt(mag,ra); _dxView.impUp=dxImpUp(mag,ra); reAssertView();
     if(mag<=100)return;                                   // a doubling of price is steep but still real
     dxSatCheck(pa,ra,net,best,function(sat){ if(seq!==_dxSeq||!_dxView||!sat)return;
       _dxView.impact="\\u2014"; _dxView.impUp=false; _dxView.unfillable=1; _dxView.rate=String.fromCharCode(8212); _dxView.minR=String.fromCharCode(8212); _dxView.recv=""; _dxView.usd=0; reAssertView();   // no quote beside "not enough liquidity": bug S29
-      dxErr("Not enough liquidity to fill this size \\u2014 try a smaller amount");
+      if(!dxOverBal(pa))dxErr("Not enough liquidity to fill this size \\u2014 try a smaller amount");
       var c=q(".dxa-trade-cta"); if(c)c.setAttribute("data-lxdis","1"); }); }
 
   // POST /quote (EXACT_IN on the post-fee amount) -> {out, impact, quote, route, usesSoroban, usesAqua} or null
