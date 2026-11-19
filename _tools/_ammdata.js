@@ -1432,10 +1432,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(!vol&&!fee)return;
       th.__lxvol=1;
       var s=th.querySelector(".sort-i");
-      th.textContent=vol?"VOL (TODAY)":"FEES (TODAY)"; if(s)th.appendChild(s);
+      th.textContent=vol?"VOL (24H)":"FEES (24H)"; /* a ROLLING 24h since volume moved to Horizon /trades (S43, 2026-11-19); TODAY was true only of stellar.expert */ if(s)th.appendChild(s);
     });
     qa(".lx-netcard .pc-stat .l").forEach(function(l){
-      if(/24h\\s*vol/i.test(l.textContent))setText(l,"Vol (today)");
+      if(/24h\\s*vol/i.test(l.textContent))setText(l,"Vol (24h)");
     });
   }
   // The click itself is handled at WINDOW capture. A listener on the th cannot win: the design ships a
