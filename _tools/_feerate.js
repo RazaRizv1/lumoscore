@@ -31,7 +31,7 @@ const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;
 // page, duplicating one the page engines already make. Memoise it here — this script loads first on every
 // page, so it is the natural owner — and let the other engines reuse the same promise.
 +'window.__lxAcctP=window.__lxAcctP||{};'
-+'window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);'
++'window.__lxAcct=function(addr){if(!addr||!/^G[A-Z2-7]{55}$/.test(addr))return Promise.resolve(null);'
 +'if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});'
 +'return window.__lxAcctP[addr];};'
 // LUMOS deposited into a liquidity pool is still held LUMOS — it just lives as pool shares rather than as a

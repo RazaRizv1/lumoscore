@@ -129,7 +129,7 @@ const STYLE = `<style id="lx-wclaim-css">
 const SCRIPT = `<script id="lx-wclaim">(function(){
   if(window.__lxWClaim)return; window.__lxWClaim=1;
   var H="https://horizon.stellar.org";
-  function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
+  function me(){ try{ var a=localStorage.getItem("lumos.address")||""; return /^G[A-Z2-7]{55}$/.test(a)?a:""; }catch(_){ return ""; } }
   function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
   function esc(s){return (String(s==null?"":s).replace(/[&<>"]/g,function(c){
     return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; })).split(String.fromCharCode(39)).join("&#39;");}
