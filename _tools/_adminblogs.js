@@ -37,7 +37,7 @@ const MAIN = `
         </div>
       </div>
 
-      <div class="lxb-editor" id="lxbEditor" hidden>
+      <div class="lxb-editor" id="lxbEditor" data-lxnonav hidden>
         <div class="lxb-ed-head">
           <div class="lxb-ed-title" id="lxbEdTitle">New post</div>
           <div class="lxb-ed-actions">
