@@ -1474,8 +1474,32 @@ function lxBrCalc(){
 // Once now and again after 6s, because Horizon can lag the ledger by a close or two.
 function lxBrRefreshBalances(){ try{ var go=function(){ var B=window.__lxBr; if(!B||B._loading)return; B.bals=null; lxBrLoadWallet(false); }; go(); setTimeout(go,6000); }catch(_){} }
 window.lxBrRefreshBalances=lxBrRefreshBalances;
+// THE SIGNED-IN ADDRESS, READ ALONGSIDE THE EXTENSION (S68, 2026-11-20). The balance check (Amount exceeds your balance,
+// Review disabled) runs only once balances are loaded, and lxBrLoadWallet loads them only through the extension -- whose
+// isAllowed() never settles when there is no extension, so the load neither finished nor failed: B.bals stayed null,
+// the check never ran, and 10 USDC from a wallet holding 0 reached Confirm. The signed-in Stellar address is public:
+// its balances are read at the same time, with the same spendable rule, and the extension's own read replaces them if
+// it ever answers. Only for that same account (never another one's balances), an account Horizon does not know holds
+// nothing (404), and any other failure leaves them unknown -- never zero.
+function lxBrBalsFromAddr(B){
+  var a=""; try{ a=localStorage.getItem("lumos.address")||""; }catch(_){}
+  if(!/^G[A-Z2-7]{55}$/.test(a)||!window.__lxCCTP)return;
+  fetch(window.__lxCCTP.horizon+"/accounts/"+a).then(function(r){ if(r.status===404)return {}; if(!r.ok)throw new Error("horizon "+r.status); return r.json(); })
+  .then(function(ac){
+    if(B.pk&&B.pk!==a)return;                          // the extension named a different account: its read stands
+    if(B.pk===a&&B.bals&&!B._fromAddr)return;          // the extension already answered for this account
+    var m={}, res=(2+(+ac.subentry_count||0)+(+ac.num_sponsoring||0)-(+ac.num_sponsored||0))*0.5;
+    (ac.balances||[]).forEach(function(x){
+      var free=(parseFloat(x.balance)||0)-(parseFloat(x.selling_liabilities)||0);
+      if(x.asset_type==="native") m.XLM=Math.max(0,+(free-res-0.3).toFixed(7));
+      else if(x.asset_code) m[x.asset_code]=Math.max(0,+free.toFixed(7)); });
+    if(!ac.balances) m.XLM=0;
+    B.bals=m; B._fromAddr=true; lxBrRenderSource(); })
+  .catch(function(){});
+}
 function lxBrLoadWallet(force){
   var B=window.__lxBr; if(B._loading||(B.pk&&B.bals&&!force))return; B._loading=true;
+  if(!B.bals)lxBrBalsFromAddr(B);   // S68: do not wait on the extension for the balance check
   try{ lxCctpSigner().then(function(f){
     function grab(){ return Promise.resolve(f.getAddress?f.getAddress():f.getPublicKey()).then(function(a){ return (a&&a.address)||a; }); }
     var gate = force ? Promise.resolve(f.requestAccess?f.requestAccess():null) : (f.isAllowed?Promise.resolve(f.isAllowed()).then(function(ok){ if(!ok) throw new Error("not-allowed"); }):Promise.resolve());
@@ -1491,7 +1515,7 @@ function lxBrLoadWallet(force){
         var free=(parseFloat(x.balance)||0)-(parseFloat(x.selling_liabilities)||0);
         if(x.asset_type==="native") m.XLM=Math.max(0,+(free-res-0.3).toFixed(7));
         else if(x.asset_code) m[x.asset_code]=Math.max(0,+free.toFixed(7)); });
-      B.bals=m; B._loading=false; lxBrRenderSource(); });
+      B.bals=m; B._fromAddr=false; B._loading=false; lxBrRenderSource(); });
     });
   }).catch(function(){ B._loading=false; lxBrRenderSource(); }); }catch(_){ B._loading=false; }
 }
