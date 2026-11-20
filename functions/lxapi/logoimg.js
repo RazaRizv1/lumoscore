@@ -27,6 +27,7 @@
 // Content-type alone is not proof either -- it is a header the attacker sets. The bytes are checked
 // against the format's own signature, and the type WE emit is the one the signature proves, never the
 // string upstream sent. nosniff and a null CSP are belt and braces on top of that.
+import { onRequestGet as assetLogo } from './assetlogo.js';   // the issuer's own toml, when stellar.expert has none (S15)
 const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
 const EXPERT = 'https://api.stellar.expert/explorer/public/asset?search=';
 const MAX_BYTES = 3 * 1024 * 1024;
@@ -95,6 +96,15 @@ export async function onRequestGet(ctx) {
 
   let src = await overrideImage(env, asset);
   if (!src) src = await tomlImage(asset);
+  // STELLAR.EXPERT CAN HAVE NO TOML DATA FOR AN ASSET (Circle's EURC, 2026-11-20): read the issuer's own toml the way
+  // /lxapi/assetlogo does -- the same mark the asset page shows. Its answer goes through every fence below.
+  if (!src) {
+    try {
+      const r = await assetLogo({ request: new Request(url.origin + '/lxapi/assetlogo?asset=' + encodeURIComponent(asset)), env });
+      const d = r && r.ok ? await r.json() : null;
+      src = (d && typeof d.image === 'string' && d.image) || '';
+    } catch (e) { src = ''; }
+  }
   if (!src) return fail(404);
 
   // A relative override is one of ours, already on this origin.
