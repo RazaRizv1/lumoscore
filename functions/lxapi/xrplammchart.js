@@ -18,6 +18,38 @@ const TTL = 300;
 const PERIODS = { '1d': 1, '1w': 1, '1m': 1, '3m': 1, '1y': 1, all: 1 };
 const ADDR = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 
+// THE LAST GOOD ANSWER, SHARED BY EVERY DATA CENTER (RAZA 2026-11-20, XRP/RLUSD: "i had to retry it 3 times before the
+// chart appeared"). xrpl.to refuses bursts with 429 and retry-after: 60, and caches.default is PER DATA CENTER, so a
+// visitor whose colo never held this answer got a failure. D1 is global: ADMIN_DB, the production binding (staging has
+// none and skips this). Written at most once an hour per key -- the upsert's WHERE -- and read only on a refusal. Not KV:
+// the free plan's 1,000 KV writes a day are spoken for.
+const LG_EVERY = 3600000, LG_KEEP = 2 * 86400000;
+let lgReady = false;
+async function lgTable(db) {
+  if (lgReady) return;
+  await db.prepare('CREATE TABLE IF NOT EXISTS lastgood (k TEXT PRIMARY KEY, v TEXT NOT NULL, ts INTEGER NOT NULL)').run();
+  lgReady = true;
+}
+async function lgRead(env, k) {
+  const db = env && env.ADMIN_DB;
+  if (!db) return null;
+  try {
+    await lgTable(db);
+    const r = await db.prepare('SELECT v, ts FROM lastgood WHERE k = ?1').bind(k).first();
+    if (!r || Date.now() - Number(r.ts) > LG_KEEP) return null;
+    return JSON.parse(r.v);
+  } catch (_) { return null; }
+}
+async function lgKeep(env, k, body) {
+  const db = env && env.ADMIN_DB;
+  if (!db) return;
+  try {
+    await lgTable(db);
+    await db.prepare('INSERT INTO lastgood (k, v, ts) VALUES (?1, ?2, ?3) ON CONFLICT(k) DO UPDATE SET v = excluded.v, ts = excluded.ts'
+      + ' WHERE excluded.ts - lastgood.ts > ?4').bind(k, JSON.stringify(body), Date.now(), LG_EVERY).run();
+  } catch (_) {}
+}
+
 const json = (body, secs) => new Response(JSON.stringify(body), {
   headers: {
     'content-type': 'application/json; charset=utf-8',
@@ -71,13 +103,18 @@ export async function onRequest(context) {
     // (seconds only: never cache a failure as an answer).
     const err = String((e && e.message) || e);
     const last = await cache.match(lastKey(url, acct, p)).catch(() => null);
-    const old = last ? await last.json().catch(() => null) : null;
+    let old = last ? await last.json().catch(() => null) : null;
+    // This data center never held it: the copy every data center shares (lgRead, above).
+    if (!(old && old.ok === true && old.pts && old.pts.length)) old = await lgRead(env, 'ammchart:' + acct + ':' + p);
     const isStale = !!(old && old.ok === true && old.pts && old.pts.length);
     const res = isStale
       ? json({ ...old, stale: true, error: err }, 60)
-      : json({ ok: false, error: err, pts: [] }, 30);
+      : json({ ok: false, error: err, pts: [] }, 10);
     res.headers.set('x-lx-upstream', isStale ? 'stale' : 'failed');
     context.waitUntil(cache.put(key, res.clone()));
+    // A FAILURE IS NEVER KEPT BY THE BROWSER (2026-11-20): the page's quiet retry was answered from its own HTTP cache
+    // with the same failure for 30s. The edge holds it 10s, so a refusing upstream is asked once per colo, not per visitor.
+    if (!isStale) res.headers.set('cache-control', 'no-store');
     return res;
   }
 
@@ -86,6 +123,7 @@ export async function onRequest(context) {
   context.waitUntil(cache.put(key, res.clone()));
   // …and the copy that outlives a refusal, served by the catch above.
   context.waitUntil(cache.put(lastKey(url, acct, p), json({ ...out, cachedAt: Date.now() }, 86400)));
+  context.waitUntil(lgKeep(env, 'ammchart:' + acct + ':' + p, { ...out, cachedAt: Date.now() }));   // every colo's fallback
   return res;
 }
 

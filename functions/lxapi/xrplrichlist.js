@@ -16,6 +16,38 @@ import { tokenId } from './_tokenid.js';
 const UP = 'https://api.xrpl.to/api';
 const TTL = 300;                    // a rich list moves slowly; five minutes is generous
 
+// THE LAST GOOD ANSWER, SHARED BY EVERY DATA CENTER (RAZA 2026-11-20, XRP/RLUSD: "i had to retry it 3 times before the
+// chart appeared"). xrpl.to refuses bursts with 429 and retry-after: 60, and caches.default is PER DATA CENTER, so a
+// visitor whose colo never held this answer got a failure. D1 is global: ADMIN_DB, the production binding (staging has
+// none and skips this). Written at most once an hour per key -- the upsert's WHERE -- and read only on a refusal. Not KV:
+// the free plan's 1,000 KV writes a day are spoken for.
+const LG_EVERY = 3600000, LG_KEEP = 2 * 86400000;
+let lgReady = false;
+async function lgTable(db) {
+  if (lgReady) return;
+  await db.prepare('CREATE TABLE IF NOT EXISTS lastgood (k TEXT PRIMARY KEY, v TEXT NOT NULL, ts INTEGER NOT NULL)').run();
+  lgReady = true;
+}
+async function lgRead(env, k) {
+  const db = env && env.ADMIN_DB;
+  if (!db) return null;
+  try {
+    await lgTable(db);
+    const r = await db.prepare('SELECT v, ts FROM lastgood WHERE k = ?1').bind(k).first();
+    if (!r || Date.now() - Number(r.ts) > LG_KEEP) return null;
+    return JSON.parse(r.v);
+  } catch (_) { return null; }
+}
+async function lgKeep(env, k, body) {
+  const db = env && env.ADMIN_DB;
+  if (!db) return;
+  try {
+    await lgTable(db);
+    await db.prepare('INSERT INTO lastgood (k, v, ts) VALUES (?1, ?2, ?3) ON CONFLICT(k) DO UPDATE SET v = excluded.v, ts = excluded.ts'
+      + ' WHERE excluded.ts - lastgood.ts > ?4').bind(k, JSON.stringify(body), Date.now(), LG_EVERY).run();
+  } catch (_) {}
+}
+
 const json = (body, secs) => new Response(JSON.stringify(body), {
   headers: {
     'content-type': 'application/json; charset=utf-8',
@@ -99,10 +131,24 @@ export async function onRequest(context) {
       src: 'xrpl.to', attribution: 'Data by xrpl.to', attributionUrl: 'https://xrpl.to',
     };
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e), rows: [] }, 30);
+    const err = String((e && e.message) || e);
+    // THE LAST GOOD LIST, from whichever data center fetched it (lgRead, above), marked stale. Else a failure the
+    // browser does not keep and the edge holds 10s -- the pool page's Participants box retries on its own.
+    const old = await lgRead(env, 'richlist:' + id + ':' + limit + ':' + start);
+    if (old && old.ok === true) {
+      const st = json({ ...old, stale: true, error: err }, 60);
+      st.headers.set('x-lx-upstream', 'stale');
+      context.waitUntil(cache.put(key, st.clone()));
+      return st;
+    }
+    const res = json({ ok: false, error: err, rows: [] }, 10);
+    context.waitUntil(cache.put(key, res.clone()));
+    res.headers.set('cache-control', 'no-store');
+    return res;
   }
 
   const res = json(out, TTL);
   context.waitUntil(cache.put(key, res.clone()));
+  context.waitUntil(lgKeep(env, 'richlist:' + id + ':' + limit + ':' + start, out));   // every colo's fallback
   return res;
 }
