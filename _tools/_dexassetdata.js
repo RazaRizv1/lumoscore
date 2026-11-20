@@ -2669,7 +2669,18 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var lbl=b.querySelector(".lx-mtlabel")||b;
       lbl.style.setProperty("color", MY_TRADES?"#ea6a2c":"#8a8fa3", "important");
       lbl.style.setProperty("text-decoration", MY_TRADES?"underline":"none", "important");
+      lxMtView(MY_TRADES);
     }
+  // MY TRADES READS AS ITS OWN VIEW (S35, 2026-11-20). While it is on and the Exchanges panel is showing: the panel heading
+  // says "My Trades" and the Exchanges tab gives up its highlight (.lx-mtview); otherwise both are put back.
+  function lxMtView(on){ try{
+    var bar=document.querySelector(".tabs-bar"); if(!bar)return;
+    var ex=bar.querySelector('.tab[data-tab="exchanges"]');
+    var show=!!on&&!!ex&&ex.classList.contains("active");
+    if(!document.getElementById("lx-mtview-css")){ var st=document.createElement("style"); st.id="lx-mtview-css"; st.textContent=".tabs-bar.lx-mtview .tab.active{color:var(--text-muted,#8a8fa3)!important;border-bottom-color:transparent!important}.tabs-bar.lx-mtview .tab.active .count{background:transparent!important;color:inherit!important}"; (document.head||document.documentElement).appendChild(st); }
+    if(bar.classList.contains("lx-mtview")!==show)bar.classList.toggle("lx-mtview",show);
+    [].slice.call(document.querySelectorAll(".panel-head h3")).forEach(function(h){ var t=(h.textContent||"").trim(); if(t!=="Recent Exchanges"&&t!=="My Trades")return; var w=show?"My Trades":"Recent Exchanges"; if(t!==w)h.textContent=w; });
+  }catch(_){} }
     lxMyTradesBtn();
     [200,600,1400,2600].forEach(function(ms){setTimeout(lxMyTradesBtn,ms);});
     // Window capture, like the chips above: this page has a delegated handler that repaints the design's mock rows and
@@ -2686,9 +2697,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // button is clicked rather than the active class being forged here.
       if(MY_TRADES){
         var ex=q('.tabs-bar .tab[data-tab="exchanges"]');
-        if(ex&&!ex.classList.contains("active")){ try{ ex.click(); }catch(_){} }
+        if(ex&&!ex.classList.contains("active")){ window.__lxMtAuto=1; try{ ex.click(); }catch(_){} window.__lxMtAuto=0; }
       }
       if(MY_TRADES&&MY_ROWS===null)loadMyTrades(); else renderExchanges();
+    },true);
+    // THE EXCHANGES TAB LEAVES MY TRADES, as on NEAR (S35, 2026-11-20); any other tab click re-states the view.
+    window.addEventListener("click",function(e){
+      var tab=e.target&&e.target.closest?e.target.closest(".tabs-bar .tab"):null; if(!tab)return;
+      if(!window.__lxMtAuto&&MY_TRADES&&/exchanges/i.test(tab.getAttribute("data-tab")||"")){ MY_TRADES=false; EX_PAGE=1; setTimeout(function(){ lxMyTradesBtn(); renderExchanges(); },0); return; }
+      setTimeout(function(){ lxMtView(MY_TRADES); },0);
     },true);
   }
 
