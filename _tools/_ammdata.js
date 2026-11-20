@@ -3692,16 +3692,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(mAmt&&!q(".mp-value,.mpm-value")){
         mAmt.textContent="—";
         if(mPnl)mPnl.innerHTML='<span style="color:var(--text-muted)">'+(myAddr()?"No position in this pool":"Connect a wallet to see your position")+'</span>';
-        if(mShare)mShare.textContent="0%";
+        if(mShare)mShare.textContent=myAddr()?"0%":"—";
       }
       var val=q(".mp-value,.mpm-value"); if(val)val.innerHTML='<div class="mp-label">Your Position</div><div class="mp-amount">\\u2014</div><div class="mp-pnl" style="color:var(--text-muted)">'+(myAddr()?"You have no liquidity in this pool":"Connect your wallet to see your position")+'</div>';
-      if(d.nonXlm){ pdAssetRow(assets[0],d.a0.code,genLogo(d.a0),"0"); pdAssetRow(assets[1],d.a1.code,genLogo(d.a1),"0"); }
-      else { pdAssetRow(assets[0],d.code,tokLogo(),"0"); pdAssetRow(assets[1],"XLM",xlmLogo(),"0"); }
+      if(d.nonXlm){ pdAssetRow(assets[0],d.a0.code,genLogo(d.a0),(myAddr()?"0":"—")); pdAssetRow(assets[1],d.a1.code,genLogo(d.a1),(myAddr()?"0":"—")); }
+      else { pdAssetRow(assets[0],d.code,tokLogo(),(myAddr()?"0":"—")); pdAssetRow(assets[1],"XLM",xlmLogo(),(myAddr()?"0":"—")); }
     }
     // The "Earned fees" ($8.92) + "LP tokens" (23,415.82) rows are baked mock. LP tokens = the real LP-share
     // balance; earned fees can't be derived without a deposit cost-basis, so show "—" instead of a fake number.
     qa(".my-position .mp-fee-row,.my-position-m .mpm-fee-row").forEach(function(rw){ var lab=(rw.querySelector(".mp-fee-label,.mpm-fee-label")||{}).textContent||""; var val=rw.querySelector(".mp-fee-val,.mpm-fee-val"); if(!val)return;
-      if(/lp tokens/i.test(lab)){ setText(val,d.myFrac>0?famt(d.myShares):"0"); }
+      if(/lp tokens/i.test(lab)){ setText(val,d.myFrac>0?famt(d.myShares):(myAddr()?"0":"—")); }
       else if(/earned fees/i.test(lab)){ val.innerHTML='<span style="color:var(--text-muted)">\\u2014</span>'; } });
   }
   function pdDW(){
