@@ -215,6 +215,31 @@ var X_EXCLUDE={};
  "rUdnkuyMpDoSfeSko4Y5Pg6Do9mUh8X1tY"].forEach(function(a){ X_EXCLUDE[a]=1; });
 X_EXCLUDE[X_ISSUER]=1;
 
+// ---- NEAR constants (D01, 2026-11-21) -----------------------------------------------------------
+// The programme is the one the public NEAR Rewards page estimates (LumosCore-NEAR browser/nearrewards.js):
+// its pairs, its four exclusions. Pool ids are NOT written here: /lxapi/nearrwpools reads from the chain which
+// classic pool carries each pair, so a pool created tomorrow is paid from the next calculation on.
+var N_SITE="https://lumoscore.com";
+var N_LUMOS="lumos.lumoscore.near", N_REF="v2.ref-finance.near", N_FARM="boostfarm.ref-labs.near";
+var N_IDX="https://near-pool-indexer.usa282.workers.dev";
+var N_RPCS=["https://free.rpc.fastnear.com","https://near.drpc.org"];
+var N_PER_TX=20;   // ft_transfer at 10 Tgas each: 200 of the 300 Tgas a transaction may use
+var N_ECO=[
+ {code:"USDC",  i:"17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"},
+ {code:"USDt",  i:"usdt.tether-token.near"},
+ {code:"QTC",   i:"qtc.omft.near"},
+ {code:"ZEC",   i:"zec.omft.near"},
+ {code:"BATMAN",i:"batman-4.nearlytrade.near"},
+ {code:"RHEA",  i:"token.rhealab.near"},
+ {code:"NEARLY",i:"nearly-993927.nearlytrade.near"},
+ {code:"HOOT",  i:"hoot-8ecf65.launchpad.justhoot.near"},
+ {code:"rNEAR", i:"lst.rhealab.near"},
+ {code:"USDT.e",i:"dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near"}
+];
+// The public page's list (treasury, fee account, and the two exchange contracts whose LUMOS is the pools' and the
+// order book's), plus Rhea's farm, whose pool shares ARE its stakers' and are counted for them instead.
+var N_EXCLUDE={"treasury.lumoscore.near":1,"fees-lumoscore.near":1,"dclv2.ref-labs.near":1,"v2.ref-finance.near":1,"boostfarm.ref-labs.near":1};
+
 function q(s){return document.querySelector(s);}
 function qa(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
 function j(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
@@ -352,6 +377,93 @@ function xWhales(){
     return {list:list,lines:lines}; });
 }
 
+// ---- NEAR adapter (D01) -------------------------------------------------------------------------
+// A view call on one RPC, then the other; a read that fails on both throws, so a pool that could not be read
+// never looks like an empty one.
+function nview(account,method,args){
+  var body=JSON.stringify({jsonrpc:"2.0",id:1,method:"query",params:{request_type:"call_function",finality:"final",
+    account_id:account,method_name:method,args_base64:btoa(JSON.stringify(args||{}))}});
+  var k=0;
+  function go(){
+    var u=N_RPCS[k%N_RPCS.length];
+    return fetch(u,{method:"POST",headers:{"content-type":"application/json"},body:body}).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d&&d.error)throw new Error(method+": "+JSON.stringify(d.error).slice(0,140));
+        var res=d&&d.result; if(!res||!res.result)throw new Error(method+": "+String((res&&res.error)||"no result").slice(0,140));
+        return JSON.parse(new TextDecoder().decode(new Uint8Array(res.result))); })
+      .catch(function(e){ k++; if(k>=N_RPCS.length*2)throw e; return new Promise(function(ok){ setTimeout(ok,500*k); }).then(go); }); }
+  return go();
+}
+// Four reads at a time: the free RPCs are shared, and a burst of fifty is what gets an IP rate-limited.
+function nEach(list,fn){
+  var out=new Array(list.length), i=0;
+  function worker(){ if(i>=list.length)return Promise.resolve(); var k=i++;
+    return Promise.resolve(fn(list[k])).then(function(v){ out[k]=v; return worker(); }); }
+  var ws=[]; for(var w=0;w<Math.min(4,list.length);w++)ws.push(worker());
+  return Promise.all(ws).then(function(){ return out; });
+}
+function nUnits(raw,dec){ var s=String(raw||"0").split(".")[0]; if(!s.length)return 0;
+  if(s.length<=dec)return Number("0."+("0".repeat(dec-s.length))+s);
+  return Number(s.slice(0,s.length-dec)+"."+s.slice(s.length-dec)); }
+var N_RES=null, N_HOLD=null;
+// Which pool carries each pair, and every LUMOS holder (whales, and candidates for every pool), read once per
+// calculation. Neither failing is "no pools" or "no holders": both stop the round.
+function nPrepare(defs){
+  N_RES={}; N_HOLD=null;
+  return Promise.all([j(N_SITE+"/lxapi/nearrwpools?t="+Date.now()), j(N_SITE+"/lxapi/nearholders?i="+encodeURIComponent(N_LUMOS))])
+    .then(function(x){
+      var rw=x[0], hl=x[1];
+      if(!rw||!rw.ok||!rw.pools)throw new Error("could not read which NEAR pools carry the programme");
+      if(!hl||!hl.ok||!hl.holders)throw new Error("could not read the LUMOS holder list");
+      var by={}; rw.pools.forEach(function(p){ by[p.i]=p.id; });
+      defs.forEach(function(d){ var id=by[d.rw||d.i]; N_RES[d.code]=id?{id:+id}:{missing:true}; });
+      N_HOLD=hl.holders; });
+}
+// Every candidate's shares, read live: held directly, plus staked in Rhea's farm (staked shares sit with the farm,
+// not the person). cover = how much of the pool the candidates account for, the excluded wallets included.
+function nPoolInfo(def){
+  var r=N_RES&&N_RES[def.code];
+  if(!r)return Promise.reject(new Error("Pool "+def.code+" was never resolved"));
+  if(r.missing)return Promise.resolve({total:0,holders:{}});
+  var id=r.id, seed=N_REF+"@"+id;
+  return Promise.all([nview(N_REF,"get_pool",{pool_id:id}), j(N_IDX+"/pool?id="+id+"&kind=add&limit=500"), j(N_IDX+"/lpc?pool="+id)])
+    .then(function(x){
+      var total=Number(String((x[0]&&x[0].shares_total_supply)||"0"));
+      if(!(total>0))return {total:0,holders:{}};
+      var seen={}, cand=[];
+      function addc(a){ a=String(a||""); if(!a||a===N_FARM||seen[a])return; seen[a]=1; cand.push(a); }
+      ((x[1]&&x[1].ok&&x[1].rows)||[]).forEach(function(w){ addc(w&&w.who); });
+      ((x[2]&&x[2].ok&&x[2].a)||[]).forEach(addc);
+      (N_HOLD||[]).forEach(function(h){ addc(h&&h.a); });
+      addc(N_REF);   // Rhea's admin-fee shares: excluded, but part of what the pool is made of
+      return nEach(cand,function(a){
+        return Promise.all([nview(N_REF,"get_pool_shares",{pool_id:id,account_id:a}),
+          nview(N_FARM,"get_farmer_seed",{farmer_id:a,seed_id:seed}).catch(function(){ return null; })])
+          .then(function(v){ var f=v[1];
+            return {a:a, n:Number(String(v[0]||"0"))+(f?Number(String(f.free_amount||"0"))+Number(String(f.locked_amount||"0")):0)}; }); })
+      .then(function(rows){
+        var out={}, found=0;
+        rows.forEach(function(z){ if(z&&z.n>0){ out[z.a]=z.n; found+=z.n; } });
+        return {total:total,holders:out,cover:Math.min(1,found/total)}; }); });
+}
+// 5,000,000+ LUMOS, from the holder list read in nPrepare. A list that may have been cut short (100 rows, the last
+// still 5M+) is not a total, and the holder pot cannot be split over a total nobody knows: it stops.
+function nWhales(){
+  var hs=N_HOLD||[], last=0, list=[];
+  hs.forEach(function(h){ var v=nUnits(h.raw,18); last=v;
+    if(!N_EXCLUDE[h.a]&&v>=WHALE_UNIT)list.push({addr:h.a,bal:v}); });
+  if(hs.length>=100&&last>=WHALE_UNIT)return Promise.reject(new Error("the LUMOS holder list may be cut short"));
+  return Promise.resolve({list:list,lines:null});
+}
+// NEAR's trustline: ft_transfer to an account never registered with the LUMOS contract fails, and inside a batch it
+// fails the WHOLE transaction. true = registered; anything else (false, or a read that failed) is not paid.
+function nCanReceive(addrs){
+  var ok={};
+  return nEach(addrs,function(a){
+    return nview(N_LUMOS,"storage_balance_of",{account_id:a}).then(function(b){ ok[a]=!!b; },function(){ ok[a]="unread"; }); })
+    .then(function(){ return ok; });
+}
+
 var ADP={
  stellar:{ key:"stellar", name:"Stellar", nativeCode:"XLM", issuer:S_ISSUER, excl:S_EXCLUDE,
    native:S_NATIVE, eco:S_ECO, dp:7,
@@ -360,18 +472,26 @@ var ADP={
    prepare:function(){ return Promise.resolve(); },
    poolInfo:sPoolInfo, whales:sWhales,
    explorer:function(a){ return "https://stellar.expert/explorer/public/account/"+a; },
+   nlShort:"no LUMOS trustline",
    finalNote:"Stellar payments are final and cannot be reversed." },
  xrpl:{ key:"xrpl", name:"XRPL", nativeCode:"XRP", issuer:X_ISSUER, excl:X_EXCLUDE,
    native:X_NATIVE, eco:X_ECO, dp:6,
    prepare:xPrepare,
    poolInfo:xPoolInfo, whales:xWhales,
    explorer:function(a){ return "https://bithomp.com/explorer/"+a; },
-   finalNote:"XRP Ledger payments are final and cannot be reversed." }
+   nlShort:"no LUMOS trustline",
+   finalNote:"XRP Ledger payments are final and cannot be reversed." },
+ near:{ key:"near", name:"NEAR", nativeCode:"wNEAR", issuer:N_LUMOS, excl:N_EXCLUDE,
+   native:{code:"wNEAR",rw:"wrap.near"}, eco:N_ECO, dp:6,
+   prepare:nPrepare, poolInfo:nPoolInfo, whales:nWhales, canReceive:nCanReceive,
+   nlShort:"not registered for LUMOS",
+   explorer:function(a){ return "https://nearblocks.io/address/"+a; },
+   finalNote:"NEAR payments are final and cannot be reversed. The first NEAR round is due 1 December 2026." }
 };
 
 var CH="stellar";
 try{ var sv=localStorage.getItem("lumos.admin.rwchain"); if(sv&&ADP[sv])CH=sv; }catch(e){}
-var ROUNDS={stellar:null,xrpl:null};
+var ROUNDS={stellar:null,xrpl:null,near:null};
 function A(){ return ADP[CH]; }
 function R(){ return ROUNDS[CH]; }
 
@@ -402,7 +522,7 @@ function generate(btn){
       var paid=0,n=0;
       Object.keys(hold).forEach(function(k){ if(a.excl[k])return;
         var share=hold[k]/den, amt=p.pot*share; if(amt>0){ add(k,p.native?"native":"eco",amt); paid+=amt; n++; } });
-      return {code:p.code,paid:paid,holders:n}; })
+      return {code:p.code,paid:paid,holders:n,cover:z.cover}; })
       .catch(function(){ return {code:p.code,paid:null,holders:null}; }); });
   jobs.push(a.whales().then(function(w){
     lines=w.lines;
@@ -425,10 +545,13 @@ function generate(btn){
       return r; })
       .filter(function(r){ return r.total>0.0000001; })
       .sort(function(a2,b2){ return b2.total-a2.total; });
-    ROUNDS[ch]={rows:rows,at:new Date(),res:res};
-    if(ch!==CH)return;
-    paint();
-    btn.disabled=false; btn.textContent="Recalculate";
+    // A chain that checks recipients one by one (NEAR's registration) does it here, before the round is shown.
+    return (a.canReceive?a.canReceive(rows.map(function(r){ return r.addr; })):Promise.resolve(null)).then(function(ok){
+      if(ok)rows.forEach(function(r){ if(ok[r.addr]!==true)r.noline=true; });
+      ROUNDS[ch]={rows:rows,at:new Date(),res:res};
+      if(ch!==CH)return;
+      paint();
+      btn.disabled=false; btn.textContent="Recalculate"; });
   }).catch(function(e){
     btn.disabled=false; btn.textContent="Recalculate";
     if(sub)sub.textContent="Could not calculate: "+((e&&e.message)||e);
@@ -472,7 +595,7 @@ function paint(){
   setTxt("#lxrTotal", num(tot,0)+" LUMOS");
   setTxt("#lxrTotalF","calculated "+rd.at.toLocaleString());
   setTxt("#lxrCount", String(rows.length));
-  setTxt("#lxrCountF", nl?(nl+" cannot be paid \\u2014 no LUMOS trustline"):"wallets due a payout");
+  setTxt("#lxrCountF", nl?(nl+" cannot be paid \\u2014 "+a.nlShort):"wallets due a payout");
   setTxt("#lxrLp", num(lp,0));
   setTxt("#lxrWhale", num(wh,0));
   var empty=(rd.res||[]).filter(function(r){ return r&&r.holders===0; }).map(function(r){ return r.code; });
@@ -490,7 +613,7 @@ function paint(){
 
 function chips(){
   var seg=q("#lxrSeg"); if(!seg)return;
-  seg.innerHTML=["stellar","xrpl"].map(function(k){
+  seg.innerHTML=["stellar","xrpl","near"].map(function(k){
     var rd=ROUNDS[k];
     var cnt=rd?String(rd.rows.length):"\\u2014";
     return "<button class='seg-chip"+(CH===k?" active":"")+"' type='button' data-lxchain='"+k+"'>"
@@ -521,6 +644,9 @@ function renderPrograms(res){
              who:"Providers in the LUMOS/"+p.code+" pool, by share of the pool", pot:ECO_PER_POOL, r:by[p.code]}); });
   rows.push({name:"Holder program", who:"Wallets holding 5,000,000+ LUMOS, one share per 5,000,000",
              pot:WHALE_POOL, r:by.holders});
+  // A POOL THE ROUND COULD NOT FULLY SEE SAYS SO (NEAR: holders are found, not listed). The unseen part is not paid.
+  rows.forEach(function(x){ if(x.r&&x.r.cover!=null&&x.r.cover<0.999&&x.r.holders>0)
+    x.who+=" · found "+(x.r.cover*100).toFixed(1)+"% of the pool's shares; the rest is held by wallets this round could not see, and is not paid"; });
   tb.innerHTML=rows.map(function(x){
     var r=x.r, n=r?r.holders:null, paid=r?r.paid:null;
     // Nobody qualifying is a real answer, not a missing one, so it reads as "nobody yet" and the pot
@@ -548,7 +674,9 @@ function render(){
   tb.innerHTML=rd.rows.map(function(r){
     var st=r.sent?"<span class='lxr-st sent'>sent</span>"
         :(r.err?("<span class='lxr-st fail' title='"+esc(r.err)+"'>failed</span>")
-        :(r.noline?"<span class='lxr-st skip' title='This wallet has no LUMOS trustline, so it cannot receive a payment. It is not included in the send.'>no trustline</span>"
+        :(r.hold?("<span class='lxr-st fail' title='"+esc(r.err||"")+"'>check</span>")
+        :r.noline?(a.key==="near"?"<span class='lxr-st skip' title='This account is not registered with the LUMOS contract (or its registration could not be read), so a transfer to it would fail. It is not included in the send.'>not registered</span>"
+          :"<span class='lxr-st skip' title='This wallet has no LUMOS trustline, so it cannot receive a payment. It is not included in the send.'>no trustline</span>")
         :"<span class='lxr-st'>pending</span>"));
     return "<tr><td class='mono'><a class='lxadm-link' target='_blank' rel='noopener' href='"+esc(a.explorer(r.addr))+"'>"+esc(shortG(r.addr))+"</a></td>"
       +"<td class='num-cell' style='text-align:right'>"+num(r.native)+"</td>"
@@ -655,24 +783,24 @@ function progress(){
 
 function send(btn){
   var rd=R(), a=A(); if(!rd||!rd.rows.length)return;
-  var due=rd.rows.filter(function(r){ return !r.sent&&!r.noline&&r.total>0.0000001; });
+  var due=rd.rows.filter(function(r){ return !r.sent&&!r.noline&&!r.hold&&r.total>0.0000001; });
   if(!due.length){ alert("Nothing left to send on "+a.name+"."); return; }
   var tot=due.reduce(function(s,r){return s+r.total;},0);
   var skipped=rd.rows.filter(function(r){ return r.noline; }).length;
   var NL=String.fromCharCode(10);
-  var w=(CH==="stellar")?sWallet():xWallet();
+  var w=(CH==="stellar")?sWallet():(CH==="near"?{name:"NEAR Connect"}:xWallet());
   if(CH==="stellar"&&!w){ alert("No wallet extension found. Install Freighter or Rabet, unlock it, and reload this page."); return; }
   // On Stellar one transaction carries up to 100 payments. On XRPL every payment is its own
   // transaction, so the count of approvals is the count of recipients -- said plainly up front,
   // because 30 wallet popups is not something to discover half way through a payout.
-  var steps=(CH==="stellar")?batches(due,100).length:due.length;
+  var steps=(CH==="stellar")?batches(due,100).length:(CH==="near"?batches(due,N_PER_TX).length:due.length);
   if(!confirm("Send "+num(tot,0)+" LUMOS to "+due.length+" wallets on "+a.name+"?"+NL+NL
     +"This is "+steps+" transaction"+(steps===1?"":"s")+" and your wallet will ask you to approve each one."
-    +(skipped?(NL+skipped+" wallet(s) are skipped: they have no LUMOS trustline and cannot receive a payment."):"")
+    +(skipped?(NL+skipped+" wallet(s) are skipped: "+a.nlShort+", so they cannot receive a payment."):"")
     +NL+a.finalNote))return;
   btn.disabled=true;
   var p=progress();
-  var run=(CH==="stellar")?sendStellar(w,due,p):sendXrpl(w,due,p);
+  var run=(CH==="stellar")?sendStellar(w,due,p):(CH==="near"?sendNear(due,p):sendXrpl(w,due,p));
   run.then(function(){
     p.textContent="Done \\u2014 "+due.filter(function(r){return r.sent;}).length+" of "+due.length+" paid.";
   }).catch(function(e){
@@ -746,6 +874,81 @@ function sendXrpl(w,due,p){
     return step(); });
 }
 
+// ---- NEAR signing (D01) ----------------------------------------------------------------------------
+// NEAR Connect, the library and pinned wallet list the public NEAR site uses (HOT, Meteor, NEAR Mobile, Intear),
+// loaded from the site only when Send is pressed. connect() with no wallet id shows the library's own picker.
+var N_CONN=null;
+function nConnector(){
+  if(N_CONN)return N_CONN;
+  var lib=window.NearConnect?Promise.resolve(window.NearConnect):new Promise(function(res,rej){
+    var s=document.createElement("script"); s.src=N_SITE+"/assets/vendor/near-connect-0.11.4.min.js";
+    s.onload=function(){ window.NearConnect?res(window.NearConnect):rej(new Error("NEAR Connect did not load")); };
+    s.onerror=function(){ rej(new Error("NEAR Connect could not be loaded")); }; document.head.appendChild(s); });
+  N_CONN=Promise.all([lib, fetch(N_SITE+"/assets/vendor/near-wallets-manifest.json").then(function(r){ if(!r.ok)throw new Error("wallet list unavailable"); return r.json(); })])
+    .then(function(x){ return new Promise(function(res){
+      // An installed extension announces itself after the constructor; waiting for it (or 700 ms) is what makes
+      // the library talk to the extension directly instead of through its relay (the public site measured this).
+      var c=null, done=false;
+      function fin(){ if(done||!c)return; done=true; window.removeEventListener("near-wallet-injected",hear); res(c); }
+      function hear(){ setTimeout(fin,0); }
+      window.addEventListener("near-wallet-injected",hear);
+      c=new x[0].NearConnector({network:"mainnet",manifest:x[1],footerBranding:null,autoConnect:false});
+      setTimeout(fin,700); }); });
+  N_CONN.catch(function(){ N_CONN=null; });
+  return N_CONN;
+}
+// LUMOS has 18 decimals. Amounts are floored to 6 places first, so a round can never pay more than it showed.
+function nYocto(x){ var s=(Math.floor((+x||0)*1e6)/1e6).toFixed(6).split(".");
+  return (BigInt(s[0])*BigInt("1000000000000000000")+BigInt(s[1])*BigInt("1000000000000")).toString(); }
+function nOk(o){ var s=o&&o.status; return !!s&&s.SuccessValue!==undefined; }
+function nFail(o){ var s=o&&o.status; return !!(s&&s.Failure); }
+// The outcome, from the wallet's answer when it carries one, otherwise from the chain by hash.
+function nOutcome(r,from){
+  var hash=r&&((r.transaction&&r.transaction.hash)||(r.transaction_outcome&&r.transaction_outcome.id)||r.hash)||"";
+  if(nOk(r)||nFail(r))return Promise.resolve({hash:hash,o:r});
+  if(!hash)return Promise.resolve({hash:"",o:null});
+  return fetch(N_RPCS[0],{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tx",params:{tx_hash:hash,sender_account_id:from,wait_until:"FINAL"}})})
+    .then(function(x){ return x.json(); }).then(function(d){ return {hash:hash,o:d&&d.result}; })
+    .catch(function(){ return {hash:hash,o:null}; });
+}
+// One transaction per 20 recipients, approved one at a time, so each batch is accounted for before the next is
+// asked for. Inside a transaction the transfers are all-or-nothing. A refusal stops the round; a batch whose
+// outcome cannot be confirmed is HELD ("check" -- look it up by hash), never re-sent by pressing Send again.
+function sendNear(due,p){
+  var bs=batches(due,N_PER_TX), need=due.reduce(function(s,r){ return s+r.total; },0);
+  p.textContent="Opening NEAR Connect…";
+  var wal=null, from="";
+  return nConnector().then(function(c){ return c.connect(); }).then(function(w){ wal=w; return w.getAccounts({network:"mainnet"}); })
+  .then(function(ac){
+    from=(ac&&ac[0]&&ac[0].accountId)||"";
+    if(!from)throw new Error("The wallet returned no NEAR account.");
+    return nview(N_LUMOS,"ft_balance_of",{account_id:from}); })
+  .then(function(bal){
+    var have=nUnits(bal,18);
+    if(have<need)throw new Error(from+" holds "+num(have,0)+" LUMOS; this round needs "+num(need,0)+". Nothing was sent.");
+    var i=0;
+    function step(){
+      if(i>=bs.length)return Promise.resolve();
+      var batch=bs[i];
+      p.textContent="Transaction "+(i+1)+" of "+bs.length+" ("+batch.length+" payments) from "+from+" — approve in your wallet…";
+      var tx={signerId:from,receiverId:N_LUMOS,actions:batch.map(function(r){
+        return {type:"FunctionCall",params:{methodName:"ft_transfer",
+          args:{receiver_id:r.addr,amount:nYocto(r.total),memo:"LumosCore: LUMOS rewards"},gas:"10000000000000",deposit:"1"}}; })};
+      return wal.signAndSendTransaction(tx).then(function(res){
+        p.textContent="Transaction "+(i+1)+" of "+bs.length+" — confirming…";
+        return nOutcome(res,from); }, function(e){
+        var m=(e&&e.message)||String(e);
+        if(/reject|denied|cancel|declin|closed/i.test(m)&&!/gas|balance|insufficient|storage|deposit/i.test(m))throw new Error("Cancelled in the wallet.");
+        throw new Error(m); })
+      .then(function(out){
+        if(nOk(out.o))batch.forEach(function(r){ r.sent=true; r.tx=out.hash; });
+        else if(nFail(out.o)){ var msg=JSON.stringify(out.o.status.Failure).slice(0,200); batch.forEach(function(r){ r.err=msg; }); }
+        else batch.forEach(function(r){ r.hold=true; r.err="Sent, but the result could not be confirmed"+(out.hash?(": look up "+out.hash+" on nearblocks.io"):"")+". Not re-sent."; });
+        render(); i++; return step(); }); }
+    return step(); });
+}
+
 function csv(){
   var rd=R(), a=A(); if(!rd)return;
   var NL=String.fromCharCode(10), dp=a.dp;
@@ -761,7 +964,7 @@ function boot(){
   if(!isPage())return;
   var head=q(".admin-page-head");
   if(head&&!q(".lxr-warn")){ var wn=document.createElement("div"); wn.className="lxr-warn";
-    wn.innerHTML="This round is worked out from mainnet the moment the page opens, exactly as the public Rewards page does for a single wallet \\u2014 <b>Recalculate</b> re-reads it. Pick the chain with the chips below; each keeps its own round. Nothing leaves the treasury until you press <b>Send</b> and approve: it pays real LUMOS from the wallet you sign with \\u2014 100 payments per signature on Stellar, one approval per payment on XRPL \\u2014 and payments on both ledgers are final.";
+    wn.innerHTML="This round is worked out from mainnet the moment the page opens, exactly as the public Rewards page does for a single wallet \\u2014 <b>Recalculate</b> re-reads it. Pick the chain with the chips below; each keeps its own round. Nothing leaves the treasury until you press <b>Send</b> and approve: it pays real LUMOS from the wallet you sign with \\u2014 100 payments per signature on Stellar, one approval per payment on XRPL, 20 per transaction on NEAR \\u2014 and payments on all three ledgers are final.";
     head.parentNode.insertBefore(wn, head.nextSibling); }
   var g=q("#lxrGen"); if(g&&!g.__lx){ g.__lx=1; g.addEventListener("click",function(){ generate(g); }); }
   var s=q("#lxrSend"); if(s&&!s.__lx){ s.__lx=1; s.addEventListener("click",function(){ send(s); }); }
