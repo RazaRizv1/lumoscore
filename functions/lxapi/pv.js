@@ -99,10 +99,16 @@ async function visitorId(db, request, day, ua, host) {
 //
 // A bare /dashboard on XRPL is exactly why the cookie is needed -- the XRPL dashboard has no /xrpl in
 // its url, so path alone would file every XRPL dashboard view under Stellar.
+//
+// NEAR (2026-11-21, admin review B05): it went live without a line here, so every NEAR view -- /trade/near/...,
+// or a bare /dashboard with lx_chain=near -- was filed under Stellar, and Analytics' Networks showed no NEAR at
+// all. Views recorded before this change stay as they were; only new ones are split.
 function chainOf(path, cookie) {
   if (/\/stellar(\/|$)/.test(path)) return 'stellar';
   if (/\/xrpl(\/|$)/.test(path)) return 'xrpl';
-  return /(?:^|;\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar';
+  if (/\/near(\/|$)/.test(path)) return 'near';
+  const m = /(?:^|;\s*)lx_chain=(xrpl|near)(?:;|$)/.exec(cookie || '');
+  return m ? m[1] : 'stellar';
 }
 function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) : s; }
 // ---- 'desktop' is a measurement, not a dumping ground -------------------------------------------
