@@ -61,7 +61,7 @@ const MAIN = `
         </div>
         <div class="lxan-stack">
           <div class="adm-card lxan-card">
-            <div class="adm-card-head"><div><div class="adm-card-title">Traffic channels</div><div class="adm-card-sub">how visits started &middot; moving between pages not counted</div></div></div>
+            <div class="adm-card-head"><div><div class="adm-card-title">Traffic channels</div><div class="adm-card-sub">how visits started &middot; our own count &middot; moving between pages not counted</div></div></div>
             <div class="adm-card-body"><div id="lxanChan"><div class="lxadm-empty">Loading&hellip;</div></div></div>
           </div>
           <div class="adm-card lxan-card">
@@ -638,14 +638,17 @@ var SEARCH_RE=/(^|[.])(google[.][a-z.]+|bing[.]com|duckduckgo[.]com|search[.]yah
 var SOCIAL_RE=/(^|[.])(t[.]co|x[.]com|twitter[.]com|facebook[.]com|fb[.]com|instagram[.]com|threads[.]net|threads[.]com|linkedin[.]com|lnkd[.]in|reddit[.]com|t[.]me|telegram[.]org|youtube[.]com|tiktok[.]com|discord[.]com|medium[.]com)$/i;
 var AI_RE=/(^|[.])(chatgpt[.]com|chat[.]openai[.]com|openai[.]com|perplexity[.]ai|gemini[.]google[.]com|bard[.]google[.]com|claude[.]ai|copilot[.]microsoft[.]com|poe[.]com|you[.]com|phind[.]com|meta[.]ai|grok[.]com|chat[.]deepseek[.]com|deepseek[.]com|chat[.]mistral[.]ai|kimi[.]com|kagi[.]com)$/i;
 function channelOf(k){ k=String(k||"").toLowerCase();
-  if(!k||k==="(none)") return "Direct"; if(k==="lumoscore.com") return null;
+  if(!k||k==="(none)") return "Direct"; if(k==="lumoscore.com"||/(^|[.])lumoscore[.]com$/.test(k)||/(^|[.])lumoscore(-admin|-staging)?[.]pages[.]dev$/.test(k)) return null;
   if(AI_RE.test(k)||k.indexOf("com.openai")===0) return "AI assistants";
   if(k.indexOf("com.google.android")===0||SEARCH_RE.test(k)) return "Search";
   if(SOCIAL_RE.test(k)||k.indexOf("org.telegram")===0||k.indexOf("com.twitter")===0) return "Social";
   return "Other sites"; }
 function channels(el,d){
   if(!el) return; var sums={Direct:0,Search:0,"AI assistants":0,Social:0,"Other sites":0}, tot=0;
-  (d.topReferers||[]).forEach(function(r){ var c=channelOf(r.key); if(!c) return; var v=(typeof r.visits==="number")?r.visits:(r.count||0); sums[c]+=v; tot+=v; });
+  var own=d.own||{}, oc=own.cur||null;
+  if(oc&&own.refs){ var ext=0; own.refs.forEach(function(r){ var c=channelOf(r.ref); if(!c||c==="Direct") return; var v=r.sessions||0; sums[c]+=v; ext+=v; });
+    sums.Direct=Math.max(0,(oc.sessions||0)-ext); tot=sums.Direct+ext; }
+  else (d.topReferers||[]).forEach(function(r){ var c=channelOf(r.key); if(!c) return; var v=(typeof r.visits==="number")?r.visits:(r.count||0); sums[c]+=v; tot+=v; });
   if(!tot){ el.innerHTML="<div class='lxadm-empty'>No visits in this period.</div>"; return; }
   var order=["Direct","Search","AI assistants","Social","Other sites"], cols={Direct:PAL[0],Search:PAL[1],"AI assistants":PAL[4],Social:PAL[2],"Other sites":PAL[3]};
   var mx=Math.max.apply(null,order.map(function(k){ return sums[k]; }))||1;
@@ -867,7 +870,7 @@ function reconcile(d){
     +"<span class='s own'><i></i>Our own count, same period: <b>"+num(o.sessions)+"</b> visits \\u00b7 <b>"+num(o.views)+"</b> views</span>"
     +"<span class='w'>Same window, two counters"
     +(gap!=null&&Math.abs(gap)>=5?(" ("+(gap>0?"+":"")+gap+"%)"):"")
-    +" \\u2014 Cloudflare samples and misses blocked beacons. Live counts today, from midnight UTC.</span>";
+    +" \\u2014 they count differently; compare each with its own past, not with the other. Live counts today, from midnight UTC.</span>";
 }
 
 // EXIT RATE BY PAGE (RAZA 2026-09-29: "i also wanna see all the pages Exit rate from highest to lowest").
