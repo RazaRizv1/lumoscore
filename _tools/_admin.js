@@ -717,7 +717,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // struck through and carrying the reason they left: one the asset rule dropped, and one a person named
 // in NOT_REVENUE. A figure nobody can see is a figure nobody can question, and a row that silently
 // vanished is one nobody can put back. Only the totals ignore them.
-+'    var led=rows.concat(rv.other||[]).concat(rv.ex||[]).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
++'    var led=rows.concat(rv.other||[]).concat(rv.ex||[]).filter(function(p){ var f=String(p.from||""); return !((f==="lumoscore.near"||f.slice(-15)===".lumoscore.near")&&!isFeeAsset(p)&&!exReason(p)); }).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
 // FIFTY A PAGE (RAZA 2026-10-19: "add pagination for the fee ledger ... otherwise it will just keep
 // getting longer and might even affect page loading speed"). It was a flat slice of 60, so every
 // receipt past the sixtieth was simply unreachable -- and had the cap been lifted instead, the table
