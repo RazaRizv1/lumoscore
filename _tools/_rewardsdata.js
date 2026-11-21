@@ -20,6 +20,8 @@ const STYLE = `<style id="lx-rewards-css">
 #eligBox .lxrw-empty .t{font-weight:700;color:var(--text);font-size:15px}
 #eligBox .lxrw-empty .s{color:var(--text-muted);font-size:13px;margin-top:6px;line-height:1.55;max-width:44ch;margin-left:auto;margin-right:auto}
 .lxrw-preview{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:3px 9px;border-radius:7px;font:700 10.5px/1.3 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#b8860b;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.35);vertical-align:middle;white-space:nowrap}
+@media (max-width:640px){.rwpage .rep-ctrls{flex:1 1 100%;min-width:0}.rwpage .rep-ctrls .selwrap{min-width:0;max-width:100%}.rwpage .rep-ctrls .rsel{max-width:100%}}
+@media (max-width:400px){.rwpage .rep-ctrls .rsel{padding-left:12px;padding-right:28px}}
 </style>`;
 
 // ---- browser runtime (mainnet, read-only). No backticks / no ${ } inside. ----
