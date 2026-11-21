@@ -310,11 +310,11 @@ function renderList(){
     var badge="<span class='lxb-badge"+cls+"'>"+esc(word)+"</span>";
     if(mob)return "<tr><td>"+esc(p.title)+"</td><td style='text-align:right'>"+badge+"</td></tr>";
     return "<tr data-slug='"+esc(p.slug)+"'><td><div class='lxb-row'>"+thumb(p)
-      +"<div class='lxb-rowtxt'><b>"+esc(p.title)+"</b><div class='lxb-h mono' style='margin-top:3px'>/blog/"+esc(p.slug)+"</div></div></div></td>"
+      +"<div class='lxb-rowtxt'><b>"+esc(p.title)+"</b><div class='lxb-h mono' style='margin-top:3px;overflow-wrap:anywhere'>/blog/"+esc(p.slug)+"</div></div></div></td>"
       +"<td>"+esc(p.category||"")+"</td>"
       +"<td style='text-align:right'>"+badge+"</td>"
       +"<td style='text-align:right;color:var(--text-muted);font-size:13px'>"+esc(ago(p.updatedAt||p.createdAt||Date.now()))+"</td>"
-      +"<td style='text-align:right'>"
+      +"<td style='text-align:right;white-space:nowrap'>"
       +(live?("<a class='adm-btn ghost' target='_blank' rel='noopener' title='Open the published post' href='https://lumoscore.com/blog/"+esc(p.slug)+"'>View</a> "):"")
       +"<button class='adm-btn ghost lxb-edit' type='button' data-slug='"+esc(p.slug)+"'>Edit</button> "
       +"<button class='adm-btn ghost lxb-del' type='button' data-slug='"+esc(p.slug)+"'>Delete</button></td></tr>";
