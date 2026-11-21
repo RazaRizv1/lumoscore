@@ -115,7 +115,7 @@ function lede(){
 // The placeholder cards carry their cover as a CSS gradient. A real post carries an image URL, so the
 // same slot has to render either -- an <img> inside the gradient block, which also keeps the 1200x630
 // crop the CSS already defines.
-function coverInto(el,post){
+function coverInto(el,post,small){
   if(!el)return;
   if(!post.cover){ el.remove(); return; }
   // PREPEND, do not overwrite. This slot used to hold the category chip too, and an innerHTML
@@ -124,7 +124,7 @@ function coverInto(el,post){
   var img=document.createElement("img");
   img.className="lx-bd-cover-img";
   img.alt=post.coverAlt||"";
-  img.src=post.cover;
+  img.src=small?(String(post.cover).indexOf("/lxapi/media?id=")>=0&&String(post.cover).indexOf("&")<0?post.cover+"&w=1200":post.cover):post.cover;   // lists: 1200 px copy (2026-11-21); the article keeps the original
   el.insertBefore(img, el.firstChild);
 }
 
@@ -149,7 +149,7 @@ function fillIndex(posts){
       +"<div class='lx-bp-title'>"+esc(p.title)+"</div>"
       +"<div class='lx-bp-when'>"+esc(when(p.publishedAt||p.createdAt))+"</div></a>";
   }).join("");
-  posts.forEach(function(p){ coverInto(q(".lx-bp-cover[data-cov='"+p.slug+"']"),p); });
+  posts.forEach(function(p){ coverInto(q(".lx-bp-cover[data-cov='"+p.slug+"']"),p,true); });
 }
 
 function fillPost(post){

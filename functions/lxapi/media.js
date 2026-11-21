@@ -16,6 +16,11 @@ import { audit } from '../../_lib/audit.js';
 
 const PREFIX = 'media:';
 const MAX = 4 * 1024 * 1024;   // 4 MB: far above a well-exported 1200x630 cover, far below the KV cap
+// The list-size copy of an image (2026-11-21): stored at PREFIX + id + THUMB_SUFFIX, written only by the admin
+// (POST ?thumbFor=<id>), read with GET ?id=<id>&w=1200. Made in the admin's browser from the original.
+const THUMB_W = 1200;  // the standard cover width: sharp on a 2x screen at the public card's 534 px
+const THUMB_SUFFIX = '@w1200';
+const THUMB_MAX = 400 * 1024;  // a 1200 px WebP cover measured 17-55 KB; anything near this is not a thumbnail
 
 // SVG is deliberately absent. It is a document format that can carry script, and serving one from our
 // own origin would run that script there. Raster only.
@@ -62,14 +67,26 @@ export async function onRequestGet({ request, env }) {
   if (!id) return new Response('bad id', { status: 400 });
 
   const key = PREFIX + id;
-  const got = await kv.getWithMetadata(key, { type: 'arrayBuffer' });
+  // SMALL COPY FOR LISTS (2026-11-21). The blog lists showed every cover at full size -- ~1,700 px, up to
+  // 1.6 MB each, 17 MB for the public list -- to draw cards 534 px wide. `&w=1200` asks for the 1200 px copy
+  // the admin stores beside the original (THUMB_SUFFIX). Not there yet: the ORIGINAL is served instead, on
+  // a SHORT cache, so a list never breaks and picks the small copy up once it exists. Only a real small
+  // copy gets the forever-cache.
+  const wantSmall = new URL(request.url).searchParams.get('w') === String(THUMB_W);
+  let got = null, small = false;
+  if (wantSmall) {
+    got = await kv.getWithMetadata(key + THUMB_SUFFIX, { type: 'arrayBuffer' });
+    small = !!(got && got.value);
+  }
+  if (!small) got = await kv.getWithMetadata(key, { type: 'arrayBuffer' });
   if (!got || !got.value) return new Response('not found', { status: 404 });
   const meta = got.metadata || {};
   return new Response(got.value, {
     headers: {
       'content-type': meta.type || 'application/octet-stream',
       // Safe to cache forever: the id is a hash of the bytes, so a different image is a different URL.
-      'cache-control': 'public, max-age=31536000, immutable',
+      // Except a small-copy request answered with the original: that answer changes once the copy exists.
+      'cache-control': (wantSmall && !small) ? 'public, max-age=300' : 'public, max-age=31536000, immutable',
       'access-control-allow-origin': '*',
       'x-content-type-options': 'nosniff',
     },
@@ -122,6 +139,25 @@ export async function onRequestPost({ request, env }) {
   if (imp) {
     const out = await importFromToml(kv, imp);
     return json(out, out.status || 200);
+  }
+
+  // The list-size copy of an EXISTING image. Its key is derived from the original's id, so the original must
+  // already be stored, and the copy is small and raster-only.
+  const thumbFor = (new URL(request.url).searchParams.get('thumbFor') || '').replace(/[^a-z0-9.]/g, '');
+  if (thumbFor) {
+    const orig = await kv.getWithMetadata(PREFIX + thumbFor, { type: 'stream' });
+    if (!orig || !orig.value) return json({ error: 'no such image', id: thumbFor }, 404);
+    try { if (orig.value.cancel) await orig.value.cancel(); } catch (_) {}
+    let tf;
+    try { tf = (await request.formData()).get('file'); } catch (_) { return json({ error: 'expected a file upload' }, 400); }
+    if (!tf || typeof tf.arrayBuffer !== 'function') return json({ error: 'no file' }, 400);
+    const ttype = String(tf.type || '').toLowerCase();
+    if (ttype !== 'image/webp' && ttype !== 'image/jpeg') return json({ error: 'a small copy must be WebP or JPEG' }, 400);
+    const tbuf = await tf.arrayBuffer();
+    if (!tbuf.byteLength || tbuf.byteLength > THUMB_MAX) return json({ error: 'small copy is ' + Math.round(tbuf.byteLength / 1024) + 'KB; limit ' + (THUMB_MAX / 1024) + 'KB' }, 400);
+    await kv.put(PREFIX + thumbFor + THUMB_SUFFIX, tbuf, { metadata: { type: ttype, size: tbuf.byteLength, at: Date.now(), of: thumbFor, w: THUMB_W } });
+    await audit(env, request, 'media.thumb', thumbFor, { size: tbuf.byteLength, type: ttype });
+    return json({ ok: true, id: thumbFor, url: '/lxapi/media?id=' + thumbFor + '&w=' + THUMB_W, size: tbuf.byteLength, type: ttype }, 200);
   }
 
   let file;

@@ -186,7 +186,7 @@ const JS = '<script id="lx-blogs-js">' + `(function(){
     // screen reader should not hear the headline twice. The first cover loads eagerly because it is
     // the one on screen; the rest are lazy.
     var cover = p.cover
-      ? '<img class="lx-bl-cover" src="' + esc(p.cover) + '" alt=""'
+      ? '<img class="lx-bl-cover" src="' + esc((String(p.cover).indexOf("/lxapi/media?id=")>=0&&String(p.cover).indexOf("&")<0?p.cover+"&w=1200":p.cover)) + '" alt=""'
         + (i === 0 ? '' : ' loading="lazy"') + ' decoding="async">'
       : '<div class="lx-bl-cover"></div>';
 

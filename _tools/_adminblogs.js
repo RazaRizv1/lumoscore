@@ -294,7 +294,7 @@ var POSTS=[], CUR=null, PREV_SLUG="", SLUG_TOUCHED=false;
 function thumb(p){
   var u=String((p&&p.cover)||"").trim();
   if(!u)return "<span class='lxb-th' title='No cover image'></span>";
-  return "<span class='lxb-th has'><img src='"+esc(u).split("'").join("%27")+"' alt='' loading='lazy' onerror='this.parentNode.className=&quot;lxb-th&quot;;this.remove();'></span>";
+  return "<span class='lxb-th has'><img src='"+esc(smallCover(u)).split("'").join("%27")+"' alt='' loading='lazy' onerror='this.parentNode.className=&quot;lxb-th&quot;;this.remove();'></span>";
 }
 function renderList(){
   var tb=q("#lxbTable tbody"); if(!tb)return;
@@ -497,6 +497,21 @@ function uploadImage(file){
       if(!r.ok||!d||!d.url)throw new Error((d&&(d.message||d.error))||("upload failed ("+r.status+")"));
       return d; }); });
 }
+// The list-size copy of a cover (2026-11-21): lists ask for it, media.js serves the original until it exists.
+function smallCover(u){ u=String(u||""); return (u.indexOf("/lxapi/media?id=")>=0&&u.indexOf("&")<0)?u+"&w=1200":u; }
+function makeThumb(id){
+  if(!id||!window.createImageBitmap)return Promise.resolve({ok:false,error:"no id or no createImageBitmap"});
+  return fetch("/lxapi/media?id="+encodeURIComponent(id)).then(function(r){ if(!r.ok)throw new Error("read "+r.status); return r.blob(); })
+    .then(function(b){ return createImageBitmap(b); })
+    .then(function(bm){ var w=Math.min(1200,bm.width), h=Math.max(1,Math.round(bm.height*w/bm.width));
+      var c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bm,0,0,w,h);
+      return new Promise(function(res){ c.toBlob(function(x){ if(x&&x.type==="image/webp")return res(x); c.toBlob(res,"image/jpeg",0.82); },"image/webp",0.82); }); })
+    .then(function(t){ if(!t)throw new Error("could not encode");
+      var fd=new FormData(); fd.append("file",t,"small."+(t.type==="image/webp"?"webp":"jpg"));
+      return fetch("/lxapi/media?thumbFor="+encodeURIComponent(id),{method:"POST",body:fd}).then(function(r){ return r.json(); }); })
+    .catch(function(e){ return {ok:false,error:String((e&&e.message)||e)}; });
+}
+window.__lxMakeThumb=makeThumb;
 function coverMsg(t,bad){ var e=q("#lxbCoverMsg"); if(!e)return; e.textContent=t||"";
   e.style.color=bad?"#ef4444":""; }
 
@@ -645,7 +660,7 @@ function boot(){
       coverMsg("Uploading\u2026");
       uploadImage(f).then(function(d){
         var ci=q("#lxbCover"); if(ci){ ci.value=d.url; coverPrev(); }
-        coverMsg(Math.round(d.size/1024)+"KB uploaded");
+        coverMsg(Math.round(d.size/1024)+"KB uploaded"); makeThumb(d.id);
       }).catch(function(e){ coverMsg(e.message,true); });
     });
   }
