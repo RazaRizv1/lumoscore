@@ -19,27 +19,14 @@ import { requireAdmin } from '../../_lib/adminauth.js';
 import { audit } from '../../_lib/audit.js';
 import { resendStatuses } from './reply.js';
 import { mailHtml } from '../../_lib/mailtemplate.js';
+// WHO IT COMES FROM. One shared map, also used by the reply path -- see _lib/mailsenders.js for why
+// the caller passes a KEY and never an address.
+import { SENDERS } from '../../_lib/mailsenders.js';
+// A formatted body is sanitised to an allowlist and its plain-text half derived from the result --
+// see _lib/mailbody.js for why both of those happen on the server and not in the compose box.
+import { sanitiseMailHtml, mailHtmlToText } from '../../_lib/mailbody.js';
 
 const API = 'https://api.resend.com/emails';
-// WHO IT COMES FROM. The caller picks a KEY, never an address: the server owns the addresses, so
-// the compose box cannot be used to send as anyone.
-//
-// Every From stays on mail.lumoscore.com, the subdomain Resend is authorised to sign for. Sending
-// as raza@lumoscore.com directly would fail SPF and DKIM and land in spam -- so the real address
-// goes in Reply-To instead, which is routed into this panel already (support@, info@ and raza@ are
-// all forwarded), meaning the answer comes back where it is expected either way.
-const SENDERS = {
-  support: {
-    from: 'LumosCore Support <support@mail.lumoscore.com>',
-    replyTo: 'support@lumoscore.com',
-    addr: 'support@mail.lumoscore.com',
-  },
-  raza: {
-    from: 'Raza Rizvi <raza@mail.lumoscore.com>',
-    replyTo: 'raza@lumoscore.com',
-    addr: 'raza@mail.lumoscore.com',
-  },
-};
 
 // Deliberately not a full RFC 5322 grammar: this is a gate, not a parser. What it must catch is a
 // recipient carrying a newline, because a header injected there would travel with the message.
@@ -63,6 +50,9 @@ async function ensure(db) {
   // Added after the table shipped, so it has to be tolerated failing on a database that already has
   // it -- D1 has no ADD COLUMN IF NOT EXISTS.
   try { await db.prepare('ALTER TABLE mail_sent ADD COLUMN from_addr TEXT').run(); } catch (_) {}
+  // body stays the PLAIN text, so every existing reader keeps working; body_html is the formatted
+  // copy, present only on mail written in the rich editor.
+  try { await db.prepare('ALTER TABLE mail_sent ADD COLUMN body_html TEXT').run(); } catch (_) {}
 }
 
 export async function onRequestPost({ request, env }) {
@@ -82,7 +72,11 @@ export async function onRequestPost({ request, env }) {
   // Subject and body are checked before the address so the first complaint is about the thing most
   // likely to be missing, rather than about an address the admin has not typed yet.
   const subject = String((b && b.subject) || '').trim();
-  const text = String((b && b.body) || '').trim();
+  // A formatted body arrives as markup and is cut down to the allowlist here; the plain-text half is
+  // then DERIVED from what survived, so the two halves of the mail cannot disagree. With no markup
+  // this is the plain-text path exactly as it was.
+  const safeHtml = sanitiseMailHtml((b && b.html) || '');
+  const text = safeHtml ? mailHtmlToText(safeHtml) : String((b && b.body) || '').trim();
   if (!to) return json({ error: 'who is it going to?' }, 400);
   if (!ADDR.test(to)) return json({ error: 'that does not look like an email address' }, 400);
   if (!subject) return json({ error: 'give it a subject' }, 400);
@@ -96,7 +90,9 @@ export async function onRequestPost({ request, env }) {
       headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
       // Both parts: html for what it looks like, text for plain-text clients, screen readers and
       // the spam filters that mark a message down for having no text alternative.
-      body: JSON.stringify({ from: who.from, to: [to], subject, text, html: mailHtml(text, { preheader: subject }), reply_to: who.replyTo }),
+      // title: a NEW message opens with its own subject as a heading -- the reader has no thread to
+      // place it in. sender: the mail signs off as whoever it went out as.
+      body: JSON.stringify({ from: who.from, to: [to], subject, text, html: mailHtml(text, { preheader: subject, html: safeHtml, title: subject, sender: who }), reply_to: who.replyTo }),
     });
     out = await res.json();
   } catch (e) {
@@ -108,12 +104,13 @@ export async function onRequestPost({ request, env }) {
   try {
     await ensure(db);
     await db.prepare(
-      'INSERT INTO mail_sent (id, ts, to_addr, subject, body, provider, err, from_addr) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)'
+      'INSERT INTO mail_sent (id, ts, to_addr, subject, body, provider, err, from_addr, body_html) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)'
     ).bind(
       rowId, Date.now(), to, subject, text,
       okSend ? out.id : null,
       okSend ? null : JSON.stringify(out || {}).slice(0, 500),
-      who.addr
+      who.addr,
+      safeHtml || null
     ).run();
   } catch (_) { /* the mail either went or it did not; a missing log row must not report a false failure */ }
 
@@ -142,7 +139,7 @@ export async function onRequestGet({ request, env }) {
   try {
     await ensure(db);
     const r = await db.prepare(
-      'SELECT id, ts, to_addr, subject, body, provider, err, from_addr FROM mail_sent ORDER BY ts DESC LIMIT 100'
+      'SELECT id, ts, to_addr, subject, body, provider, err, from_addr, body_html FROM mail_sent ORDER BY ts DESC LIMIT 100'
     ).all();
     rows = (r && r.results) || [];
   } catch (e) {
