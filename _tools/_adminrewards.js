@@ -54,7 +54,7 @@ const MAIN = `
         <div class="kpi"><div class="kpi-head"><span class="kpi-label">Round total</span></div><div class="kpi-value" id="lxrTotal">&mdash;</div><div class="kpi-foot" id="lxrTotalF">reading mainnet&hellip;</div></div>
         <div class="kpi"><div class="kpi-head"><span class="kpi-label">Recipients</span></div><div class="kpi-value" id="lxrCount">&mdash;</div><div class="kpi-foot" id="lxrCountF">wallets due a payout</div></div>
         <div class="kpi"><div class="kpi-head"><span class="kpi-label">Liquidity programs</span></div><div class="kpi-value" id="lxrLp">&mdash;</div><div class="kpi-foot" id="lxrLpF">1,000,000 native pool + 100,000 per eco pool</div></div>
-        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Holder program</span></div><div class="kpi-value" id="lxrWhale">&mdash;</div><div class="kpi-foot" id="lxrWhaleF">1,000,000 across 5,000,000+ holders</div></div>
+        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Holder program</span></div><div class="kpi-value" id="lxrWhale">&mdash;</div><div class="kpi-foot" id="lxrWhaleF">one share per 5,000,000 LUMOS held</div></div>
       </div>
 
       <div class="adm-card" id="lxrProgCard">
