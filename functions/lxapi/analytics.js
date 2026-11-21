@@ -175,7 +175,7 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
       + '(SELECT day, vid, COUNT(DISTINCT sid) AS n FROM pageview '
       + "WHERE ts >= ?1 AND host = ?2 AND vid IS NOT NULL AND vid <> '' GROUP BY day, vid)"
     ).bind(startMs, H).first();
-    const [cur, prev, cities, since, refs, series, exits, ppl] = await Promise.all([
+    const [cur, prev, cities, since, refs, series, exits, ppl, chains] = await Promise.all([
       sess(startMs, now + 60000),
       sess(prevStartMs, startMs),
       (path
@@ -214,6 +214,20 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
       // The vid column is added lazily by pv.js, so on a database that has not taken a page view
       // since the change it does not exist yet and this is a "no such column" error, not a failure.
       people.catch(() => null),
+      // WHICH CHAIN THE TRAFFIC WAS SERVED. pv.js derives it from the path and the lx_chain cookie
+      // using the middleware's own rule, so this counts the build the visitor actually got rather
+      // than guessing from the url -- the XRPL dashboard is a bare /dashboard and would otherwise
+      // read as Stellar.
+      //
+      // Lazily added, exactly like vid, so the same catch applies: rows written before the column
+      // existed come back with chain NULL. They are reported as "before 2026-10-15" rather than
+      // folded into Stellar, because filing unknown traffic under a chain would be an invention.
+      (path
+        ? db.prepare('SELECT chain, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview '
+          + 'WHERE ts >= ?1 AND host = ?2 AND path = ?3 GROUP BY chain ORDER BY views DESC').bind(startMs, H, path)
+        : db.prepare('SELECT chain, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview '
+          + 'WHERE ts >= ?1 AND host = ?2 GROUP BY chain ORDER BY views DESC').bind(startMs, H)
+      ).all().catch(() => null),
     ]);
     const byCountry = {};
     ((cities && cities.results) || []).forEach((r) => {
@@ -238,7 +252,12 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
       })),
       exits: ((exits && exits.results) || []).map((r) => ({
         path: r.path, views: +r.views || 0, sessions: +r.sessions || 0, exits: +r.exits || 0,
-      })) };
+      })),
+      // null (not []) when the column does not exist yet, so the panel can say "nothing recorded
+      // yet" instead of drawing an empty split that looks like zero traffic.
+      chains: chains ? ((chains.results) || []).map((r) => ({
+        chain: r.chain || '', views: +r.views || 0, sessions: +r.sessions || 0,
+      })) : null };
   } catch (e) {
     return { error: String((e && e.message) || e) };
   }
@@ -409,9 +428,41 @@ export async function onRequestGet({ request, env }) {
     // the two halves together; if Cloudflare refuses the lists (they are the expensive half), ask again for shorter ones
     let [head, lists] = await Promise.all([ gql(token, headQuery(hourly, !!path), vars), gql(token, listQuery(!!path, true), lvars) ]);
     if (lists.errors) lists = await gql(token, listQuery(!!path, false), lvars);
-    // the headline figures are cheap; a refusal there is worth reporting verbatim rather than guessing
-    if (head.errors) return json({ error: 'graphql', messages: head.errors, site, found }, 200);
-    if (!head.acc) return json({ error: 'no account data', site }, 200);
+    // CLOUDFLARE REFUSING DOES NOT MEAN WE HAVE NOTHING (RAZA 2026-10-17: "now the admin analytics
+    // just keep loading", on a page reading "Could not read analytics: unable to execute query").
+    //
+    // This used to return the error alone -- and in doing so threw away `ownP`, which had already
+    // been awaited from our own database and holds visits, page views, pages per visit, bounce rate
+    // and visitors for the very same window. Six KPI cards showed em dashes while the numbers to
+    // fill five of them were sitting in a resolved promise two lines away. Same mistake as the
+    // chart it sits above, one layer down: a failed third-party read discarding a complete local
+    // answer.
+    //
+    // So a refusal now degrades instead of failing. `degraded` names what was lost; the error and
+    // its messages still travel so the page can say Cloudflare is the part that is down, and
+    // `botViews` is the one figure with no local equivalent -- it stays null rather than zero,
+    // because zero would be a claim.
+    if (head.errors || !head.acc) {
+      const ownOnly = await ownP;
+      const cur = (ownOnly && ownOnly.cur) || null;
+      if (ownOnly) {
+        return json({
+          site, siteFoundBy: found.how, range, days, hourly, path: path || null,
+          start: start.toISOString(), end: end.toISOString(),
+          degraded: 'cloudflare',
+          error: head.errors ? 'graphql' : 'no account data',
+          messages: head.errors || null,
+          pageViews: cur ? (cur.views || 0) : 0,
+          visits: cur ? (cur.sessions || 0) : 0,
+          prev: { pageViews: 0, visits: 0 },
+          botViews: null,
+          series: [],
+          topPages: [], topReferers: [], countries: [], devices: [], browsers: [], systems: [],
+          own: ownOnly,
+        }, 200);
+      }
+      return json({ error: head.errors ? 'graphql' : 'no account data', messages: head.errors || null, site, found }, 200);
+    }
     // lists that still fail leave the page with its totals and chart rather than nothing at all
     const a = Object.assign({}, head.acc, lists.acc || {});
     const listErrors = lists.errors || null;

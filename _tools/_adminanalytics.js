@@ -68,6 +68,10 @@ const MAIN = `
             <div class="adm-card-head"><div><div class="adm-card-title">Devices</div><div class="adm-card-sub">share of page views</div></div></div>
             <div class="adm-card-body"><div id="lxanDonut" class="lxan-donutwrap"></div></div>
           </div>
+          <div class="adm-card lxan-card">
+            <div class="adm-card-head"><div><div class="adm-card-title">Networks</div><div class="adm-card-sub">which chain's build was served</div></div></div>
+            <div class="adm-card-body"><div id="lxanNet"><div class="lxadm-empty">Loading&hellip;</div></div></div>
+          </div>
         </div>
       </div>
 
@@ -508,14 +512,44 @@ function smooth(pts){ if(!pts.length) return "";
       +" "+pts[i+1][0].toFixed(1)+","+pts[i+1][1].toFixed(1);
   }
   return d; }
+// Writes pv/pi onto each bucket -- the series the chart draws and the subtitle quotes -- and returns
+// which source won. Shared so the headline above the chart can never name a different number from the
+// line below it, which is what a second copy of this choice would eventually produce.
+function pickSeries(bs){
+  var ownTotal=(bs||[]).reduce(function(s,b){ return s+(b.ownViews||0); },0);
+  var useOwn=ownTotal>0;
+  (bs||[]).forEach(function(b){
+    b.pv=useOwn?(b.ownViews||0):(b.views||0);
+    b.pi=useOwn?(b.sessions||0):(b.visits||0);
+  });
+  return useOwn?"own":"cf";
+}
+
 function areaChart(el,d,H0){
   if(!el) return; var bs=buckets(d);
-  if(!bs.length||!bs.some(function(b){ return b.views>0; })){ el.innerHTML="<div class='lxadm-empty'>No traffic in this period.</div>"; return; }
+  // OUR OWN COUNTS DRAW THIS CHART WHENEVER WE HAVE THEM (RAZA 2026-10-17: "i dont think traffic by
+  // hour is working correctly. I checked few mins ago someone from leeds who visited so many pages
+  // around late 2:00am - 3:00am but the chart doesnt show any of those").
+  //
+  // He was right, and the session is in our database: sid from Leeds, 18 page views, 20:56-22:07
+  // UTC, which is 01:56-03:07 in his own timezone -- exactly the window he named. The chart could
+  // not show it because the chart alone on this page is drawn from Cloudflare's
+  // rumPageloadEventsAdaptiveGroups with bot:0 filtering, while Live now, Countries, the city list, pages
+  // per visit and bounce rate all read the pageview table. One panel was answering from a
+  // different, sampled, bot-filtered source than everything around it, so a visitor Cloudflare
+  // classified as a bot -- or had not ingested yet -- simply was not there.
+  //
+  // DECIDED ONCE PER RENDER, never per bucket: mixing the two sources inside one line would make a
+  // chart nobody could reason about. Cloudflare still draws the long ranges where our own table does
+  // not reach back far enough, and still provides the comparison in the note above the chart, which
+  // is what that note is for.
+  pickSeries(bs);
+  if(!bs.length||!bs.some(function(b){ return b.pv>0; })){ el.innerHTML="<div class='lxadm-empty'>No traffic in this period.</div>"; return; }
   // drawn at its real on-screen width, so the 12px axis labels stay 12px in the narrower per-page panel too
   var u=++UID, W=Math.max(360,Math.round(el.clientWidth||1000)),H=H0||280,L=54,R=14,T=16,Bm=34,iw=W-L-R,ih=H-T-Bm,n=bs.length;
-  var top=nice(bs.reduce(function(m,b){ return Math.max(m,b.views); },0));
+  var top=nice(bs.reduce(function(m,b){ return Math.max(m,b.pv); },0));
   function X(i){ return L+(n===1?iw/2:i*iw/(n-1)); } function Y(v){ return T+ih-(v/top)*ih; }
-  var pv=bs.map(function(b,i){ return [X(i),Y(b.views)]; }), pi=bs.map(function(b,i){ return [X(i),Y(b.visits)]; });
+  var pv=bs.map(function(b,i){ return [X(i),Y(b.pv)]; }), pi=bs.map(function(b,i){ return [X(i),Y(b.pi)]; });
   var base=(T+ih).toFixed(1), g="";
   for(var k=0;k<=4;k++){ var y=(T+ih*k/4).toFixed(1); g+="<line class='gl' x1='"+L+"' x2='"+(W-R)+"' y1='"+y+"' y2='"+y+"'/><text class='ax' x='"+(L-8)+"' y='"+(+y+4)+"' text-anchor='end'>"+short(top*(1-k/4))+"</text>"; }
   var kx=Math.min(7,n), xl="";
@@ -537,7 +571,7 @@ function areaChart(el,d,H0){
     xh.setAttribute("x1",xx); xh.setAttribute("x2",xx); xh.style.display="";
     dv.setAttribute("cx",xx); dv.setAttribute("cy",Y(b.views).toFixed(1)); dv.style.display="";
     di.setAttribute("cx",xx); di.setAttribute("cy",Y(b.visits).toFixed(1)); di.style.display="";
-    tip.innerHTML="<div style='opacity:.7;margin-bottom:2px'>"+esc(when(b,d.hourly,true))+"</div><div><i style='background:"+C_VIEW+"'></i>"+num(b.views)+" page views</div><div><i style='background:"+C_VISIT+"'></i>"+num(b.visits)+" visits</div>";
+    tip.innerHTML="<div style='opacity:.7;margin-bottom:2px'>"+esc(when(b,d.hourly,true))+"</div><div><i style='background:"+C_VIEW+"'></i>"+num(b.pv)+" page views</div><div><i style='background:"+C_VISIT+"'></i>"+num(b.pi)+" visits</div>";
     tip.style.left=Math.max(9,Math.min(91,X(i)/W*100))+"%"; tip.style.opacity="1"; }
   hit.addEventListener("mousemove",show); hit.addEventListener("mouseleave",hide);
   hit.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0]) show(e.touches[0]); },{passive:true});
@@ -611,9 +645,12 @@ function paintChart(d){
   var sel=q("#lxanMetric"); if(sel&&sel.value!==METRIC) sel.value=METRIC;
   var spec=METRICS[METRIC];
   if(!spec){
-    var bs=buckets(d), peak=bs.reduce(function(a,b){ return b.views>((a&&a.views)||0)?b:a; },null);
+    var bs=buckets(d), src=pickSeries(bs);
+    var peak=bs.reduce(function(a,b){ return b.pv>((a&&a.pv)||0)?b:a; },null);
     setT("#lxanChartT",d.hourly?"Traffic by hour":"Traffic by day");
-    setT("#lxanChartSub",(peak&&peak.views?("busiest: "+when(peak,d.hourly,true)+" \\u00b7 "+num(peak.views)+" views"):"no traffic in this period")+" \\u00b7 hover the chart for each "+(d.hourly?"hour":"day"));
+    // The source is named, because the note above this card compares two counters and a reader who
+    // sees them disagree should be able to tell which one the chart is.
+    setT("#lxanChartSub",(peak&&peak.pv?("busiest: "+when(peak,d.hourly,true)+" \\u00b7 "+num(peak.pv)+" views"):"no traffic in this period")+" \\u00b7 "+(src==="own"?"our own count":"Cloudflare")+" \\u00b7 hover the chart for each "+(d.hourly?"hour":"day"));
     setH("#lxanLegend","<span><i class='lxan-key'></i>Page views</span><span><i class='lxan-key vis'></i>Visits</span>");
     areaChart(el,d); return;
   }
@@ -654,6 +691,38 @@ function channels(el,d){
   var mx=Math.max.apply(null,order.map(function(k){ return sums[k]; }))||1;
   el.innerHTML="<div class='lxan-chan'>"+order.map(function(k){ var v=sums[k];
     return "<div class='lxan-chrow'><b>"+k+"</b><div class='bar'><span style='width:"+Math.max(v?2:0,Math.round(v/mx*100))+"%;background:"+cols[k]+"'></span></div><div class='v'>"+num(v)+"<small>"+pctTxt(v/tot*100)+"</small></div></div>"; }).join("")+"</div>";
+}
+// WHICH NETWORK'S BUILD THE VISITOR WAS SERVED.
+//
+// Cloudflare's dataset has no idea LumosCore has chains, so this can only come from our own pageview
+// table. pv.js derives it with the MIDDLEWARE's rule -- path first, then the lx_chain cookie -- so
+// this counts the build that was actually served rather than guessing from the url. That matters most
+// for the XRPL dashboard, which is a bare /dashboard and would otherwise read as Stellar.
+function chainSplit(el,d){
+  if(!el) return;
+  var rows=(d.own&&d.own.chains)||null;
+  // null means the column does not exist yet, which is not the same as no traffic.
+  if(!rows){ el.innerHTML="<div class='lxadm-empty'>Not recorded yet \\u2014 starts with the first page view after this was switched on.</div>"; return; }
+  var NAME={stellar:"Stellar",xrpl:"XRP Ledger",near:"NEAR"}, COL={stellar:PAL[0],xrpl:PAL[1],near:PAL[2]};
+  var by={}, tot=0, before=0, other=0;
+  rows.forEach(function(r){ var k=r.chain||"";
+    // Views written before the column existed carry no chain. They get their own line instead of
+    // being added to Stellar: filing unknown traffic under a network would be an invention, and on a
+    // table that has been collecting since September it is most of the history.
+    if(!k){ before+=r.views||0; return; }
+    // A chain this panel does not know is NOT the same thing as an older row, and must not be
+    // described as one. When a third network is added to pv.js, its traffic lands here -- and
+    // "recorded before networks were tracked" would be a false statement about today's visits that
+    // reads like broken data rather than a panel that needs a line adding.
+    if(k!=="stellar"&&k!=="xrpl"&&k!=="near"){ other+=r.views||0; return; }
+    by[k]=(by[k]||0)+(r.views||0); tot+=r.views||0; });
+  var foot=function(n,txt){ return n?("<div style='margin-top:10px;font-size:var(--lxan-s);line-height:1.45;color:var(--text-muted)'>"+num(n)+" "+txt+"</div>"):""; };
+  var older=foot(before,"earlier view"+(before===1?" was":"s were")+" recorded before networks were tracked, so they carry none.")
+    +foot(other,"view"+(other===1?"":"s")+" were served to a network this panel does not list yet.");
+  if(!tot){ el.innerHTML="<div class='lxadm-empty'>No page views with a network recorded in this period.</div>"+older; return; }
+  var order=["stellar","xrpl","near"], mx=Math.max.apply(null,order.map(function(k){ return by[k]||0; }))||1;
+  el.innerHTML="<div class='lxan-chan'>"+order.map(function(k){ var v=by[k]||0;
+    return "<div class='lxan-chrow'><b>"+NAME[k]+"</b><div class='bar'><span style='width:"+Math.max(v?2:0,Math.round(v/mx*100))+"%;background:"+COL[k]+"'></span></div><div class='v'>"+num(v)+"<small>"+pctTxt(v/tot*100)+"</small></div></div>"; }).join("")+"</div>"+older;
 }
 // DEVICES FROM OUR OWN COUNT (2026-11-21): views per device from our pageview table when the endpoint sends them,
 // in the {key,count} shape donut() draws; Cloudflare's sampled split only when it does not.
@@ -901,7 +970,30 @@ function exitList(el,d){
 function render(d){
   LAST=d;
   if(d.range&&RLABEL[d.range]){ RANGE=d.range; qa("#lxanRange button").forEach(function(b){ b.classList.toggle("on",b.getAttribute("data-r")===RANGE); }); }
-  var pv=d.pageViews||0, vi=d.visits||0, pp=d.prev||{};
+  // THE CARDS AND THE CHART MUST COUNT THE SAME THING (RAZA 2026-10-17: "i highly doubt that in
+  // Trafic by hour chart the page views are really 425. I totalled total page views at each hour in
+  // the chart but its not even close to 425. its 339").
+  //
+  // His arithmetic was exactly right, and the chart was not skipping anything: it summed to 339
+  // because 339 is OUR count, which is what the chart draws since the Leeds session went missing
+  // from Cloudflare's. The card above it still read Cloudflare's 425. I moved the chart and left
+  // these behind, so the page reported two different totals a few pixels apart.
+  //
+  // The page was already mixing them before that, which is how it slipped past: BOUNCE RATE has
+  // always been ours and reads "52 of 85 visits" while the VISITS card said 104. Now every figure on
+  // the page comes from one counter, and the note underneath keeps comparing the two -- which is its
+  // whole job, and the only place the difference belongs.
+  //
+  // BOTS FILTERED stays Cloudflare's: it is the one number with no local equivalent, because we
+  // never record a crawler in the first place.
+  var ownCur=(d.own&&d.own.cur)||null;
+  var ownHas=!!(ownCur&&(ownCur.views>0||ownCur.sessions>0));
+  var pv=ownHas?(ownCur.views||0):(d.pageViews||0);
+  var vi=ownHas?(ownCur.sessions||0):(d.visits||0);
+  var ownPrev=(d.own&&d.own.prev)||null;
+  var pp=ownHas
+    ? { pageViews:(ownPrev&&ownPrev.views)||0, visits:(ownPrev&&ownPrev.sessions)||0 }
+    : (d.prev||{});
   setT("#lxanVisits",num(vi)); delta(q("#lxanVisitsD"),vi,pp.visits);
   setT("#lxanViews",num(pv)); delta(q("#lxanViewsD"),pv,pp.pageViews);
   var per=vi>0?pv/vi:null, pper=(pp.visits>0)?pp.pageViews/pp.visits:null;
@@ -926,9 +1018,13 @@ function render(d){
   setH("#lxanBotsD",bots>0?("<span class='fl'>"+num(bots)+" crawler views</span>"):"");
   reconcile(d);
   var bs=buckets(d);
+  // The two sparklines sit INSIDE the Visits and Page views cards, so they answer to the same
+  // counter those cards now print. pickSeries writes pv/pi onto the buckets and makes that choice
+  // once, the same way the big chart does.
+  pickSeries(bs);
   paintChart(d);
-  sparkline(q("#lxanVisitsS"),bs.map(function(b){ return b.visits; }),C_VISIT); sparkline(q("#lxanViewsS"),bs.map(function(b){ return b.views; }),C_VIEW);
-  mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),devRows(d));
+  sparkline(q("#lxanVisitsS"),bs.map(function(b){ return b.pi; }),C_VISIT); sparkline(q("#lxanViewsS"),bs.map(function(b){ return b.pv; }),C_VIEW);
+  mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),devRows(d)); chainSplit(q("#lxanNet"),d);
   var geo=q("#lxanGeo"); countries(geo,d);
   // The heading counted Cloudflare's countries while the list below it drew ours, so the two could
   // state different totals on the same card -- "11 countries" above a list of twelve.
@@ -1128,8 +1224,16 @@ function load(){
     .then(function(r){ return r.text(); })
     .then(function(t){ if(want!==RANGE) return; var d=null; try{ d=JSON.parse(t); }catch(_){}
       if(!d){ setT("#lxanSub","Could not read analytics \\u2014 this page has to be opened through the admin login."); return; }
-      if(d.error){ setT("#lxanSub","Could not read analytics: "+(d.reason||(d.messages&&d.messages.join("; "))||d.message||d.error)); return; }
+      // A DEGRADED ANSWER IS STILL AN ANSWER. When Cloudflare refuses, the endpoint now sends our
+      // own database's figures with degraded:"cloudflare" rather than an error alone -- so the page
+      // renders what it has and says which part is down, instead of six em dashes and a sentence
+      // the reader cannot act on. Only an answer with nothing in it stops here.
+      if(d.error&&!d.own){ setT("#lxanSub","Could not read analytics: "+(d.reason||(d.messages&&d.messages.join("; "))||d.message||d.error)); return; }
       render(d);
+      if(d.degraded==="cloudflare"){
+        setT("#lxanSub","Cloudflare Web Analytics is not answering right now \\u2014 showing our own count instead. "
+          +"Page lists and browsers come from Cloudflare and are blank until it returns.");
+      }
     })
     .catch(function(e){ setT("#lxanSub","Could not read analytics: "+e.message); });
 }
@@ -1222,8 +1326,31 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
         const mdash = /(<a class="mob-menu-item[^"]*" href="lumoscore-admin-dashboard-mobile\.html">[\s\S]*?<\/a>\s*)/;
         if (mdash.test(h)) h = h.replace(mdash, '$1' + mi);
       }
+      // THE STYLESHEET GOES IN THE HEAD. THE SCRIPT STAYS AT THE END OF BODY.
+      //
+      // RAZA 2026-10-22: "please fix this flash bug on Admin-analytics page when the page is
+      // refreshed". Both were appended before `</body>` together, and a stylesheet there does not
+      // exist until the parser reaches it — so every KPI card, the Live-now panel and the chart
+      // frame painted as raw stacked text first ("Visits / — / people arriving from another site…")
+      // and were re-laid-out when the CSS finally arrived.
+      //
+      // The script is a different case and deliberately stays where it is: it only runs after the
+      // DOM it fills exists, and moving it to the head would make it the thing that blocks the paint.
+      // CSS before first paint, behaviour after it.
+      //
+      // Same fix and same reasoning as the $LUMOS hero gate, where putting the rule at the end of
+      // body measurably made the flash WORSE rather than better — three visible states instead of
+      // two. See [[lumoscore-flash-pattern]] and the note in _xrplltoken.js.
+      //
+      // Safe to move: the strip above is /g, so a copy left in the body by an earlier build is
+      // removed wherever it sits before this re-adds one. The body fallback keeps a page with no
+      // </head> working — late is still better than never.
+      const hi = h.indexOf('</' + 'head>');
+      if (hi >= 0) h = h.slice(0, hi) + CSS + h.slice(hi);
+      // Recomputed AFTER the head splice: that insert shifts every offset after it, and a stale
+      // index here would put the script into the middle of the document.
       const bi = h.lastIndexOf('</body>');
-      if (bi >= 0) h = h.slice(0, bi) + CSS + SCRIPT + h.slice(bi);
+      if (bi >= 0) h = h.slice(0, bi) + (hi >= 0 ? '' : CSS) + SCRIPT + h.slice(bi);
       json[k] = h; changed = true; pages++;
     }
 
