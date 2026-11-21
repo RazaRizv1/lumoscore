@@ -765,8 +765,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function volReady(){ return !!DATA && DATA.pools.every(function(p){ return p.vol24Xlm!=null; }); }
   function runVolQ(cb){ var q=VOLQ.splice(0,VOLQ.length); if(!q.length){ cb&&cb(); return; }
     Promise.all(q.map(function(it){
-      // last-100-trades fallback, used only if stellar.expert is unreachable. Understates busy pools,
-      // but a stale-but-fast number beats a permanently dashed column.
+      // last-100-trades count from Horizon. Understates busy pools, but a stale-but-fast number beats a
+      // permanently dashed column. (F03, 2026-11-21: this used to ask api.stellar.expert first, straight from
+      // the browser; it sends no CORS header, so all 5 calls failed on every page load, and its 1d figure is
+      // the UTC day so far anyway -- see the poolvol note further down.)
       function horizonFallback(){
         return getJSON(H+"/liquidity_pools/"+it.id+"/trades?order=desc&limit=100").then(function(tr){
           var trs=(tr&&tr._embedded&&tr._embedded.records)||[]; var now=Date.now(),vol=0,n=0;
@@ -774,24 +776,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           it.pool.vol24Xlm=vol; it.pool.n24=n; it.pool.fees24XlmReal=null;
         });
       }
-      return getJSON("https://api.stellar.expert/explorer/public/liquidity-pool/"+it.id).then(function(d){
-        if(!d||!d.assets||!d.volume)throw new Error("no expert stats");
-        var xi=-1; for(var i=0;i<d.assets.length;i++){ if((d.assets[i].asset||d.assets[i].name)==="XLM"){xi=i;break;} }
-        it.pool.n24=(d.trades&&+d.trades["1d"])||0;
-        if(xi<0){ it.pool.vol24Xlm=0; it.pool.fees24XlmReal=null; return; }   // non-XLM pair: no XLM-denominated side to report
-        var v=d.volume[xi]&&d.volume[xi]["1d"], f=d.earned_fees&&d.earned_fees[xi]&&d.earned_fees[xi]["1d"];
-        if(v==null)throw new Error("no 1d volume");
-        it.pool.vol24Xlm=+v/1e7;   // one leg of each swap — the conventional way to denominate X/XLM volume
-        // Fees are taken from the INPUT asset, so 24h fees land on BOTH sides depending on which way each
-        // swap ran. Reading only the XLM side reported ~40% of the truth (USDC/XLM: 444 XLM against a
-        // 1,148 XLM expectation). Convert the other side at the pool's own reserve ratio and sum — that
-        // reconciles to volume x fee rate, which is the cross-check that this is right.
-        var _oi=(xi===0?1:0), _fo=d.earned_fees&&d.earned_fees[_oi]&&d.earned_fees[_oi]["1d"];
-        var _rate=(it.pool.tok>0?it.pool.xlm/it.pool.tok:0);
-        it.pool.fees24XlmReal=(f!=null||_fo!=null)
-          ? ((f!=null?+f/1e7:0)+((_fo!=null&&_rate>0)?(+_fo/1e7)*_rate:0))
-          : null;
-      }).catch(function(){ return horizonFallback(); })
+      return Promise.resolve().then(horizonFallback)
         .catch(function(){ it.pool.vol24Xlm=0; it.pool.n24=0; it.pool.fees24XlmReal=null; });   // both sources down -> a real 0, not a permanent dash
     })).then(function(){ cb&&cb(); });
   }
