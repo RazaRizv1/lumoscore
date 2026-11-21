@@ -546,7 +546,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // rather than silently reporting a smaller business. The two are read side by side, not one after the
 // other: neither waits on the other's network.
 +'    return Promise.all([loadXrpl(),loadNear()]).then(function(z){ var xr=z[0], nr=z[1]; RV_SELF+=XSELF+NSELF;'
-+'      var all=inc.concat(xr).concat(nr).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
++'      var all=inc.concat(xr).concat(nr).filter(function(p){ var f=String(p.from||""); /* D02: our own NEAR wallets are not revenue */ return !(p.chain==="near"&&(({"lumoscore.near":1,"razarizv1.near":1,"lumos01.near":1,"lumoscore-near-testing.near":1})[f]||f.slice(-15)===".lumoscore.near")); }).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
 // SPLIT, not dropped. Everything the collector received is still in `other` and still counted in the
 // note below, so a transfer like the 1,000,000 LUMOS can be seen and queried -- it is simply not
 // revenue, and nothing above it is computed from it.
