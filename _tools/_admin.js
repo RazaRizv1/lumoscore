@@ -129,6 +129,9 @@ const REVENUE_MOB=`
 const CSS=`<style id="lx-admin-css">
 /* B03 (2026-11-21): the pools strip fits its box -- auto-fit columns, never two fixed 192 px ones. */
 .top-strip{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}.top-strip-card,.top-mini-meta{min-width:0}
+/* PHONE FIT (2026-11-21): phones get the full pages again (no -mobile redirect); at phone width the action row wraps,
+   the dashboard grids stack (their columns are inline in the markup, hence !important) and the profile minis go 2 x 2. */
+@media (max-width:640px){.admin-page-actions{flex-wrap:wrap}.dash-grid{grid-template-columns:minmax(0,1fr)!important}.up-mini{grid-template-columns:repeat(2,minmax(0,1fr))!important}.up-mini-card{min-width:0}}
 /* A FALL IN 24H / 7D READS AS RED, LIKE THE RISE READS AS GREEN (RAZA 2026-09-24).
    pct() has always emitted .ch-up / .ch-down, and the design styles only .ch-up -- so a gain was
    green and bold while a loss fell back to plain body text, the same white as the price beside it.
