@@ -3147,7 +3147,9 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   if(adminOnly){
     // 'vendor' holds the self-hosted Stellar libraries. The admin panel signs mainnet transactions
     // too (rewards payouts), so it must NOT be the one origin left loading them off a public CDN.
-    const need = ['favicon.png', 'wallets', 'vendor'];
+    // 'fonts' + the launchpad icon map (2026-11-21): every admin page asked for /assets/fonts/*.woff2 and
+    // /assets/tokens/launchpad-icons.json and got 404 -- fallback fonts on every page, 14 console errors.
+    const need = ['favicon.png', 'wallets', 'vendor', 'fonts', 'tokens/launchpad-icons.json'];
     for(const item of need){
       const src = path.join(outRoot, 'assets', item);
       const dst = path.join(outDir, 'assets', item);

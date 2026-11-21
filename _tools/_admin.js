@@ -536,7 +536,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // totals all read amount, asset, sender and date, which the payment record already carries. Only the
 // "Revenue by source" breakdown parses envelope_xdr, and it now fetches those itself, bounded and in
 // the background, so one slow read no longer holds up the whole page.
-+'  return page(H+"/accounts/"+FEE+"/payments?order=desc&limit=200",1).then(function(){'
++'  return j("/lxapi/feeledger").then(function(d){ /* cached copy of the same records; Horizon only if it fails */ if(d&&d.ok&&Array.isArray(d.records)&&d.records.length){ recs=d.records; return; } return page(H+"/accounts/"+FEE+"/payments?order=desc&limit=200",1); }).then(function(){'
 +'    var inc=recs.filter(function(p){ return p.to===FEE && p.from!==FEE && (p.type==="payment"||p.type==="path_payment_strict_send"||p.type==="path_payment_strict_receive"); }).map(function(p){ p.chain="stellar"; return p; });'
 +'    RV_SELF=recs.filter(function(p){ return p.to===FEE && p.from===FEE; }).length;'
 // One ledger, every chain, newest first. A Stellar failure already resolved above; an XRPL or NEAR
