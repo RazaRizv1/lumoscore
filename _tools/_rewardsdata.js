@@ -103,7 +103,17 @@ const SCRIPT = `<script id="lx-rewardsdata">(function(){
   var sched=false;
   function schedule(){ if(sched)return; sched=true; var raf=window.requestAnimationFrame||function(f){setTimeout(f,16);}; raf(function(){ sched=false; applyAll(); }); }
 
-  function poolShares(hex){return getJSON(H+"/liquidity_pools/"+hex).then(function(j){return j?+j.total_shares:0;});}
+  // B09 (2026-11-21): the payout divides by the shares REAL providers hold -- the excluded wallets' shares are left
+  // out, exactly as the admin round does -- so the estimate does too. Read once; a failed read excludes nothing.
+  var EXP=null;
+  function exclPool(){ if(EXP)return EXP;
+    EXP=Promise.all(Object.keys(EXCLUDE).map(function(k){return getJSON(H+"/accounts/"+k);})).then(function(accs){
+      var m={}; accs.forEach(function(a){ ((a&&a.balances)||[]).forEach(function(b){
+        if(b.asset_type==="liquidity_pool_shares")m[b.liquidity_pool_id]=(m[b.liquidity_pool_id]||0)+(+b.balance||0); }); });
+      return m; });
+    return EXP; }
+  function poolShares(hex){return Promise.all([getJSON(H+"/liquidity_pools/"+hex),exclPool()]).then(function(x){
+    var ts=x[0]?+x[0].total_shares:0; return Math.max(0,ts-(x[1][hex]||0)); });}
   // Total whale "shares" across every LUMOS holder >= 5M. Horizon /accounts?asset is CORS-OK
   // (stellar.expert holders is not, from the browser); it isn't balance-sorted so we page all.
   function whaleTotalShares(){
