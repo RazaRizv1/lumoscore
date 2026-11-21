@@ -238,7 +238,9 @@ var N_ECO=[
 ];
 // The public page's list (treasury, fee account, and the two exchange contracts whose LUMOS is the pools' and the
 // order book's), plus Rhea's farm, whose pool shares ARE its stakers' and are counted for them instead.
-var N_EXCLUDE={"treasury.lumoscore.near":1,"fees-lumoscore.near":1,"dclv2.ref-labs.near":1,"v2.ref-finance.near":1,"boostfarm.ref-labs.near":1};
+// Our own wallets (RAZA 2026-11-21, D02): never paid, never in a denominator.
+var N_EXCLUDE={"treasury.lumoscore.near":1,"fees-lumoscore.near":1,"dclv2.ref-labs.near":1,"v2.ref-finance.near":1,"boostfarm.ref-labs.near":1,
+ "lumoscore.near":1,"razarizv1.near":1,"lumos01.near":1,"lumoscore-near-testing.near":1};
 
 function q(s){return document.querySelector(s);}
 function qa(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
