@@ -2674,7 +2674,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
-        else { if(v)setAmt(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=1e6?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")),U0);
+        else { if(v)setAmt(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=1e3?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")),U0);
           var _fu=(d.fees24Usd>0)?d.fees24Usd:(d.fees24Xlm*unitUsd(d));
           if(sub)setText(sub,(_fu>0)?("\\u2248 "+usd(_fu)):""); } }
     });
