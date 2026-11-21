@@ -861,6 +861,8 @@ function loadBridge(){ if(BRIDGE)return Promise.resolve(BRIDGE);
       BRIDGE=m; return m; })
     .catch(function(){ BRIDGE={}; return BRIDGE; }); }
 var VOL=null, VOL_CAPPED=false, VOL_FAILED=false;
+// Receipts with no swap behind them, inside a period (since=0: all of them). B01, 2026-11-21.
+function missIn(v,since){ if(!v||!(v.missing>0))return 0; if(!since||!v.missAt)return v.missing; return v.missAt.filter(function(t){ return t>=since; }).length; }
 // THE ENVELOPES, FETCHED ON THEIR OWN. loadRevenue dropped join=transactions because it costs fourteen
 // times the time for data only this breakdown uses. One joined page is fetched here instead -- bounded
 // at 200 receipts, roughly eight seconds, and nothing else on the page waits for it.
@@ -898,7 +900,7 @@ function loadRevVol(){ if(RVOL)return RVOL;
   return RVOL; }
 function loadVolume(){ if(VOL)return Promise.resolve(VOL);
   return Promise.all([loadRevenue(),sdk(),loadBridge(),loadEnvelopes(),loadRevVol()]).then(function(z){ var rv=z[0],S=z[1],BR=z[2]||{},EN=z[3]||{map:{}},RV=z[4];
-    var out=[],miss=0;
+    var out=[],miss=0,missAt=[];
     // grossOf reads p.transaction, which the payment record no longer carries; put it back from the
     // envelope page so the function itself is unchanged.
     rv.rows.forEach(function(p){ if(!p.transaction&&EN.map[p.transaction_hash])p.transaction=EN.map[p.transaction_hash]; });
@@ -945,13 +947,13 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
       // cover -- a Stellar one it could not resolve.
       var rvr=RVM[p.transaction_hash];
       var g=rvr?{kind:rvr.kind,code:rvr.code,iss:rvr.iss||"",gross:+rvr.gross||0}:grossOf(S,p);
-      if(!g){ miss++; return; }
+      if(!g){ miss++; missAt.push(Date.parse(p.created_at)||0); return; }
       var br=BR[p.transaction_hash];
       // A registered bridge is a bridge, whatever its shape looked like. Its "gross" is the amount
       // that crossed, kept in bridged rather than gross so it can never be added to SWAP volume --
       // bridging is real volume, but it is not trading, and conflating them overstates the DEX.
       if(br)g.kind="bridge";
-      if(!g.gross&&!br)miss++;
+      if(!g.gross&&!br){ miss++; missAt.push(Date.parse(p.created_at)||0); }
       var fa=assetOf(p);
       out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,chain:"stellar",
         kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss,
@@ -960,7 +962,7 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
         // is the one 1Click itself put on the deposit (usdIn, stored with the record).
         bridged:br?(br.route==="NEAR Intents"?(+br.usdIn||0):(br.route==="LayerZero"?(+br.amount||0):(+br.gross||+br.amount||0))):0,
         route:br?(br.route||"CCTP"):"",bridgeTo:br?(br.destName||""):""}); });
-    VOL={rows:out,missing:miss}; return VOL; })
+    VOL={rows:out,missing:miss,missAt:missAt}; return VOL; })
    .catch(function(){ VOL={rows:[],missing:-1}; return VOL; }); }
 // EVERY LUMOSCORE TRANSACTION ON NEAR, priced (see the dashboard tiles). The list is decoded at lumoscore.com and cached
 // there; on a cold cache it answers complete:false and decodes 25 more per call, so it is asked again, a few times. NEAR
@@ -1132,7 +1134,7 @@ function fillDash(){
       // VOL_CAPPED already existed and was printed on the revenue BREAKDOWN subtitle only -- so the one
       // number a reader would quote was the one that never admitted its limit. Same fault as the
       // bridge table and the pool chart that day: a surface stating something it has not established.
-      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(nSwapP?(" \u00b7 NEAR "+usd(nSwapP)):"")+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):"")+(VOL_CAPPED?" \u00b7 <b>most recent 200 receipts only</b>":"")+nearNote; });
+      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(nSwapP?(" \u00b7 NEAR "+usd(nSwapP)):"")+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(missIn(v,since)>0?(" \u00b7 "+missIn(v,since)+" receipt(s) with no swap"):"")+(VOL_CAPPED?" \u00b7 <b>most recent 200 receipts only</b>":"")+nearNote; });
     // THE ALL-TIME TILE IS THE ONE THAT LIED. Its foot is static markup reading "every swap since
     // launch" and nothing ever rewrote it, so the capped figure carried an explicit claim to be
     // complete. Corrected here rather than in kpiTile, because it is only untrue while capped.
