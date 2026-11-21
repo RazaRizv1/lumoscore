@@ -125,7 +125,7 @@ const FAQ = {
   ],
   'rewards': [
     ["When did rewards start on Stellar?", "The three programmes began at different times. Native LP rewards started on 15 December 2025, whale holder rewards on 1 April 2026, and Ecosystem LP rewards on 15 April 2026."],
-    ["How often are rewards paid?", "Every round, and rounds run from the 1st and 15th of each month, so twice a month and twelve rounds over a six-month cycle. Ecosystem LP began on 15 April 2026, making 1 October 2026 its twelfth and final round."],
+    ["How often are rewards paid?", "Every round, and rounds run from the 1st and 15th of each month, so twice a month and twelve rounds over a six-month cycle. Ecosystem LP began on 15 April 2026, so 1 October 2026 was the twelfth and final round of its first cycle; the second cycle, with a new set of pools, began on 15 October 2026."],
     ["Which assets are in the Ecosystem LP rewards?", "Ten pools, each pairing LUMOS with one other asset: currently USDC, USDT0, EURC, SHX, AQUA, BLND, xLMNR, yXLM, XRP and PYUSD. Each pays 100,000 LUMOS per round, and the ten are reselected every 6 months."],
   ],
   'asset-overview': [
