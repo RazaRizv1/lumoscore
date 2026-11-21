@@ -83,6 +83,10 @@ const CSS='<style id="lx-walletdata-css">'
 +'.lx-asb{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}'
 +'.lx-vfd{width:14px;height:14px;flex:0 0 14px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center}'
 +'.lx-vfd svg{width:9px;height:9px;display:block}'
+// The ticker line is a plain block of text, not the flex row the issuer line is, so the tick needs
+// its own spacing and baseline nudge there -- an inline-flex box otherwise sits on the text baseline
+// and hangs below the capitals it is meant to sit beside.
++'#assetsTable .asset-id .nm .lx-vfd{margin-left:6px;vertical-align:middle;position:relative;top:-1px}'
 +'.lx-hd:empty{display:none}'
 +'.lx-hd{color:var(--text-soft,#6b6b76);font-family:"JetBrains Mono",ui-monospace,monospace}'
 // item 5: dollars lead, the XLM amount becomes the secondary line.
@@ -519,14 +523,14 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'renderLP(window.__lxLpAll||[],(window.__lxLpPage|0)+(pb.getAttribute("data-d")==="1"?1:-1));'
 +'},true);}'
 // LP row -> pool detail nav: pair name / +Add (deposit) / -Remove (withdraw) / ...menu "View pool page".
-+'if(!panel.__lxNav){panel.__lxNav=1;panel.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var row=t.closest("tr[data-pool]");if(!row)return;var hex=row.getAttribute("data-pool");if(!hex)return;/* clean url DIRECTLY: going via lumoscore-amm-pool.html?pool= meant a 301, and the redirect that promoted the id into the path used to drop act=withdraw. Browsers cache a 301 permanently, so every user who clicked Remove before that fix would keep getting the old query-less redirect from cache. Link straight to the destination and no redirect is involved. */var base="/pools/stellar/id/"+hex;var btn=t.closest(".qa-row-btn");if(btn){if(btn.classList.contains("icon-only")){window.__lxLpMenuPool=hex;setTimeout(function(){var mn=document.querySelector(".row-menu");if(!mn)return;[].slice.call(mn.querySelectorAll("button,a")).forEach(function(it){if(/view pool/i.test(it.textContent||"")){if(it.__lxwp)return;it.__lxwp=1;it.addEventListener("click",function(){location.href="/pools/stellar/id/"+(window.__lxLpMenuPool||hex);});}});},70);return;}var lbl=(btn.textContent||"").trim();if(/remove/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base+"?act=withdraw";}else if(/add/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base;}return;}if(t.closest(".lp-nm")||t.closest(".lp-pair")){e.preventDefault();location.href=base;}},true);}'
++'if(!panel.__lxNav){panel.__lxNav=1;panel.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var row=t.closest("tr[data-pool]");if(!row)return;var hex=row.getAttribute("data-pool");if(!hex)return;/* clean url DIRECTLY: going via lumoscore-amm-pool.html?pool= meant a 301, and the redirect that promoted the id into the path used to drop act=withdraw. Browsers cache a 301 permanently, so every user who clicked Remove before that fix would keep getting the old query-less redirect from cache. Link straight to the destination and no redirect is involved. */var base="/pools/stellar/id/"+hex;var btn=t.closest(".qa-row-btn");if(btn){if(btn.classList.contains("icon-only")){window.__lxLpMenuPool=hex;setTimeout(function(){var mn=document.querySelector(".row-menu");if(!mn)return;[].slice.call(mn.querySelectorAll("button,a")).forEach(function(it){if(/view pool/i.test(it.textContent||"")){if(it.__lxwp)return;it.__lxwp=1;it.addEventListener("click",function(){location.href="/pools/stellar/id/"+(window.__lxLpMenuPool||hex);});}/* Copy pool address was never wired, so the template handler put its own EVM-shaped mock on the clipboard (RAZA 2026-11-07). The pool id is already in hand here -- the same 64-hex id /pools/stellar/id/ is built from, which is what Horizon calls this pool. Routed through the one copy handler via the marker attribute, with its own noun. */if(/copy pool address/i.test(it.textContent||"")){it.setAttribute("data-lxisscopy","1");it.setAttribute("data-lxcoplabel","Pool address");it.setAttribute("data-iss",(window.__lxLpMenuPool||hex));}});},70);return;}var lbl=(btn.textContent||"").trim();if(/remove/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base+"?act=withdraw";}else if(/add/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base;}return;}if(t.closest(".lp-nm")||t.closest(".lp-pair")){e.preventDefault();location.href=base;}},true);}'
 +'}).catch(function(){});}'
 +'function reveal(){try{document.body.classList.add("lx-wd-ready");}catch(_){}}'
 +'function sparkFor(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;var pts=[],y=14,y0=14;for(var x=0;x<=80;x+=10){h=(h*1103515245+12345)>>>0;y=Math.max(3,Math.min(25,y+(((h>>>16)%11)-5)));if(x===0)y0=y;pts.push(x+","+y);}var up=y<=y0;return \'<svg width="80" height="28" viewBox="0 0 80 28" fill="none"><polyline points="\'+pts.join(" ")+\'" stroke="\'+(up?"#35c07f":"#ef5350")+\'" stroke-width="1.5" opacity=".75"/></svg>\';}'
 // Registered OUTSIDE the #assetsTable block on purpose. It used to sit inside it, so on the mobile
 // wallet — which has no such table — the handler never installed and the Trustline button had nothing
 // listening. It is a delegated document listener; with no matching buttons on a page it costs nothing.
-+'if(!window.__lxRmWired){window.__lxRmWired=1;document.addEventListener("click",function(e){var bt=e.target&&e.target.closest?e.target.closest(".lx-rmtrust"):null;if(!bt)return;e.preventDefault();e.stopPropagation();if(bt.__lxb)return;bt.__lxb=1;var code=bt.getAttribute("data-rmc"),iss=bt.getAttribute("data-rmi"),lbl=bt.innerHTML;bt.textContent="Removing\\u2026";lxStellar().then(function(S){return Promise.all([jNow(H+"/accounts/"+ME),j(H+"/liquidity_pools?account="+ME+"&limit=200").catch(function(){return null;})]).then(function(_r){var acc=_r[0],_lp=_r[1];var _sh={};((acc&&acc.balances)||[]).forEach(function(b){if(b.asset_type==="liquidity_pool_shares")_sh[b.liquidity_pool_id]=+b.balance||0;});var _bld=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)});var _want=code+":"+iss,_recs=((_lp&&_lp._embedded&&_lp._embedded.records)||[]),_freed=0;_recs.forEach(function(p){try{var rs=p.reserves||[];if(rs.length!==2)return;if(!rs.some(function(x){return x.asset===_want;}))return;if((_sh[p.id]||0)!==0)return;var as=rs.map(function(x){if(x.asset==="native")return S.Asset.native();var q=x.asset.split(":");return new S.Asset(q[0],q[1]);});_bld.addOperation(S.Operation.changeTrust({asset:new S.LiquidityPoolAsset(as[0],as[1],(S.LiquidityPoolFeeV18||30)),limit:"0"}));_freed++;}catch(_){}});_bld.addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss),limit:"0"}));var tx=_bld.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});});});}).then(function(res){if(res&&(res.successful||res.hash)){try{lxToast(code+" trustline removed \\u2713");}catch(_){}setTimeout(function(){location.reload();},1200);}else{var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"Removing the trustline"):JSON.stringify(x)):"failed");}})'
++'if(!window.__lxRmWired){window.__lxRmWired=1;document.addEventListener("click",function(e){var bt=e.target&&e.target.closest?e.target.closest(".lx-rmtrust"):null;if(!bt)return;e.preventDefault();e.stopPropagation();if(bt.__lxb)return;bt.__lxb=1;var code=bt.getAttribute("data-rmc"),iss=bt.getAttribute("data-rmi"),lbl=bt.innerHTML;bt.textContent="Removing\\u2026";lxStellar().then(function(S){return Promise.all([jNow(H+"/accounts/"+ME),j(H+"/liquidity_pools?account="+ME+"&limit=200").catch(function(){return null;})]).then(function(_r){var acc=_r[0],_lp=_r[1];var _sh={};((acc&&acc.balances)||[]).forEach(function(b){if(b.asset_type==="liquidity_pool_shares")_sh[b.liquidity_pool_id]=+b.balance||0;});var _bld=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)});var _want=code+":"+iss,_recs=((_lp&&_lp._embedded&&_lp._embedded.records)||[]),_freed=0;_recs.forEach(function(p){try{var rs=p.reserves||[];if(rs.length!==2)return;if(!rs.some(function(x){return x.asset===_want;}))return;if((_sh[p.id]||0)!==0)return;var as=rs.map(function(x){if(x.asset==="native")return S.Asset.native();var q=x.asset.split(":");return new S.Asset(q[0],q[1]);});_bld.addOperation(S.Operation.changeTrust({asset:new S.LiquidityPoolAsset(as[0],as[1],(S.LiquidityPoolFeeV18||30)),limit:"0"}));_freed++;}catch(_){}});_bld.addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss),limit:"0"}));var tx=_bld.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Cancelled by the user.");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});});});}).then(function(res){if(res&&(res.successful||res.hash)){try{lxToast(code+" trustline removed \\u2713");}catch(_){}setTimeout(function(){location.reload();},1200);}else{var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"Removing the trustline"):JSON.stringify(x)):"failed");}})'
 // "Could not remove trustline" told the user nothing they could act on. Stellar refuses limit=0 while the
 // trustline is still backing something, and the account itself says which: a leftover balance, an open
 // offer selling it, or -- the case that prompted this -- deposits sitting in a liquidity pool, where the
@@ -764,12 +768,23 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'}catch(_){}}'
 +'var LX_CKSVG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>\';'
 +'var LX_CPSVG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>\';'
-+'function lxIssLine(code,iss,native){'
+// The tick as its own fragment, for the TICKER line. On the desktop My Assets table it used to sit
+// down on the issuer line, two sizes smaller than the thing it vouches for and reading as if it
+// certified the domain string rather than the asset (RAZA 2026-11-07, "VELO, LUMOS, EURC, USDC").
+// NEAR puts it inline after the symbol; so does our own search popup. noTick below is the other half:
+// lxIssLine still draws it for the MOBILE wallet, which calls through window.__lxIssLine with three
+// arguments and whose row has no separate ticker line to move it to.
++'function lxVtk(code,iss,native){if(native||!iss||!lxVfdHas(code,iss))return "";'
++'var v=dispDom(code,iss,lxVfd(code,iss));'
++'return \'<span class="lx-vfd" title="Verified issuer\'+(v?" \\u00b7 "+esc(v):"")+\'">\'+LX_CKSVG+\'</span>\';}'
++'function lxIssLine(code,iss,native,noTick){'
 +'if(native)return \'<span class="lx-asb-t">Stellar \\u00b7 native</span>\';'
 +'if(!iss)return \'<span class="lx-asb-t">Stellar asset</span>\';'
 // dispDom wraps the VALUE only; vv (presence) is untouched, so the tick is decided exactly as before.
-+'var v=dispDom(code,iss,lxVfd(code,iss)),vv=lxVfdHas(code,iss),h=\'<span class="lx-asb" data-vk="\'+esc(code+"|"+iss)+\'">\';'
-+'if(vv)h+=\'<span class="lx-vfd" title="Verified issuer\'+(v?" \\u00b7 "+esc(v):"")+\'">\'+LX_CKSVG+\'</span>\';'
+// data-vk is the anchor lxWalPaintV fills a late tick into, so it travels WITH the tick -- leave it
+// on a line that no longer draws one and the asset ends up wearing two.
++'var v=dispDom(code,iss,lxVfd(code,iss)),vv=lxVfdHas(code,iss),h=\'<span class="lx-asb"\'+(noTick?"":\' data-vk="\'+esc(code+"|"+iss)+\'"\')+\'>\';'
++'if(vv&&!noTick)h+=\'<span class="lx-vfd" title="Verified issuer\'+(v?" \\u00b7 "+esc(v):"")+\'">\'+LX_CKSVG+\'</span>\';'
 +'h+=\'<span class="lx-hd" data-hd="\'+esc(iss)+\'">\'+(v?esc(v):"")+\'</span>\';'
 +'h+=\'<span class="lx-iss" title="\'+esc(iss)+\'">\'+esc(shrt(iss))+\'</span>\';'
 +'h+=\'<button type="button" class="lx-isscopy" data-iss="\'+esc(iss)+\'" aria-label="Copy issuer address" title="Copy issuer address">\'+LX_CPSVG+\'</button>\';'
@@ -829,7 +844,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'return \'<span class="lx-ameta"><span class="lx-hd" data-hd="\'+esc(iss)+\'"></span>'
 +'<a class="lx-vasset" href="\'+href+\'">View asset</a></span>\';}'
 +'window.__lxAssetMeta=lxAssetMeta;'
-+'window.__lxIssLine=lxIssLine;window.__lxFillHd=lxFillHd;window.__lxVfd=lxVfd;'
++'window.__lxIssLine=lxIssLine;window.__lxFillHd=lxFillHd;window.__lxVfd=lxVfd;window.__lxVtk=lxVtk;'
 +'window.__lxVfdHas=lxVfdHas;'
 // The baked map is a snapshot; the curated list changes without a build. Everything else that draws a
 // tick merges the live map at runtime -- the wallet was the surface that never did, which is why an
@@ -843,20 +858,31 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(LX_VFD[k]===undefined){LX_VFD[k]=r.d||"";added++;}});'
 +'if(added)lxWalPaintV();}).catch(function(){});}'
 +'function lxWalPaintV(){try{'
-+'var ns=document.querySelectorAll(".lx-asb[data-vk]");'
++'var ns=document.querySelectorAll(".lx-asb[data-vk],.nm[data-vk],.lxmw-nm[data-vk]");'
 +'for(var i=0;i<ns.length;i++){var el=ns[i];'
 +'if(LX_VFD[el.getAttribute("data-vk")]===undefined)continue;'
 +'if(el.querySelector(".lx-vfd"))continue;'
 +'var sp=document.createElement("span");sp.className="lx-vfd";'
 +'sp.setAttribute("title","Verified issuer");sp.innerHTML=LX_CKSVG;'
-+'el.insertBefore(sp,el.firstChild);}'
+// Two anchors, opposite ends. The issuer line reads "<tick> domain GABC...", so the tick leads it;
+// the ticker line reads "LUMOS <tick>", so it follows. An asset curated after the last build gets
+// its tick from here rather than from the baked map, and it has to land in the same place either way.
++'if(el.classList&&el.classList.contains("lx-asb")){el.insertBefore(sp,el.firstChild);}'
+// The phone's ticker line already carries a pin star; the tick belongs to the symbol, so it goes
+// between the two rather than out past the star.
++'else{var _pb=el.querySelector(".lxmw-pinbadge");if(_pb)el.insertBefore(sp,_pb);else el.appendChild(sp);}}'
 +'}catch(_e){}}'
 +'lxWalMergeV();'
 +'if(!window.__lxIssCopyWired){window.__lxIssCopyWired=1;document.addEventListener("click",function(e){'
-+'var b=e.target&&e.target.closest?e.target.closest(".lx-isscopy"):null;if(!b)return;'
+// The row-menu's "Copy issuer address" comes through here too, tagged with the marker attribute
+// instead of the class so it keeps the menu's styling. One copy path, one toast.
++'var b=e.target&&e.target.closest?e.target.closest(".lx-isscopy,[data-lxisscopy]"):null;if(!b)return;'
 +'e.preventDefault();e.stopPropagation();var v=b.getAttribute("data-iss")||"";'
-+'function ok(){try{lxToast("Issuer address copied");}catch(_){}}'
-+'try{navigator.clipboard.writeText(v).then(ok,function(){window.prompt("Issuer address",v);});}catch(_){window.prompt("Issuer address",v);}},true);}'
+// The Liq Pools menu copies a pool id through this same handler, so the noun is carried on the
+// element rather than written in here twice. Defaults to the issuer wording this was built for.
++'var _lb=b.getAttribute("data-lxcoplabel")||"Issuer address";'
++'function ok(){try{lxToast(_lb+" copied");}catch(_){}}'
++'try{navigator.clipboard.writeText(v).then(ok,function(){window.prompt(_lb,v);});}catch(_){window.prompt(_lb,v);}},true);}'
 +'function codeOf(x){return (!x||x.asset_type==="native")?"XLM":(x.asset_code||"?");}'
 +'var COL=["#3b82f6","#8b5cf6","#10b981","#f59e0b","#ec4899","#06b6d4","#ef4444","#6366f1"];'
 +'function colFor(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return COL[h%COL.length];}'
@@ -866,9 +892,31 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function priceXLM(b){if(b.asset_type==="native")return Promise.resolve(1);'
 +'var bal=+b.balance||0,src="source_asset_type="+b.asset_type+"&source_asset_code="+encodeURIComponent(b.asset_code)+"&source_asset_issuer="+b.asset_issuer;'
 // realizable value: price the WHOLE balance through actual liquidity, then per-unit = realizable/balance. Illiquid spam (huge supply, thin market) naturally collapses to ~0; the 1-unit fallback only fires when the full balance has no path.
+//
+// A QUOTE TOO SMALL TO DIVIDE IS NOT A PRICE (RAZA 2026-11-06, two dust rows: "check the USDT0 dust
+// showing 0.0000001 in my balances"). Horizon quantises destination_amount to ONE STROOP, 1e-7. Divide
+// a stroop-sized answer by a stroop-sized balance and the rounding is multiplied by ten million.
+//
+// Measured against Horizon, the same request this makes, on the account that reported it:
+//   USDC  send 0.0000001 -> 0.0000026 XLM  px = 26.0000 XLM = $4.02   (2-hop path, each hop rounds UP)
+//         send 0.0000010 -> 0.0000204 XLM  px = 20.4000 XLM = $3.16
+//         send 0.0001000 -> 0.0006691 XLM  px =  6.6910 XLM = $1.04
+//         send 1.0000000 -> 6.4632969 XLM  px =  6.4633 XLM = $1.00   <- the true price
+// USDT0 behaved the same and landed on $1.86. Both are DOLLAR STABLECOINS, and the wallet was printing
+// $4.03 and $1.86 next to them. The error is a gradient, not a cliff -- still 3.5% high at 0.0001 USDC.
+//
+// So the whole-balance quote only earns the division when its output is far enough above the stroop:
+// at 1e-4 XLM the quantisation is 0.1% of the answer. Below that, fall back to the 1-unit quote that
+// already exists here -- it just never fired for this case, because it was gated on the balance quote
+// FAILING rather than on it being too coarse to use.
+//
+// Gating on `out`, not on `bal`, is what keeps the spam behaviour: a huge balance of a thin token still
+// quotes a tiny `out`, falls here, and `one()` then prices ONE unit of it at essentially nothing -- so
+// it still collapses to ~0 rather than gaining a fictional per-unit price.
++'var PXFLOOR=1e-4;'
 +'function one(){return j(H+"/paths/strict-send?"+src+"&source_amount=1&destination_assets=native").then(function(d){var r=(d&&d._embedded&&d._embedded.records)||[];return r.length?parseFloat(r[0].destination_amount):0;}).catch(function(){return 0;});}'
 +'if(!(bal>0))return one();'
-+'return j(H+"/paths/strict-send?"+src+"&source_amount="+bal.toFixed(7)+"&destination_assets=native").then(function(d){var recs=(d&&d._embedded&&d._embedded.records)||[];var out=recs.length?parseFloat(recs[0].destination_amount):0;if(out>0)return out/bal;return one();}).catch(function(){return one();});}'
++'return j(H+"/paths/strict-send?"+src+"&source_amount="+bal.toFixed(7)+"&destination_assets=native").then(function(d){var recs=(d&&d._embedded&&d._embedded.records)||[];var out=recs.length?parseFloat(recs[0].destination_amount):0;if(out>=PXFLOOR)return out/bal;return one();}).catch(function(){return one();});}'
 // 24h price change % per asset (asset/XLM trade-aggregations; native uses XLM/USDC). Non-blocking, top rows only.
 +'var _eQ=[],_eA=0;function _ePump(){while(_eA<8&&_eQ.length){_eA++;(_eQ.shift())();}}'
 +'function eGet(u){return new Promise(function(done){function fin(v){_eA--;_ePump();done(v);}'
@@ -948,7 +996,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var pxUsd=r.px*xu;var pStr="\\u2014";if(pxUsd>0&&pxUsd<0.0001){pStr="$"+(window.lxSubN||(window.lxSubN=function(x){x=+x||0;if(!(x>0))return "0";var e=x.toExponential(3),i=e.indexOf("e"),xp=-parseInt(e.slice(i+1),10),m=e.slice(0,i).split(".").join("").replace(/0+$/,"");var z=String(xp-1),s="";for(var k=0;k<z.length;k++)s+=String.fromCharCode(8320+(+z.charAt(k)));return "0.0"+s+m;}))(pxUsd);}else if(pxUsd>0){if(pxUsd>=1)pStr="$"+pxUsd.toFixed(2);else if(pxUsd>=0.01)pStr="$"+pxUsd.toFixed(4);else{var _d=Math.min(18,Math.max(4,2-Math.floor(Math.log(pxUsd)/Math.LN10)));pStr="$"+pxUsd.toFixed(_d).replace(/0+$/,"").replace(/\\.$/,"");}}'
 +'var c24=isX?ch:0;var up=c24>0,zero=!isX||c24===0;'
 +'var _slg=isX?"":((window.__lxLogos||{})[c]||"");var icv=isX?("url("+STELLAR_URI+")"):(_slg?("url(\\x27"+String(_slg).replace(/\\x27/g,"%27")+"\\x27)"):colFor(c));'
-+'out+=\'<tr><td><div class="asset-id"><div class="ico lx-aico" style="--ic:\'+icv+\'" data-l="\'+((isX||_slg)?"":esc(c.slice(0,1)))+\'" data-lxc="\'+(isX?"":esc(c))+\'" data-lxi="\'+(isX?"":esc(b.asset_issuer||""))+\'"></div><div class="meta"><div class="nm">\'+esc(c)+\'</div><div class="sb">\'+lxIssLine(c,b.asset_issuer||"",isX)+\'</div></div></div></td>\''
++'out+=\'<tr><td><div class="asset-id"><div class="ico lx-aico" style="--ic:\'+icv+\'" data-l="\'+((isX||_slg)?"":esc(c.slice(0,1)))+\'" data-lxc="\'+(isX?"":esc(c))+\'" data-lxi="\'+(isX?"":esc(b.asset_issuer||""))+\'"></div><div class="meta"><div class="nm"\'+((isX||!b.asset_issuer)?"":\' data-vk="\'+esc(c+"|"+(b.asset_issuer||""))+\'"\')+\'>\'+esc(c)+lxVtk(c,b.asset_issuer||"",isX)+\'</div><div class="sb">\'+lxIssLine(c,b.asset_issuer||"",isX,1)+\'</div></div></div></td>\''
 +'+\'<td class="price-cell"><div class="p1 lx-p1"><span>\'+pStr+\'</span><span class="lx-chg" data-ci="\'+ri+\'"></span></div>\'+((!isX&&r.px>0)?(\'<div class="lx-pxlm">\'+(r.px<0.0001?(window.lxSubN||(window.lxSubN=function(x){x=+x||0;if(!(x>0))return "0";var e=x.toExponential(3),i=e.indexOf("e"),xp=-parseInt(e.slice(i+1),10),m=e.slice(0,i).split(".").join("").replace(/0+$/,"");var z=String(xp-1),s="";for(var k=0;k<z.length;k++)s+=String.fromCharCode(8320+(+z.charAt(k)));return "0.0"+s+m;}))(r.px):num(r.px,r.px<1?6:4))+\' XLM</div>\'):"")+\'</td>\''
 +'+\'<td class="spark-cell"></td>\''
 +'+\'<td class="right balance-cell"><div class="b1">\'+amt(bal)+\' \'+esc(c)+\'</div><div class="b2">\'+(r.xlm>0?"\\u2248 "+usd(r.xlm*xu):"")+\'</div></td>\''
@@ -990,12 +1038,18 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var recs=(ops._embedded&&ops._embedded.records)||[];var cont=window.__lxAct||document.querySelector(".activity-block");'
 +'function actBg(code,native){var lg=native?(window.__lxStellarUri||""):((window.__lxLogos||{})[code]||"");if(lg)return "url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)";return "radial-gradient("+colFor(code||"?")+" 60%,transparent 62%)";}'
 +'function actIconAttrs(a){return{cls:"",style:"",dl:"",svg:IC[a.kind]||IC.swap};}'
+// A COUNTERPARTY IS NOT ALWAYS AN ACCOUNT. Soroban rows can name a CONTRACT, and a contract id starts
+// with C, not G. stellar.expert keeps contracts on a different path: /explorer/public/account/C... renders
+// "Error: Invalid Stellar account address" (checked 2026-11-06), while /contract/C... is the real page --
+// it is where the HOT Bridge Treasury contract identifies itself by name. The status code is no help here:
+// stellar.expert is a single-page app and BOTH urls answer 200, so only the rendered page tells you.
++'function _sxPath(a){return String(a||"").charAt(0)==="C"?"contract":"account";}'
 +'function ilogo(code,native,iss){var lg=native?(window.__lxStellarUri||STELLAR_URI):((window.__lxLogos||{})[code]||"");var bg=lg?("url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)"):colFor(code||"?");return \'<span class="lx-act-ilogo" style="--al:\'+bg+\'" data-lxc="\'+esc(native?"":(code||""))+\'" data-lxi="\'+esc(native?"":(iss||""))+\'" data-l="\'+esc(lg?"":(code||"?").slice(0,1).toUpperCase())+\'"></span>\';}'
 +'function typeHtml(a){if(a.kind==="swap"&&a.srcCode){return "Swap"+ilogo(a.srcCode,a.srcNative,a.srcIss)+esc(a.srcCode)+" \\u2192"+ilogo(a.dstCode,a.dstNative,a.dstIss)+esc(a.dstCode);}if(a.code&&a.type==="Sent "+a.code){return "Sent"+ilogo(a.code,a.native,a.iss)+esc(a.code);}if(a.code&&a.type==="Received "+a.code){return "Received"+ilogo(a.code,a.native,a.iss)+esc(a.code);}if(a.lp&&a.c1){return esc(a.type)+ilogo(a.c1,a.n1,a.i1)+esc(a.c1)+" + "+ilogo(a.c2,a.n2,a.i2)+esc(a.c2);}if(a.ord&&a.c1){return esc(a.verb)+ilogo(a.c1,a.n1,a.i1)+esc(a.c1)+" /"+ilogo(a.c2,a.n2,a.i2)+esc(a.c2);}if(a.tl&&a.code){return esc(a.type)+ilogo(a.code,a.native,a.iss)+esc(a.code);}return esc(a.type);}'
 +'function lxHarvestActLogos(){var seen={};[].slice.call(document.querySelectorAll(".lx-act-ilogo[data-lxi]")).forEach(function(el){var code=el.getAttribute("data-lxc"),iss=el.getAttribute("data-lxi");if(!code||!iss)return;var cached=(window.__lxLogos||{})[code];if(cached){el.style.setProperty("--al","url(\\x27"+String(cached).replace(/\\x27/g,"%27")+"\\x27)");el.setAttribute("data-l","");return;}var key=code+"|"+iss;if(seen[key])return;seen[key]=1;j("/lxapi/assetsearch?search="+encodeURIComponent(code)+"&limit=20").then(function(d){var recs=(d._embedded&&d._embedded.records)||[];var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+iss)===0;})[0];var ti=(m&&(m.tomlInfo||m.toml_info))||{};var img=ti.image||ti.orgLogo||"";if(!img)return;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}[].slice.call(document.querySelectorAll(".lx-act-ilogo[data-lxi=\\x27"+iss+"\\x27][data-lxc=\\x27"+code+"\\x27]")).forEach(function(x){x.style.setProperty("--al","url(\\x27"+String(img).replace(/\\x27/g,"%27")+"\\x27)");x.setAttribute("data-l","");});}).catch(function(){});});}'
 +'function lxRenderActs(limit){if(!cont)return;var use=recs.slice(0,limit||recs.length);var html="",prev=null;use.forEach(function(o){var a=mapOp(o);if(!a)return;a.tx=o.transaction_hash;if(a.day!==prev){html+=\'<div class="day-divider">\'+esc(a.day)+\'</div>\';prev=a.day;}var ac=a.kind==="received"?"up":(a.kind==="sent"?"down":"swap");'
 +'var ia=actIconAttrs(a);'
-+'var metaHtml=a.addr?(esc(a.metaPre||"")+\' <a class="lx-addr-link" href="https://stellar.expert/explorer/public/account/\'+esc(a.addr)+\'" target="_blank" rel="noopener">\'+esc(shrt(a.addr))+\'</a>\'):esc(a.meta||"");'
++'var metaHtml=a.addr?(esc(a.metaPre||"")+\' <a class="lx-addr-link" href="https://stellar.expert/explorer/public/\'+_sxPath(a.addr)+\'/\'+esc(a.addr)+\'" target="_blank" rel="noopener">\'+esc(shrt(a.addr))+\'</a>\'):esc(a.meta||"");'
 +'html+=\'<div class="activity-row"><div class="activity-icon \'+a.kind+ia.cls+\'" style="\'+ia.style+\'" data-l="\'+esc(ia.dl)+\'">\'+ia.svg+\'</div><div class="activity-info"><div class="type">\'+typeHtml(a)+\'</div><div class="meta">\'+metaHtml+\'</div></div>\'+\'<div class="activity-amt"><div class="a1 \'+ac+\'">\'+esc(a.amt)+\'</div><div class="a2">\'+esc(a.amtSub||"")+\'</div></div><a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/\'+esc(a.tx||"")+\'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>\';});cont.innerHTML=html||\'<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:14px">No recent activity</div>\';var _cb=(document.getElementById("actCount")||{}).parentElement;if(_cb)_cb.innerHTML=\'Showing <span id="actCount">\'+use.length+\'</span> of \'+recs.length+\' activities\';lxHarvestActLogos();lxPendClaims(cont);}'
 // ---- pending cross-chain claims ----
 // These are not Horizon operations: the burn already showed up in activity, but the transfer is not done
@@ -1041,10 +1095,42 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(w==="lobstr"){return import("https://esm.sh/@lobstrco/signer-extension-api").then(function(m){var s=m.signTransaction||(m.default&&m.default.signTransaction);return s(xdr);}).then(function(r){return (r&&r.signedTransaction)||r;});}'
 +'return Promise.reject(new Error("Reconnect your Stellar wallet to sign (unsupported: "+(w||"none")+")"));}'
 +'function lxAsset(S,nt,code,iss){return nt?S.Asset.native():new S.Asset(code,iss);}'
-+'function lxCancelAll(rows){return lxStellar().then(function(S){return jNow(H+"/accounts/"+ME).then(function(acc){var account=new S.Account(ME,acc.sequence);var tb=new S.TransactionBuilder(account,{fee:String(100*Math.max(1,rows.length)),networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)});rows.forEach(function(row){var sell=lxAsset(S,row.getAttribute("data-snt")==="1",row.getAttribute("data-sc"),row.getAttribute("data-si"));var buy=lxAsset(S,row.getAttribute("data-bnt")==="1",row.getAttribute("data-bc"),row.getAttribute("data-bi"));tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:"0",price:String(row.getAttribute("data-price")||"1"),offerId:String(row.getAttribute("data-oid"))}));});var tx=tb.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet extension and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The order"):("DEX: "+JSON.stringify(x))):"Submit failed");});});});});}'
+// CANCEL ALL BID 100 x n PER OPERATION, WHICH IS NOBODY'S INTENDED NUMBER. The `fee` option is PER
+// OPERATION, not the transaction total — verified in this repo against the SDK these pages ship
+// (_swapcalc.js: fee:"100" x 3 ops -> tx.fee 300). This builder adds one operation per row, so
+// `100 * rows.length` was read as a total by whoever wrote it and multiplied by the op count a second
+// time: the real bid was 100n per op, 100n^2 in all. Cancelling ONE order landed on exactly 100 — the
+// bare base rate that Send (5,000) and Swap (3,000) both moved off on purpose, because the inclusion
+// fee is a MAX bid and Stellar charges the clearing price: live /fee_stats 2026-11-04 read
+// fee_charged p50 = 100 against max_fee p50 = 58,005, with p90 charged at 3,522. Bidding higher is
+// free; bidding 100 risks exclusion every time a ledger fills.
+//
+// 3,000 PER OP WITH A 10,000-STROOP CEILING ON THE WHOLE BID, which is the same discipline Send and
+// Swap wrote down, applied to the one builder here whose operation count is unbounded. Both size
+// their flat bid so the worst case lands near 10,000 stroops = 0.001 XLM, because that is exactly
+// what __lxMaxXLM (_swapcalc.js) holds back from spendable. Cancelling spends nothing but the fee, so
+// honouring the same ceiling keeps Cancel all payable by an account Max considers to have zero
+// spendable — which is precisely the account most likely to be clearing its orders. Floored at the
+// 100-stroop base so the ceiling still holds at the 100-operation limit.
+//
+// n=1 -> 3,000 | n=4 -> 2,500 | n=10 -> 1,000 | n=20 -> 500 | n=100 -> 100. Total never over 10,000.
++'function lxCancelAll(rows){return lxStellar().then(function(S){return jNow(H+"/accounts/"+ME).then(function(acc){var account=new S.Account(ME,acc.sequence);var tb=new S.TransactionBuilder(account,{fee:String(Math.min(3000,Math.max(100,Math.floor(10000/Math.max(1,rows.length))))),networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)});rows.forEach(function(row){var sell=lxAsset(S,row.getAttribute("data-snt")==="1",row.getAttribute("data-sc"),row.getAttribute("data-si"));var buy=lxAsset(S,row.getAttribute("data-bnt")==="1",row.getAttribute("data-bc"),row.getAttribute("data-bi"));tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:"0",price:String(row.getAttribute("data-price")||"1"),offerId:String(row.getAttribute("data-oid"))}));});var tx=tb.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet extension and try again").then(function(signed){if(!signed)throw new Error("Cancelled by the user.");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The order"):("DEX: "+JSON.stringify(x))):"Submit failed");});});});});}'
 +'function lxCancel(row){return lxCancelAll([row]);}'
 // ---- real Send: build a payment (native or issued asset) + optional text memo, sign, submit ----
-+'function lxPay(dest,sym,amount,memo,memoType){return lxStellar().then(function(S){return jNow(H+"/accounts/"+ME).then(function(acc){var account=new S.Account(ME,acc.sequence);var asset;if(!sym||sym==="XLM")asset=S.Asset.native();else{var iss=(window.__lxAssets||{})[sym];if(!iss)throw new Error("Cannot resolve the issuer for "+sym+" \\u2014 reopen Send and pick the asset again");asset=new S.Asset(sym,iss);}var tb=new S.TransactionBuilder(account,{fee:"100",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)}).addOperation(S.Operation.payment({destination:dest,asset:asset,amount:String(amount)}));if(memo)tb.addMemo(memoType==="id"?S.Memo.id(String(memo)):S.Memo.text(memo));var tx=tb.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;var _o=(x&&x.operations&&x.operations[0])||"",_t=(x&&x.transaction)||"";throw new Error(/no_destination/.test(_o)?"Recipient isn\\u2019t activated on testnet yet":/no_trust/.test(_o)?"Recipient has no trustline for "+sym:/underfunded/.test(_o)?"Insufficient "+sym+" balance":/line_full/.test(_o)?"Recipient\\u2019s "+sym+" balance is at its limit":/bad_auth/.test(_t+_o)?"Signature rejected \\u2014 reconnect wallet on Testnet":x?("Payment failed"):"Submit failed");});});});});}'
+//
+// SEND BID THE BASE RATE AND NOTHING ELSE, which is the one bid that can be outrun by every other
+// submitter. The inclusion fee is a MAX, and Stellar charges the clearing price rather than the bid:
+// live /fee_stats 2026-11-04 read fee_charged p50 = 100 against max_fee p50 = 58,005, so the median
+// submitter bids 580x what they actually pay. Raising this costs the sender nothing and buys a place
+// in a full ledger; "100" bought neither (fee_charged p90 was 3,522).
+//
+// 5000 is sized against OUR OWN limit, not the market. __lxMaxXLM (_swapcalc.js) is
+// `native - reserve - selling_liabilities - 0.001`, so 0.001 XLM = 10,000 stroops is what Send's own
+// Max leaves spendable for a fee. This transaction is exactly ONE operation and the option is
+// per-operation, so 5,000 stroops is the whole bid — half the allowance, 50x base. Raising it past
+// 10,000 means raising that 0.001 in the same edit, or Max builds a payment the account cannot pay
+// the fee on ([[max-rounds-a-balance-up]]).
++'function lxPay(dest,sym,amount,memo,memoType){return lxStellar().then(function(S){return jNow(H+"/accounts/"+ME).then(function(acc){var account=new S.Account(ME,acc.sequence);var asset;if(!sym||sym==="XLM")asset=S.Asset.native();else{var iss=(window.__lxAssets||{})[sym];if(!iss)throw new Error("Cannot resolve the issuer for "+sym+" \\u2014 reopen Send and pick the asset again");asset=new S.Asset(sym,iss);}var tb=new S.TransactionBuilder(account,{fee:"5000",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)}).addOperation(S.Operation.payment({destination:dest,asset:asset,amount:String(amount)}));if(memo)tb.addMemo(memoType==="id"?S.Memo.id(String(memo)):S.Memo.text(memo));var tx=tb.setTimeout(300).build();return lxTimeout(lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Cancelled by the user.");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;var _o=(x&&x.operations&&x.operations[0])||"",_t=(x&&x.transaction)||"";throw new Error(/no_destination/.test(_o)?"Recipient isn\\u2019t activated on testnet yet":/no_trust/.test(_o)?"Recipient has no trustline for "+sym:/underfunded/.test(_o)?"Insufficient "+sym+" balance":/line_full/.test(_o)?"Recipient\\u2019s "+sym+" balance is at its limit":/bad_auth/.test(_t+_o)?"Signature rejected \\u2014 reconnect wallet on Testnet":x?("Payment failed"):"Submit failed");});});});});}'
 +'function validateSend(m){if(!m||!m.querySelector)return;var amtI=m.querySelector(\'input[placeholder="0.00"]\'),recI=m.querySelector("input.mono");if(!amtI||!recI)return;var rb=[].slice.call(m.querySelectorAll("button")).filter(function(b){return /Review.*Send/i.test((b.textContent||"").replace(/\\s+/g," "));})[0];var err=m.querySelector(".lx-send-err");if(!err){err=document.createElement("div");err.className="lx-send-err";var af=amtI.closest(".field")||amtI.parentNode;if(af&&af.parentNode)af.parentNode.insertBefore(err,af.nextSibling);}var raw=(amtI.value||"").trim(),msg="",okAmt=false,n=NaN;var sym=m.__lxsym||"XLM";if(raw!==""){if(raw.charAt(0)==="-"&&!/[^0-9.,]/.test(raw.slice(1))){msg="Amounts can"+String.fromCharCode(8217)+"t be negative.";}else if(/[^0-9.,]/.test(raw)){msg="Enter a number \\u2014 letters aren\\u2019t allowed in the amount.";}else{n=parseFloat(raw.replace(/,/g,""));var avail;if(sym==="XLM"){avail=window.__lxMaxXLM;}else{var _hs=window.__lxHoldings||[],_hh=_hs.filter(function(x){return x.code===sym;})[0];avail=_hh?_hh.bal:null;}if(!(n>0)){msg="Enter an amount greater than 0.";}else if(avail!=null&&n>avail){msg="Amount exceeds your available "+sym+" balance ("+num(avail,avail<1?6:4)+" "+sym+(sym==="XLM"?" after reserve":"")+").";}else{okAmt=true;}}}var dest=(recI.value||"").trim(),okDest=/^G[A-Z2-7]{55}$/.test(dest);if(!msg&&dest!==""&&!okDest){msg="That doesn\\u2019t look like a valid Stellar address (should start with G and be 56 characters).";}var _ad=(msg!==""&&dest!==""&&!okDest&&msg.indexOf("Stellar address")>=0),_me=(typeof ME!=="undefined"?ME:""),_self=(!msg&&okDest&&_me!==""&&dest===_me);var errD=m.querySelector(".lx-send-errd");if((_ad||_self)&&!errD){errD=document.createElement("div");errD.className="lx-send-err lx-send-errd";var df=recI.closest(".field")||recI.parentNode;if(df&&df.parentNode)df.parentNode.insertBefore(errD,df.nextSibling);}if(errD){var _dt=_ad?msg:(_self?"Note: This is your wallet address":"");errD.textContent=_dt;errD.style.display=_dt?"":"none";errD.style.color=(_self&&!_ad)?"var(--text-muted,#9aa)":"";}err.textContent=_ad?"":msg;err.style.display=(msg&&!_ad)?"":"none";var ok=okAmt&&okDest;if(rb){if(ok){rb.disabled=false;rb.classList.remove("lx-btn-off");}else{rb.disabled=true;rb.classList.add("lx-btn-off");}}}'
 +'function wireSendValidation(){document.addEventListener("input",function(e){var m=e.target&&e.target.closest?e.target.closest(".modal-overlay"):null;if(!m||!m.querySelector("input.mono"))return;validateSend(m);},true);}'
 +'function lxReadItemLogo(el){try{var ic=el.querySelector(".lx-am-ic");if(!ic)return "";var im=ic.querySelector("img");if(im&&im.src)return im.src;var bg=ic.style.backgroundImage||getComputedStyle(ic).backgroundImage||"";if(bg.indexOf("url(")>=0&&bg.indexOf("gradient")<0)return bg.replace(/^url\\((["\\x27]?)/,"").replace(/(["\\x27]?)\\)$/,"");}catch(_){}return "";}'
@@ -1207,9 +1293,30 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function closeRowMenu(){var m=document.querySelector(".row-menu.open");if(m)m.classList.remove("open");}'
 +'function lxPinKey(c,i){return i?(c+"-"+i):c;}'
 +'function lxPinHit(entry,c,i){return entry===lxPinKey(c,i)||entry===c;}'
-+'function applyPins(){var tb=document.getElementById("assetsTable");if(!tb)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){return;}for(var i=pinned.length-1;i>=0;i--){var rows=tb.querySelectorAll("tr");for(var j=0;j<rows.length;j++){var ic=rows[j].querySelector(".lx-aico");if(ic&&lxPinHit(pinned[i],ic.getAttribute("data-lxc"),ic.getAttribute("data-lxi"))){var row=rows[j];tb.insertBefore(row,tb.firstChild);row.classList.add("lx-pinned");var nm=row.querySelector(".nm");if(nm&&!nm.querySelector(".lx-pin-badge")){var pb=document.createElement("span");pb.className="lx-pin-badge";pb.title="Pinned";pb.innerHTML=\'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>\';nm.appendChild(pb);}break;}}}}'
-+'function pinAsset(code){if(!code)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){pinned=[];}var ix=pinned.indexOf(code),unpin=ix>=0;if(unpin)pinned.splice(ix,1);else pinned.unshift(code);try{localStorage.setItem("lumos.pinned",JSON.stringify(pinned));}catch(_){}if(unpin){var tb=document.getElementById("assetsTable");if(tb){var rows=tb.querySelectorAll("tr");for(var i=0;i<rows.length;i++){var ic=rows[i].querySelector(".lx-aico");if(ic&&ic.getAttribute("data-lxc")===code){rows[i].classList.remove("lx-pinned");var bd=rows[i].querySelector(".lx-pin-badge");if(bd)bd.remove();break;}}}lxToast(code+" unpinned");}else{applyPins();lxToast(code+" pinned to top");}}'
-+'function wireRowMenu(){document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest(".row-menu button"):null;if(!btn)return;var t=(btn.textContent||"").trim();var a=window.__lxActiveAsset||{};if(/View on Stellar Explorer/i.test(t)){e.preventDefault();e.stopPropagation();var u=(a.code&&a.iss)?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(a.code)+"-"+a.iss):("https://stellar.expert/explorer/public/account/"+ME);window.open(u,"_blank","noopener");closeRowMenu();return;}if(/Pin to top|Unpin/i.test(t)){e.preventDefault();e.stopPropagation();pinAsset(lxPinKey(a.code,a.iss));closeRowMenu();return;}},true);}'
+// ONE DEFINITION OF A ROW'S PIN IDENTITY (RAZA 2026-11-07: "Attempting to pin the native XLM asset to
+// the top fails to trigger or save").
+//
+// `data-lxc` is EMPTY on the native row ON PURPOSE -- it belongs to the logo healer, which keys the
+// native logo off its absence. Pinning borrowed the same attribute for identity, so applyPins() looked
+// for a row carrying "XLM", found none, and XLM could never pin. One attribute doing two jobs, and the
+// logo's requirement silently took the other one away.
+//
+// Four places then disagreed about the key: pinAsset() stored "USDC-GA5Z...", the menu label looked up
+// the bare "USDC" (so it read "Pin to top" over an asset that was pinned), and the unpin branch
+// compared that full key against `data-lxc` -- which never matches for an issued asset, so unpinning
+// dropped it from storage while the row kept its star and its place until a reload. They all come
+// through lxRowKey() now, and the native row answers "XLM" like any other.
++'function lxRowKey(ic){if(!ic)return "";var c=ic.getAttribute("data-lxc")||"",i=ic.getAttribute("data-lxi")||"";return c?lxPinKey(c,i):"XLM";}'
+// Tolerant on read, exact on write: a key stored by an older build is the bare code, and that entry
+// must keep working rather than quietly stop pinning after a deploy.
++'function lxRowPinHit(ic,entry){return !!ic&&(entry===lxRowKey(ic)||entry===((ic.getAttribute("data-lxc"))||"XLM"));}'
++'function applyPins(){var tb=document.getElementById("assetsTable");if(!tb)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){return;}for(var i=pinned.length-1;i>=0;i--){var rows=tb.querySelectorAll("tr");for(var j=0;j<rows.length;j++){var ic=rows[j].querySelector(".lx-aico");if(lxRowPinHit(ic,pinned[i])){var row=rows[j];tb.insertBefore(row,tb.firstChild);row.classList.add("lx-pinned");var nm=row.querySelector(".nm");if(nm&&!nm.querySelector(".lx-pin-badge")){var pb=document.createElement("span");pb.className="lx-pin-badge";pb.title="Pinned";pb.innerHTML=\'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>\';nm.appendChild(pb);}break;}}}}'
++'function pinAsset(code){if(!code)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){pinned=[];}var ix=pinned.indexOf(code),unpin=ix>=0;if(unpin)pinned.splice(ix,1);else pinned.unshift(code);try{localStorage.setItem("lumos.pinned",JSON.stringify(pinned));}catch(_){}if(unpin){var tb=document.getElementById("assetsTable");if(tb){var rows=tb.querySelectorAll("tr");for(var i=0;i<rows.length;i++){var ic=rows[i].querySelector(".lx-aico");if(lxRowPinHit(ic,code)){rows[i].classList.remove("lx-pinned");var bd=rows[i].querySelector(".lx-pin-badge");if(bd)bd.remove();break;}}}lxToast(code+" unpinned");}else{applyPins();lxToast(code+" pinned to top");}}'
++'function wireRowMenu(){document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest(".row-menu button"):null;if(!btn)return;var t=(btn.textContent||"").trim();var a=window.__lxActiveAsset||{};if(/View on Stellar Explorer/i.test(t)){e.preventDefault();e.stopPropagation();var u=(a.code&&a.iss)?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(a.code)+"-"+a.iss):("https://stellar.expert/explorer/public/account/"+ME);window.open(u,"_blank","noopener");closeRowMenu();return;}'
+// a.pinKey, not lxPinKey(a.code,a.iss): on the native row a.code is "" (the logo healer owns that
+// attribute), so the old call handed pinAsset("") and it returned at its own guard -- the click did
+// nothing at all, which is exactly what the XLM row did.
++'if(/Pin to top|Unpin/i.test(t)){e.preventDefault();e.stopPropagation();pinAsset(a.pinKey||lxPinKey(a.code,a.iss));closeRowMenu();return;}},true);}'
 // top-left wallet chip: the external-link icon opens the account on Stellar.Expert
 +'function wireWalletLink(){var row=document.querySelector(".hero-id-row");if(!row)return;var btns=row.querySelectorAll("button,a");for(var i=0;i<btns.length;i++){var b=btns[i];if(b.__lxlink)continue;var poly=b.querySelector("polyline");if(poly&&/15\\s+3\\s+21\\s+3\\s+21\\s+9/.test(poly.getAttribute("points")||"")){b.__lxlink=1;(function(bb){bb.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();window.open("https://stellar.expert/explorer/public/account/"+ME,"_blank","noopener");},true);})(b);}}}'
 +'function wireNavGuard(){var lastClick=null;document.addEventListener("click",function(e){lastClick=e.target;},true);function bad(t){try{if(!t||!t.closest)return false;if(t.closest("a[href]"))return false;if(t.closest("main")||t.closest(".page")||t.closest(".assets-card")||t.closest(".lp-card")||t.closest(".hero")||t.closest(".insights-rail"))return true;var cl=(typeof t.className==="string"?t.className:"");if(t.tagName==="MAIN"||t.tagName==="BODY"||/(^|\\s)(app|page|main|content|wrap|shell|layout)(\\s|$)/.test(cl))return true;}catch(_){}return false;}var iv=setInterval(function(){if(typeof window.lxNavigate==="function"&&!window.__lxNavGuarded){window.__lxNavGuarded=1;var orig=window.lxNavigate;window.lxNavigate=function(c){var t=(window.event&&window.event.target)||lastClick;if(bad(t))return;return orig.apply(this,arguments);};clearInterval(iv);}},150);setTimeout(function(){clearInterval(iv);},7000);}'
@@ -1226,7 +1333,40 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
   // a coloured disc with no letter, since "".slice(0,1) is "", and Balance 0.0000000, since the
   // placeholder carries bal:0. Only XLM was affected, which is why it reads as a cosmetic glitch
   // rather than the Send dialog losing the asset it was opened for.
-+'function wireAssetActions(){var tb=document.getElementById("assetsTable");if(!tb||tb.__lxqa)return;tb.__lxqa=1;tb.addEventListener("click",function(e){var btn=e.target.closest&&e.target.closest(".qa-row-btn");if(!btn)return;var row=btn.closest("tr"),ico=row?row.querySelector(".lx-aico"):null,code=ico?ico.getAttribute("data-lxc"):"",iss=ico?ico.getAttribute("data-lxi"):"",lbl=(btn.textContent||"").trim();if(btn.classList.contains("icon-only")){window.__lxActiveAsset={code:code,iss:iss,row:row};setTimeout(function(){var mn=document.querySelector(".row-menu");if(!mn)return;var pb=[].slice.call(mn.querySelectorAll("button")).filter(function(x){return /Pin to top|Unpin/i.test(x.textContent||"");})[0];if(!pb)return;var pinned=[];try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){}var isP=pinned.indexOf(code)>=0;for(var i=0;i<pb.childNodes.length;i++){if(pb.childNodes[i].nodeType===3&&pb.childNodes[i].textContent.trim()){pb.childNodes[i].textContent=isP?" Unpin":" Pin to top";break;}}},70);return;}if(/Trade/i.test(lbl)){var _isX=(!code||code==="XLM");window.location.href=_isX?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));return;}if(/Send/i.test(lbl)){var sb=[].slice.call(document.querySelectorAll("button")).filter(function(x){return (x.textContent||"").trim()==="Send"&&(x.className||"").indexOf("qa-row-btn")<0;})[0];if(sb){var _nat=!code;var held=(window.__lxHoldings||[]).filter(function(h){return _nat?!!h.native:(h.code===code);})[0]||{code:_nat?"XLM":code,iss:_nat?"":iss,native:_nat,bal:0};if(!held.native&&!held.logo)held.logo=(window.__lxLogos||{})[held.code]||"";window.__lxSendPre=held;sb.click();var _presel=function(){var m=document.querySelector(".modal-overlay.open");if(m&&typeof selectSendAsset==="function")selectSendAsset(m,held);};_presel();setTimeout(_presel,60);setTimeout(_presel,220);setTimeout(_presel,480);setTimeout(function(){window.__lxSendPre=null;},1400);}return;}});}'
++'function wireAssetActions(){var tb=document.getElementById("assetsTable");if(!tb||tb.__lxqa)return;tb.__lxqa=1;tb.addEventListener("click",function(e){var btn=e.target.closest&&e.target.closest(".qa-row-btn");if(!btn)return;var row=btn.closest("tr"),ico=row?row.querySelector(".lx-aico"):null,code=ico?ico.getAttribute("data-lxc"):"",iss=ico?ico.getAttribute("data-lxi"):"",lbl=(btn.textContent||"").trim();if(btn.classList.contains("icon-only")){var _nat=!code;var _pk=lxRowKey(ico);window.__lxActiveAsset={code:code,iss:iss,row:row,nat:_nat,pinKey:_pk};var _edit=function(){var mn=document.querySelector(".row-menu");if(!mn)return false;'
+// THE MENU IS THE DESIGN TEMPLATE'S, not ours -- the same reason "View transaction history" is removed
+// from it by hand further up. Two of its items cannot apply to the native coin: XLM has no issuer to
+// copy (the template's own handler put an EVM-shaped mock on the clipboard, RAZA 2026-11-07) and no
+// asset page of its own, which is why "View asset" was already a no-op on that row rather than a link.
+// Removed rather than disabled: an item that can never do anything is not a state, it is clutter.
++'[].slice.call(mn.querySelectorAll("button,a")).forEach(function(x){var t=(x.textContent||"").trim();'
++'if(/^(View asset|Copy issuer address)$/i.test(t)&&_nat){x.remove();return;}'
+// ONE COPY IMPLEMENTATION, reached by a marker rather than by the class. .lx-isscopy already has a
+// delegated capture-phase handler that copies data-iss and toasts, and routing this item through it
+// also beats the template's mock handler (that listener is on document and calls stopPropagation).
+// The CLASS cannot be reused: it is styled as a 20px icon button and would shrink this menu row to it,
+// so the handler matches a marker attribute too and the item keeps the menu's own styling.
++'if(/^Copy issuer address$/i.test(t)&&!_nat&&iss){x.setAttribute("data-lxisscopy","1");x.setAttribute("data-iss",iss);}});'
++'var pb=[].slice.call(mn.querySelectorAll("button")).filter(function(x){return /Pin to top|Unpin/i.test(x.textContent||"");})[0];if(!pb)return true;var pinned=[];try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){}var isP=pinned.indexOf(_pk)>=0||pinned.indexOf(code||"XLM")>=0;for(var i=0;i<pb.childNodes.length;i++){if(pb.childNodes[i].nodeType===3&&pb.childNodes[i].textContent.trim()){pb.childNodes[i].textContent=isP?" Unpin":" Pin to top";break;}}return true;};'
+// EDIT THE MENU BEFORE ITS FIRST PAINT, NOT 70ms AFTER IT (RAZA 2026-11-10: the native XLM row's
+// three-dot menu "causes a brief flash/layout shift" while LUMOS and VELO open smoothly).
+//
+// The two items removed above are removed ONLY on the native row, so only that row changed size after
+// it was already on screen. Measured on the live wallet: the menu paints with 4 items at 272px, then
+// 70ms later becomes 2 items at 160px -- a 112px collapse under the cursor. A custom token removes
+// nothing, keeps its 272px, and never moves, which is exactly the difference in the report.
+//
+// A MutationObserver callback is a microtask: it runs at the end of the task that inserted the menu,
+// BEFORE the browser paints, so the items are gone in the frame the menu first appears. Measured here
+// too -- at this listener (#assetsTable, bubble) the menu does not exist yet, because the template
+// builds it on a handler further up the tree; it exists by the observer's callback and by a microtask.
+// So the sync attempt below is the cheap path and the observer is the one that actually fires.
+//
+// DISCONNECTED BEFORE _edit RUNS, never after: _edit removes nodes, and an observer still listening
+// would be re-entered by its own mutations. The 300ms timer is the backstop for a menu that is never
+// inserted -- it must also disconnect, or the observer outlives the click.
++'if(!_edit()){var _ob=new MutationObserver(function(){if(!document.querySelector(".row-menu"))return;_ob.disconnect();clearTimeout(_tm);_edit();});_ob.observe(document.body,{childList:true,subtree:true});var _tm=setTimeout(function(){_ob.disconnect();_edit();},300);}'
++'return;}if(/Trade/i.test(lbl)){var _isX=(!code||code==="XLM");window.location.href=_isX?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));return;}if(/Send/i.test(lbl)){var sb=[].slice.call(document.querySelectorAll("button")).filter(function(x){return (x.textContent||"").trim()==="Send"&&(x.className||"").indexOf("qa-row-btn")<0;})[0];if(sb){var _nat=!code;var held=(window.__lxHoldings||[]).filter(function(h){return _nat?!!h.native:(h.code===code);})[0]||{code:_nat?"XLM":code,iss:_nat?"":iss,native:_nat,bal:0};if(!held.native&&!held.logo)held.logo=(window.__lxLogos||{})[held.code]||"";window.__lxSendPre=held;sb.click();var _presel=function(){var m=document.querySelector(".modal-overlay.open");if(m&&typeof selectSendAsset==="function")selectSendAsset(m,held);};_presel();setTimeout(_presel,60);setTimeout(_presel,220);setTimeout(_presel,480);setTimeout(function(){window.__lxSendPre=null;},1400);}return;}});}'
 // #31, the real reason both cancel controls were dead on the phone: every bit of their wiring lived
 // at the END of this function, past an early return that fires on mobile. The phone has no
 // .orders-block -- _mobwallet.js renders the orders into .orders-stack instead -- so renderOrders bailed
@@ -1311,9 +1451,42 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'ch.forEach(function(c){if(!c||c.type!=="transfer")return;var a={code:(c.asset_type==="native"||!c.asset_code)?"XLM":c.asset_code,iss:c.asset_issuer||"",amt:+c.amount||0};'
 +'if(c.from===ME&&!paid)paid=a;else if(c.to===ME&&!got)got=a;});'
 +'if(!paid||!got||paid.code===got.code)return null;return{paid:paid,got:got};}'
+// A ONE-SIDED SOROBAN TRANSFER IS A PAYMENT, and saying "Contract call" about it hides the money
+// (RAZA 2026-11-06: XLM arrived from NEAR through intents and "instead of received xlm, its showing
+// contract call"). _abcSwap above only answers for a SWAP -- it needs a leg that left AND a leg that
+// arrived, with different assets. A bridge DELIVERY has no outgoing leg at all. Checked against the
+// real operation on Horizon: asset_balance_changes held exactly one entry, a native transfer of
+// 2.2857020 to this account from CCLWL5NY... (stellar.expert: "HOT Bridge Treasury"). Both local-record
+// lookups then missed too -- they only know what THIS browser recorded at submit time, and the
+// delivery was authorised on NEAR -- so the row fell through to the generic label.
+//
+// Net per asset rather than per entry, because one op can touch the same asset several times (a real
+// swap in this account's history carries six changes, including a burn). mint has no `from` and burn
+// has no `to`, so keying on which side is ME covers all three types without naming them.
++'function _abcNet(o){var ch=o&&o.asset_balance_changes;if(!ch||!ch.length)return null;var by={},order=[];'
++'ch.forEach(function(c){if(!c)return;var sign=0,other="";'
++'if(c.to===ME){sign=1;other=c.from||"";}else if(c.from===ME){sign=-1;other=c.to||"";}else return;'
++'var code=(c.asset_type==="native"||!c.asset_code)?"XLM":c.asset_code,k=code+"|"+(c.asset_issuer||"");'
++'if(!by[k]){by[k]={code:code,iss:c.asset_issuer||"",net:0,other:""};order.push(k);}'
++'by[k].net+=sign*(+c.amount||0);if(!by[k].other&&other)by[k].other=other;});'
+// EXACTLY ONE ASSET MOVED, or this does not answer. Taking the biggest move instead was wrong, and the
+// account's own history shows why: an op from 2026-10-23 burns 0.322 USDT0 AND sends 0.714 XLM, both
+// outgoing. "Biggest" called that "Sent 0.714 XLM" -- true about the XLM, silent about the USDT0, and
+// the reader has no way to tell a complete answer from a partial one. That is the same defect as a
+// partial pool list drawn as the whole set; see [[a-partial-fetch-presented-as-complete]]. A multi-asset
+// contract call that is not a clean swap (which _abcSwap already handles) has no one-line summary, so
+// it keeps the generic label rather than gaining a confident wrong one.
+// A zero net means the asset only passed through and nothing landed -- also not a transfer.
++'var moved=[];order.forEach(function(k){if(by[k].net)moved.push(by[k]);});'
++'if(moved.length!==1)return null;return moved[0];}'
 +'if(o.type&&o.type.indexOf("invoke_host_function")>=0){var _ab=_abcSwap(o);'
 +'if(_ab)return{kind:"swap",type:"Swap "+_ab.paid.code+" \\u2192 "+_ab.got.code,meta:"via Soroswap",srcCode:_ab.paid.code,srcNative:_ab.paid.code==="XLM",srcIss:_ab.paid.iss,dstCode:_ab.got.code,dstNative:_ab.got.code==="XLM",dstIss:_ab.got.iss,amt:"+"+amt(_ab.got.amt)+" "+_ab.got.code,amtSub:"-"+amt(_ab.paid.amt)+" "+_ab.paid.code,day:day,st:"filled",stl:"Filled"};'
-+'var sw=lxSwapByHash(o.transaction_hash);if(sw){return{kind:"swap",type:"Swap "+sw.from+" \\u2192 "+sw.to,meta:"via Soroswap",srcCode:sw.from,srcNative:sw.from==="XLM",srcIss:sw.fromIss||"",dstCode:sw.to,dstNative:sw.to==="XLM",dstIss:sw.toIss||"",amt:"+"+amt(sw.toAmt)+" "+sw.to,amtSub:"-"+amt(sw.fromAmt)+" "+sw.from,day:day,st:"filled",stl:"Filled"};}var bx=lxCctpTxByHash(o.transaction_hash);if(bx){var _sk=bx.srcKey||"XLM",_nn=bx.net||"destination chain";return{kind:"bridge",type:"Cross-chain swap",meta:"via Circle CCTP \\u00b7 "+_nn,amt:"+"+amt(bx.amount)+" USDC",amtSub:"-"+amt(bx.srcAmount)+" "+_sk,day:day,st:"filled",stl:"Bridged"};}return{kind:"contract",type:"Contract call",meta:"Soroban",amt:"",day:day,st:st,stl:stl};}'
++'var sw=lxSwapByHash(o.transaction_hash);if(sw){return{kind:"swap",type:"Swap "+sw.from+" \\u2192 "+sw.to,meta:"via Soroswap",srcCode:sw.from,srcNative:sw.from==="XLM",srcIss:sw.fromIss||"",dstCode:sw.to,dstNative:sw.to==="XLM",dstIss:sw.toIss||"",amt:"+"+amt(sw.toAmt)+" "+sw.to,amtSub:"-"+amt(sw.fromAmt)+" "+sw.from,day:day,st:"filled",stl:"Filled"};}var bx=lxCctpTxByHash(o.transaction_hash);if(bx){var _sk=bx.srcKey||"XLM",_nn=bx.net||"destination chain";return{kind:"bridge",type:"Cross-chain swap",meta:"via Circle CCTP \\u00b7 "+_nn,amt:"+"+amt(bx.amount)+" USDC",amtSub:"-"+amt(bx.srcAmount)+" "+_sk,day:day,st:"filled",stl:"Bridged"};}var _nt=_abcNet(o);'
+// LAST, deliberately. The two lookups above read records this browser wrote at submit time and can say
+// more than the ledger can ("Cross-chain swap ... via Circle CCTP", both legs of a Soroswap trade), so
+// they keep priority. This only ever replaces a row that would have read "Contract call".
++'if(_nt){var _in=_nt.net>0,_na=Math.abs(_nt.net);return{kind:_in?"received":"sent",type:(_in?"Received ":"Sent ")+_nt.code,metaPre:_in?"From":"To",addr:_nt.other,meta:(_in?"From ":"To ")+shrt(_nt.other),code:_nt.code,iss:_nt.iss,native:_nt.code==="XLM",amt:(_in?"+":"-")+amt(_na)+" "+_nt.code,day:day,st:st,stl:stl};}'
++'return{kind:"contract",type:"Contract call",meta:"Soroban",amt:"",day:day,st:st,stl:stl};}'
 +'if(o.type==="bump_sequence")return{kind:"settings",type:"Sequence bumped",meta:"",amt:"",day:day,st:st,stl:stl};'
 +'if(o.type&&o.type.indexOf("clawback")>=0)return{kind:"sent",type:"Clawback",meta:"",amt:"",day:day,st:st,stl:stl};'
 +'if(o.type&&(o.type.indexOf("trust")>=0||o.type.indexOf("flags")>=0))return{kind:"order",type:(o.type||"").replace(/_/g," "),meta:"",amt:"",day:day,st:st,stl:stl};'

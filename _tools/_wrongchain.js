@@ -44,19 +44,90 @@
 // means a guard in the signing layer, and there is no single choke point for it today: signing is
 // reached from _ammdata.js, _axelar.js, _cctp.js and the wallet layer separately.
 //
-// Idempotent: style, head script and body script are each stripped by id before re-injection.
+// Idempotent: style, head script and body script are each swapped BY ID WHERE THEY SIT.
 //
-// AFTER RUNNING THIS, RUN _heromono.js AND REBUILD. There is no recipe file on the Stellar side (the
-// XRPL fork has _tools/rebuild.js; this repo has nothing equivalent), so transform order is carried
-// by whoever runs them. _heromono.js has to end up last or the hero paints in its per-page colour
-// instead of the monochrome one — predeploy_check.js blocks on exactly that, which is how it was
-// caught here rather than in production. The same applies to any transform that touches <head>.
+// IT NO LONGER NEEDS _heromono.js RE-RUN AFTERWARDS, and that is a deliberate change (2026-11-14).
+// This header used to read "AFTER RUNNING THIS, RUN _heromono.js AND REBUILD", because the old
+// injection stripped all three blocks and re-appended them at the end of <head> and </body> — which
+// pushed this layer past every layer that had been sitting after it, _heromono.js included, and
+// _heromono.js has to end up last or the hero paints in its per-page colour instead of the
+// monochrome one (predeploy_check.js blocks on exactly that). There is no recipe file on the Stellar
+// side — the XRPL fork has _tools/rebuild.js, this repo has nothing equivalent — so that ordering
+// was carried by whoever ran the transforms, and getting it wrong is silent.
+//
+// The injection below now swaps each block in place, so running this moves nothing: measured at
+// `384 block(s) swapped in place, 0 appended` and `LAYER ORDER MOVED: 0 of 128 page keys`. The run
+// prints swapped vs appended separately for that reason — an `appended` above zero on a tree that
+// already carries the layer is the one outward sign that something is about to change position.
+// ([[a-transform-that-patches-in-place-cannot-reorder]])
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 const CHAINS = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'));
 
-const NAME = { stellar: (CHAINS.stellar || {}).name || 'Stellar', xrpl: (CHAINS.xrpl || {}).name || 'XRP Ledger' };
+// EVERY CHAIN THIS SITE SERVES AS A URL SEGMENT, not just the two it was written for.
+//
+// RAZA 2026-11-14, connected with Rabet on Stellar: "when we open any near page while connected to
+// stellar, it shows launch app like im not even connected. Its supposed to show the view only
+// message." Measured on production: /bridge/near sets neither data-lx-page-chain nor
+// data-lx-wallet-chain, because the head script below read the page's chain with a regex that knew
+// exactly two ids and returned "" for everything else -- so the layer quit on its second line and
+// the notice, the CTA lock and the way out were all absent on every NEAR page.
+//
+// THE NAMES ARE NOT IN _chains.json AND MUST NOT BE PUT THERE. That file is injected WHOLE into the
+// mc-engine by _multichain.js (`engine.replace('/*CHAINS*/', JSON.stringify(CH))`), so adding a key
+// there feeds the chain switcher and the hub grids -- a product change, made silently, to fix a
+// banner. The forks register themselves with combine instead, through their own chains/<id>.js
+// surface. This table is therefore local and deliberately small: it holds only what the SENTENCE
+// needs, and nothing that paints.
+//
+// `the` and `art` are data, not rules. "connected to XRP Ledger" and "a XRP Ledger wallet" both read
+// as broken English, and this sentence is the entire point of the notice; "the" belongs to the XRP
+// Ledger alone, and the article follows the SOUND of the name (an Arc, a NEAR), which no amount of
+// string logic gets right. Stellar and XRPL keep reading their display names from _chains.json so
+// the banner cannot drift from the switcher on the two chains that file does describe.
+const NAME_OF = (id, dflt) => (CHAINS[id] || {}).name || dflt;
+const CHAIN = {
+  stellar: { name: NAME_OF('stellar', 'Stellar'), the: NAME_OF('stellar', 'Stellar'), art: 'a' },
+  xrpl: { name: NAME_OF('xrpl', 'XRP Ledger'), the: 'the ' + NAME_OF('xrpl', 'XRP Ledger'), art: 'an' },
+  near: { name: 'NEAR', the: 'NEAR', art: 'a' },
+  arc: { name: 'Arc', the: 'Arc', art: 'an' },
+  hedera: { name: NAME_OF('hedera', 'Hedera'), the: NAME_OF('hedera', 'Hedera'), art: 'a' },
+};
+// Arc and Hedera are here although production serves neither today: staging combines all four
+// (`combine.js xrpl near arc hedera`), and a table that lists only what shipped is a table that
+// reproduces this exact bug on the day the next chain goes live. A chain nobody can reach costs one
+// unreachable branch; a chain that is reachable and missing costs a silent page.
+
+// THE SECTIONS THAT EXIST ON EVERY CHAIN. The notice ends with a way out -- "Open pools on Stellar"
+// -- built from this page's own first path segment. With two chains that was safe by accident; with
+// five it ships a 404, because the segment is whatever the url starts with and not every section is
+// chain-qualified. Measured against production rather than assumed, /<section>/<chain> for each:
+//
+//   trade pools bridge rewards launchpad lumos   200 on stellar, xrpl and near
+//   account                                      404 -- the real route is /account/<chain>/<address>
+//   blog                                         410 on stellar, 200 on near
+//   liquidity-farming                            301, and Stellar only
+//
+// So the link is offered only for a section known to exist on the destination chain. Everywhere
+// else the notice still appears in full and simply does not offer a shortcut -- which is the
+// existing behaviour minus a dead link, not a feature removed.
+const CROSSCHAIN = ['trade', 'pools', 'bridge', 'rewards', 'launchpad', 'lumos'];
+
+// SECTIONS THAT NAME A CHAIN BUT OFFER NOTHING TO ACT ON. The notice exists to explain why buttons
+// will not work; where there are no buttons it is just an alarm about nothing.
+//
+// The blog's categories ARE networks, so /blog/near is a real 200 page carrying this layer, and a
+// Stellar reader browsing NEAR posts would have been told to disconnect in order to read an article.
+// It never showed before only because /blog/stellar answers 410 and so nobody reached it — teaching
+// the layer the other chain ids is exactly what would have made it visible. RAZA 2026-11-14, asked
+// directly: "yes keep it off blog pages".
+//
+// Matched on the FIRST path segment, so /blog/near and /blog/near/<slug> are both covered. Kept to
+// what is actually editorial: /account/<chain>/<address> stays IN, because it is a wallet surface
+// with its own actions and a reader there has a real reason to know their wallet is on another
+// chain.
+const NOTICE_OFF = ['blog'];
 
 // The write-action buttons that exist in the STATIC markup, found by scanning the built site for
 // buttons whose visible text is an action verb rather than by guessing class names:
@@ -135,16 +206,41 @@ const STYLE = '<style id="lx-wrongchain-css">'
 // CTA rule above never has a frame where it does not apply. Same placement and reason as the
 // chooser gate in _lumosparent.js; _externalize.js leaves head scripts inline for exactly this.
 const HEAD = '<script id="lx-wrongchain">(function(){try{'
-  + 'var p=(location.pathname||"").toLowerCase();'
-  // The url's own chain. Matching a SEGMENT, not a substring, so an asset whose code happens to
-  // contain "xrpl" cannot be read as a chain.
-  + 'var pc=/(^|\\/)xrpl(\\/|$)/.test(p)?"xrpl":(/(^|\\/)stellar(\\/|$)/.test(p)?"stellar":"");'
+  + 'var KNOWN=' + JSON.stringify(Object.keys(CHAIN)) + ';'
+  // The url's own chain. Still matching a SEGMENT, not a substring, so an asset whose code happens
+  // to contain a chain id cannot be read as a chain -- but by splitting the path and looking each
+  // piece up, rather than by one regex per chain. The FIRST matching segment wins, which is the
+  // chain that qualifies the section: /trade/near/USDC-... is a NEAR page, not a USDC one.
+  + 'var SEG=(location.pathname||"").toLowerCase().split("/").filter(Boolean);'
+  + 'var pc=""; for(var i=0;i<SEG.length;i++){ if(KNOWN.indexOf(SEG[i])>=0){ pc=SEG[i]; break; } }'
   + 'if(!pc)return;'
+  // Read-only sections keep quiet even when their url names a chain -- see NOTICE_OFF. Tested on the
+  // FIRST segment, which is the section, not on pc, which is the chain.
+  + 'if(' + JSON.stringify(NOTICE_OFF) + '.indexOf(SEG[0])>=0)return;'
   + 'var a="",n="";'
   + 'try{ a=localStorage.getItem("lumos.address")||"";'
   + 'n=(localStorage.getItem("lumos.network")||"").toLowerCase(); }catch(_){}'
   + 'if(!a)return;'
-  + 'if(n!=="xrpl"&&n!=="stellar"){ n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":""); }'
+  // THE ADDRESS IS THE BACKSTOP, and it is deliberately not extended to every chain in the table.
+  // lumos.network is read first and is written at connect on all of them; this only has to survive a
+  // connect path that forgot to write it. A shape is safe to add here when it cannot be mistaken for
+  // something else that may sit in lumos.address -- G/r prefixes, a .near or .tg suffix, a 64-char
+  // hex implicit NEAR account, and Hedera's 0.0.N are each unambiguous.
+  //
+  // AN EVM 0x ADDRESS IS NOT, and Arc is therefore absent on purpose. lumos.address is one key shared
+  // by every chain, and a 0x value in it is as likely to be a bridge destination as a connected Arc
+  // wallet. Guessing "arc" from it would put a confident wrong sentence at the top of a Stellar page
+  // -- strictly worse than the no-banner case this is meant to fix. When Arc ships, lumos.network
+  // carries it. Returning "" for an unrecognised shape is the existing, correct behaviour.
+  //
+  // String tests, not regexes with escapes: this whole script is emitted from a concatenated string
+  // and a backslash here has to survive two levels of quoting.
+  + 'if(KNOWN.indexOf(n)<0){ n=""; var l=a.toLowerCase();'
+  + 'if(a.charAt(0)==="G"&&a.length===56)n="stellar";'
+  + 'else if(a.charAt(0)==="r"&&a.length>=25&&a.length<=35)n="xrpl";'
+  + 'else if(l.indexOf("0.0.")===0)n="hedera";'
+  + 'else if(l.length>5&&(l.slice(-5)===".near"||l.slice(-3)===".tg"))n="near";'
+  + 'else if(l.length===64&&/^[0-9a-f]+$/.test(l))n="near"; }'
   + 'if(!n||n===pc)return;'
   + 'var d=document.documentElement;'
   + 'd.classList.add("lx-wrongchain");'
@@ -158,7 +254,10 @@ const HEAD = '<script id="lx-wrongchain">(function(){try{'
 const BODY = '<script id="lx-wrongchain-js">(function(){try{'
   + 'var d=document.documentElement;'
   + 'if(!d.classList.contains("lx-wrongchain"))return;'
-  + 'var NAME=' + JSON.stringify(NAME) + ';'
+  + 'var CH=' + JSON.stringify(CHAIN) + ';'
+  + 'var XS=' + JSON.stringify(CROSSCHAIN) + ';'
+  // Kept as NAME so the CTA title below reads unchanged; it is now derived from the one table.
+  + 'var NAME={};for(var nk in CH){ if(CH.hasOwnProperty(nk))NAME[nk]=CH[nk].name; }'
   + 'var mine=d.getAttribute("data-lx-wallet-chain")||"";'
   + 'var here=d.getAttribute("data-lx-page-chain")||"";'
   + 'var CTA=' + JSON.stringify(CTA.join(',')) + ';'
@@ -184,8 +283,8 @@ const BODY = '<script id="lx-wrongchain-js">(function(){try{'
   // sentence is the whole point of the notice — it is what tells someone why the page will not act.
   // One chain takes an article and the other does not, so both forms come from the chain id rather
   // than from string-concatenating a name and hoping.
-  + 'function THE(c){ return c==="xrpl"?"the XRP Ledger":(NAME[c]||c); }'
-  + 'function AN(c){ return (c==="xrpl"?"an ":"a ")+(NAME[c]||c); }'
+  + 'function THE(c){ return (CH[c]&&CH[c].the)||c; }'
+  + 'function AN(c){ return CH[c]?(CH[c].art+" "+CH[c].name):c; }'
   + 'var tx=document.createElement("div");'
   + 'var b=document.createElement("b"); b.textContent="View only mode. ";'
   + 'tx.appendChild(b);'
@@ -193,9 +292,13 @@ const BODY = '<script id="lx-wrongchain-js">(function(){try{'
   + '+". To use "+THE(here)+", disconnect and connect "+AN(here)+" wallet."));'
   // A way out that is not "go and find the disconnect button": the same section on the chain they
   // ARE connected to. Built from this page's own path, so it cannot point at the wrong section.
-  + 'var seg=(location.pathname||"/").split("/").filter(Boolean)[0]||"";'
-  + 'if(seg){ var go=document.createElement("a"); go.className="lx-wcbar-go";'
-  + 'go.href="/"+seg+(mine==="stellar"?"/stellar":"/xrpl");'
+  // Only a section that EXISTS on the wallet's chain -- see CROSSCHAIN. The old form hard-coded the
+  // two ids ("/stellar" or else "/xrpl"), so with a third chain connected it sent a NEAR wallet to
+  // the XRPL page; and it offered the link for any first segment at all, including /account and
+  // /blog, where the target is a 404 and a 410.
+  + 'var seg=(location.pathname||"/").toLowerCase().split("/").filter(Boolean)[0]||"";'
+  + 'if(seg&&XS.indexOf(seg)>=0&&CH[mine]){ var go=document.createElement("a"); go.className="lx-wcbar-go";'
+  + 'go.href="/"+seg+"/"+mine;'
   + 'go.textContent="Open "+seg+" on "+THE(mine)+" \\u2192";'
   + 'tx.appendChild(document.createElement("br")); tx.appendChild(go); }'
   + 'el.appendChild(ic); el.appendChild(tx);'
@@ -235,7 +338,7 @@ const BODY = '<script id="lx-wrongchain-js">(function(){try{'
   + '.observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}'
   + '}catch(_){}})();</' + 'script>';
 
-let files = 0, pages = 0;
+let files = 0, pages = 0, swapped = 0, appended = 0;
 for (const dev of ['desktop', 'mobile']) {
   const file = 'lumoscore-aptos-' + dev + '.html';
   let data;
@@ -248,13 +351,31 @@ for (const dev of ['desktop', 'mobile']) {
     if (typeof h !== 'string') continue;
     if (h.indexOf('</head>') < 0 || h.indexOf('</body>') < 0) continue;
 
-    h = h.replace(/<style id="lx-wrongchain-css">[\s\S]*?<\/style>/g, '')
-         .replace(/<script id="lx-wrongchain">[\s\S]*?<\/script>/g, '')
-         .replace(/<script id="lx-wrongchain-js">[\s\S]*?<\/script>/g, '');
-
-    h = h.replace('</head>', STYLE + HEAD + '</head>');
-    const bi = h.lastIndexOf('</body>');
-    h = h.slice(0, bi) + BODY + h.slice(bi);
+    // IN PLACE, NOT STRIP-AND-RE-APPEND. The old form removed all three blocks and put them back at
+    // the end of <head> and just before </body>, which lands them LAST in the cascade however early
+    // they used to sit -- the trap in [[running-one-stellar-transform-reorders-layers]], whose only
+    // other remedy is re-running every transform whose layer belongs after this one. Swapping each
+    // block where it already sits keeps its position exactly, so this transform is order-neutral and
+    // safe to run on its own ([[a-transform-that-patches-in-place-cannot-reorder]]).
+    //
+    // Nothing between the old strip and the old append read `h`, so moving the removal is safe here
+    // -- that is the first trap named in that note, and it is worth re-checking if code is ever
+    // added to this loop.
+    //
+    // A container that never carried the layer still appends, and still lands last. That is correct,
+    // and a layer-order gate should read it as a set difference rather than as a move.
+    for (const [open, close, block, tail] of [
+      ['<style id="lx-wrongchain-css">', '</style>', STYLE, '</head>'],
+      ['<script id="lx-wrongchain">', '</script>', HEAD, '</head>'],
+      ['<script id="lx-wrongchain-js">', '</script>', BODY, '</body>'],
+    ]) {
+      const at = h.indexOf(open);
+      const end = at < 0 ? -1 : h.indexOf(close, at);
+      if (at >= 0 && end > at) { h = h.slice(0, at) + block + h.slice(end + close.length); swapped++; continue; }
+      if (tail === '</head>') { h = h.replace('</head>', block + '</head>'); }
+      else { const bi = h.lastIndexOf('</body>'); h = h.slice(0, bi) + block + h.slice(bi); }
+      appended++;
+    }
     json[k] = h;
     pages++;
   }
@@ -263,5 +384,9 @@ for (const dev of ['desktop', 'mobile']) {
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
 
-console.log('wrong-chain notice: injected on ' + pages + ' page key(s) across ' + files + ' container(s)');
+// Swapped vs appended, not one total: on a tree that already carries the layer every block should
+// SWAP. An `appended` above zero on a re-run means a block was not found where it was left, which is
+// the only outward sign that a layer is about to change position.
+console.log('wrong-chain notice: ' + pages + ' page key(s) across ' + files + ' container(s) — '
+  + swapped + ' block(s) swapped in place, ' + appended + ' appended');
 if (!files) { console.error('  ! no container was read'); process.exit(1); }
