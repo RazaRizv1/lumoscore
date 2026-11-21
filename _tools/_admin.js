@@ -2675,7 +2675,8 @@ function paintAssets(){
       b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }
 
   function load(a){ var k=key(a); if(DATA[k]!==undefined)return;
-    (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ DATA[k]=v; render(); kpis(); }); }
+    (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ DATA[k]=v; soonRender(); }); }
+  var _lxSoon=0; function soonRender(){ if(_lxSoon)return; _lxSoon=setTimeout(function(){ _lxSoon=0; render(); kpis(); },60); }
 
   // Our own trades, over three windows, from the ledger the Revenue page already reconstructs.
   function loadLxVol(){ return loadVolume().then(function(V){
@@ -2688,7 +2689,7 @@ function paintAssets(){
       if(age<=30*D){ m[k].d30.amt+=r.gross; m[k].d30.n++; } });
     LXV=m; render(); kpis();
     Object.keys(m).forEach(function(k){ var a=parse(k);
-      priceUsd(a.code,a.iss,function(px){ PXA[k]=(px==null?null:px); render(); kpis(); }); });
+      priceUsd(a.code,a.iss,function(px){ PXA[k]=(px==null?null:px); soonRender(); }); });
     return m; }).catch(function(){ LXV={}; render(); kpis(); return LXV; }); }
 
   var PAINTED=false;
