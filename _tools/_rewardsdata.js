@@ -209,8 +209,13 @@ const SCRIPT = `<script id="lx-rewardsdata">(function(){
     });
   }
   function fixRounds(){
-    var sel=document.getElementById("roundSel"); if(!sel||sel.__lxr)return; sel.__lxr=1;
-    var rounds=[], n=20, d=new Date(2026,3,15), now=new Date();
+    var sel=document.getElementById("roundSel"); if(!sel)return;
+    // Each programme counts its own rounds (RAZA 2026-11-21): Native LP from 15 Dec 2025, whale holder from 1 Apr 2026,
+    // Ecosystem LP from 15 Apr 2026. The list follows the selected tab; markPreview runs this on every card redraw.
+    var a=document.querySelector(".ptabs button.pt.active"), lab=a?(a.textContent||""):"";
+    var st=/whale/i.test(lab)?[2026,3,1]:/eco/i.test(lab)?[2026,3,15]:[2025,11,15];
+    var key=st.join("-"); if(sel.__lxr===key)return; sel.__lxr=key;
+    var rounds=[], n=1, d=new Date(st[0],st[1],st[2]), now=new Date();
     while(d<=now){ rounds.push([n,new Date(d.getTime())]); n++; d=d.getDate()===1?new Date(d.getFullYear(),d.getMonth(),15):new Date(d.getFullYear(),d.getMonth()+1,1); }
     if(!rounds.length)return;
     sel.innerHTML="";
