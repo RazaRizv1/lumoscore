@@ -451,6 +451,10 @@ function render(){
     list.innerHTML="<div class='lxadm-empty'>"+msg+"</div>";
     return;
   }
+  // B11 (2026-11-21): an HTML-only email has no text part; its preview is built from the HTML (parsed, never run).
+  function snipOf(m){ var t=String(m.snippet||"");
+    if(!t.trim()&&m.hsnip){ try{ var d=new DOMParser().parseFromString(String(m.hsnip),"text/html"); d.querySelectorAll("style,script,head,title").forEach(function(e){ e.remove(); }); t=(d.body&&d.body.textContent)||""; }catch(_){ t=""; } }
+    return Array.from(t).map(function(c){ return c.charCodeAt(0)<33?" ":c; }).join("").replace(/[ ]+/g," ").trim().slice(0,140); }
   list.innerHTML=rows.map(function(m){
     var tick=!!TICK[m.id];
     return "<div class='lxm-row"+(SEL===m.id?" sel":"")+(tick?" tick":"")+"' data-id='"+esc(m.id)+"'>"
@@ -464,7 +468,7 @@ function render(){
       +"<span class='lxm-from-n'>"+esc(m.from_name||m.from_addr)+"</span>"
       +"<span class='lxm-when'>"+esc(when(m.ts))+"</span></div>"
       +"<div class='lxm-subj'>"+esc(m.subject||"(no subject)")+"</div>"
-      +"<div class='lxm-snip'>"+esc((m.snippet||"").replace(/[ ]+/g," ").trim()||"(no message body)")+"</div>"
+      +"<div class='lxm-snip'>"+esc(snipOf(m)||"(no message body)")+"</div>"
       +"<div class='lxm-meta'>to "+esc(m.to_addr)+"</div></button></div>";
   }).join("");
   paintSel();

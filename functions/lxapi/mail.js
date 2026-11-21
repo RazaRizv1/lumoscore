@@ -109,14 +109,22 @@ export async function onRequestGet({ request, env }) {
     if (q) {
       binds.push(likeTerm(q));
       filter = " AND (subject LIKE ?1 ESCAPE '\\' OR from_addr LIKE ?1 ESCAPE '\\'"
-        + " OR from_name LIKE ?1 ESCAPE '\\' OR body_text LIKE ?1 ESCAPE '\\')";
+        + " OR from_name LIKE ?1 ESCAPE '\\' OR body_text LIKE ?1 ESCAPE '\\'"
+        // B11 (2026-11-21): an HTML-only email stores no text part, so search its HTML instead.
+        + " OR ((body_text IS NULL OR body_text = '') AND body_html LIKE ?1 ESCAPE '\\'))";
     }
 
     // The list deliberately does NOT select the bodies. An inbox of long messages would otherwise
     // ship every one of them to render a list of subjects.
     const stmt = db.prepare(
       'SELECT id, ts, to_addr, from_addr, from_name, subject, size, read_at, archived, '
-      + 'substr(body_text, 1, 140) AS snippet '
+      // Leading blank lines skipped first: one SES email's text part opens with 140+ line breaks, so the first 140
+      // characters were nothing but whitespace and the row still read "(no message body)".
+      + "substr(ltrim(body_text, ' ' || char(9) || char(10) || char(13)), 1, 140) AS snippet, "
+      // B11 (2026-11-21): for an HTML-only email the list previewed "(no message body)". Send the start of its
+      // <body> instead; the admin page turns it into text with DOMParser (parsed, never run), which keeps this
+      // Function inside its CPU budget. Only for rows with no text part, so ordinary mail costs nothing extra.
+      + "CASE WHEN body_text IS NULL OR body_text = '' THEN substr(body_html, max(1, instr(lower(body_html), '<body')), 3000) ELSE NULL END AS hsnip "
       + 'FROM mail WHERE ' + where + filter + ' ORDER BY ts DESC LIMIT 200'
     );
     const rows = await (binds.length ? stmt.bind(...binds) : stmt).all();
