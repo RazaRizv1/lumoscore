@@ -655,6 +655,11 @@ function channels(el,d){
   el.innerHTML="<div class='lxan-chan'>"+order.map(function(k){ var v=sums[k];
     return "<div class='lxan-chrow'><b>"+k+"</b><div class='bar'><span style='width:"+Math.max(v?2:0,Math.round(v/mx*100))+"%;background:"+cols[k]+"'></span></div><div class='v'>"+num(v)+"<small>"+pctTxt(v/tot*100)+"</small></div></div>"; }).join("")+"</div>";
 }
+// DEVICES FROM OUR OWN COUNT (2026-11-21): views per device from our pageview table when the endpoint sends them,
+// in the {key,count} shape donut() draws; Cloudflare's sampled split only when it does not.
+function devRows(d){ var o=d&&d.own&&d.own.devices;
+  if(o&&o.length)return o.map(function(r){ return {key:r.device==="unknown"?"other":r.device,count:r.views||0}; });
+  return (d&&d.devices)||[]; }
 function donut(el,rows){
   if(!el) return; rows=(rows||[]).filter(function(r){ return (r.count||0)>0; });
   var tot=rows.reduce(function(a,r){ return a+r.count; },0);
@@ -923,7 +928,7 @@ function render(d){
   var bs=buckets(d);
   paintChart(d);
   sparkline(q("#lxanVisitsS"),bs.map(function(b){ return b.visits; }),C_VISIT); sparkline(q("#lxanViewsS"),bs.map(function(b){ return b.views; }),C_VIEW);
-  mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),d.devices);
+  mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),devRows(d));
   var geo=q("#lxanGeo"); countries(geo,d);
   // The heading counted Cloudflare's countries while the list below it drew ours, so the two could
   // state different totals on the same card -- "11 countries" above a list of twelve.
@@ -951,7 +956,7 @@ function render(d){
   list(q("#lxanOs"),d.systems,pv);
   exitList(q("#lxanExits"),d);
   setT("#lxanSub","Cloudflare Web Analytics \\u00b7 people only \\u00b7 "+RLABEL[d.range||RANGE]);
-  setH("#lxanAbout","<b>About these numbers.</b> Page views, visits, pages, sources, countries, devices, browsers and systems come from Cloudflare Web Analytics, with crawlers taken out. Cloudflare samples and rounds, so small figures arrive in tens, and a period can show page views with no visits \\u2014 that means every page was reached by moving around the site. "
+  setH("#lxanAbout","<b>About these numbers.</b> Page views, visits, pages, sources, countries, browsers and systems come from Cloudflare Web Analytics (devices are our own count), with crawlers taken out. Cloudflare samples and rounds, so small figures arrive in tens, and a period can show page views with no visits \\u2014 that means every page was reached by moving around the site. "
     +"<b>Bounce rate and cities</b> are counted by LumosCore itself, "+esc(sinceText(d.own))+", because Cloudflare's analytics records neither: one anonymous note per page view with the page, where the visit came from, the approximate city Cloudflare attaches to the connection, and a random id that lasts for that browsing session. No IP address, cookie or wallet address is stored.");
 }
 
@@ -1003,7 +1008,7 @@ function renderPage(body,d){
   areaChart(q("[data-f=chart]",body),d,240);
   countries(q("[data-f=geo]",body),d);
   var src=sources(d), rb=q("[data-f=refs]",body); if(rb) rb.__ctx=d.path||""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
-  donut(q("[data-f=dev]",body),d.devices);
+  donut(q("[data-f=dev]",body),devRows(d));
   channels(q("[data-f=chan]",body),d);
   list(q("[data-f=brw]",body),d.browsers,pv);
   list(q("[data-f=os]",body),d.systems,pv);

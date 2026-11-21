@@ -221,8 +221,16 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
       (byCountry[c] = byCountry[c] || []).push({ city: r.city || '', region: r.region || '', views: r.views, sessions: r.sessions });
     });
     const pack = (x) => (x ? { sessions: +x.sessions || 0, bounces: +x.bounces || 0, views: +x.views || 0 } : null);
+    // Devices from our own record (2026-11-21): pv.js stores a device class on every row. null when the read fails,
+    // so the page falls back to Cloudflare's split instead of drawing an empty one.
+    const devs = await (path
+      ? db.prepare('SELECT device, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview '
+        + 'WHERE ts >= ?1 AND host = ?2 AND path = ?3 GROUP BY device ORDER BY views DESC').bind(startMs, H, path)
+      : db.prepare('SELECT device, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview '
+        + 'WHERE ts >= ?1 AND host = ?2 GROUP BY device ORDER BY views DESC').bind(startMs, H)
+    ).all().then((r) => ((r && r.results) || []).map((x) => ({ device: x.device || 'unknown', views: +x.views || 0, sessions: +x.sessions || 0 })), () => null);
     // the counter went live on lumoscore.com at this moment (main 7c7c7074); before any row exists, that is the honest start
-    return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry,
+    return { devices: devs, since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry,
       people: ppl ? { visitors: +ppl.visitors || 0, returning: +ppl.returning || 0 } : null,
       refs: ((refs && refs.results) || []).map((r) => ({ ref: r.ref, views: r.views, sessions: r.sessions })),
       series: ((series && series.results) || []).map((r) => ({
