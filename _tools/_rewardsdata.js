@@ -22,6 +22,7 @@ const STYLE = `<style id="lx-rewards-css">
 .lxrw-preview{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:3px 9px;border-radius:7px;font:700 10.5px/1.3 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#b8860b;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.35);vertical-align:middle;white-space:nowrap}
 @media (max-width:640px){.rwpage .rep-ctrls{flex:1 1 100%;min-width:0}.rwpage .rep-ctrls .selwrap{min-width:0;max-width:100%}.rwpage .rep-ctrls .rsel{max-width:100%}}
 @media (max-width:400px){.rwpage .rep-ctrls .rsel{padding-left:12px;padding-right:28px}}
+#csvBtn{display:none!important}
 </style>`;
 
 // ---- browser runtime (mainnet, read-only). No backticks / no ${ } inside. ----
@@ -177,22 +178,62 @@ const SCRIPT = `<script id="lx-rewardsdata">(function(){
     });
   }
 
-  // AUDIT FIX: the "Round N — full report" card is fabricated distribution history (fake rounds, wallets,
-  // amounts) presented as real on a real-funds app. Product decision keeps the content — so LABEL it: an
-  // amber "Illustrative preview" badge on the heading + the fake "Distributed <date>" line replaced with an
-  // honest note. Idempotent (badge presence check) and re-asserted with applyAll (design re-renders).
+  // THE ROUND REPORT, HONESTLY (F02, 2026-11-21, RAZA "Yes, same text"). This used to keep the design's invented
+  // Round 23 (fake wallets, "612 recipients", 1 June) under an amber "Illustrative preview" badge, beside a hero that
+  // says 69,000,000 LUMOS distributed. Rounds HAVE been paid since 15 December 2025 (RAZA, 2026-11-21), from more than
+  // one wallet, and there is no per-round recipient record to show. So the card says that, as the XRPL page does, and
+  // the round picker runs to the latest close instead of stopping at the design's June sample. The design re-renders
+  // the card on every tab and round change, so this re-asserts from an observer on the card; every write is guarded,
+  // so a pass that changes nothing ends the loop.
+  var RT="Round report not published yet",
+      RS="Rewards on Stellar have been paid every round since 15 December 2025.",
+      RR="Recipient lists for Stellar rounds will appear here once they are published.",
+      RP="Ten Ecosystem pools · LUMOS/XLM native pool · holder rewards";
+  var repObs=0;
+  // "DISTRIBUTED" IS COUNTED, NOT WRITTEN DOWN -- the same rule the XRPL page has used since 2026-09: each programme pays
+  // 1,000,000 LUMOS a round from its start date, rounds close on the 1st and 15th, and a round dated today has not paid.
+  // The design's bars read 23M / 23M / 23M (69M), its placeholder. Start dates are RAZA's (2026-11-21) and the FAQ's.
+  // Bars are in programme order: Native LP, Ecosystem LP, Whale Holder.
+  var PROGS=[{start:[2025,11,15],cap:240e6},{start:[2026,3,15],cap:240e6},{start:[2026,3,1],cap:50e6}];
+  function roundsPaid(st,now){ var d=new Date(st[0],st[1],st[2]), n=0; while(d<now){ n++; d=d.getDate()===1?new Date(d.getFullYear(),d.getMonth(),15):new Date(d.getFullYear(),d.getMonth()+1,1); } return n; }
+  function shortM(v){ var m=v/1e6; return (Math.abs(m-Math.round(m))<0.05?String(Math.round(m)):m.toFixed(1))+"M"; }
+  function paintDistributed(){
+    var rows=[].slice.call(document.querySelectorAll(".palloc .pa-row")).filter(function(r){ var l=r.querySelector(".l"); return l&&/distributed/i.test(l.textContent||""); });
+    if(!rows.length)return;
+    var now=new Date(), total=0;
+    PROGS.forEach(function(p,i){ var paid=Math.min(p.cap,roundsPaid(p.start,now)*1e6); total+=paid; var b=rows[i]&&rows[i].querySelector(".r b"); if(b&&b.textContent!==shortM(paid))b.textContent=shortM(paid); });
+    [].forEach.call(document.querySelectorAll(".hstats .hstat"),function(h){
+      if(!/distributed so far/i.test(h.textContent||""))return;
+      var v=h.querySelector(".v"), want=total.toLocaleString("en-US"); if(!v)return;
+      var t=v.firstChild; if(t&&t.nodeType===3){ if(t.nodeValue!==want)t.nodeValue=want; } else if(v.textContent.indexOf(want)<0)v.textContent=want;
+    });
+  }
+  function fixRounds(){
+    var sel=document.getElementById("roundSel"); if(!sel||sel.__lxr)return; sel.__lxr=1;
+    var rounds=[], n=20, d=new Date(2026,3,15), now=new Date();
+    while(d<=now){ rounds.push([n,new Date(d.getTime())]); n++; d=d.getDate()===1?new Date(d.getFullYear(),d.getMonth(),15):new Date(d.getFullYear(),d.getMonth()+1,1); }
+    if(!rounds.length)return;
+    sel.innerHTML="";
+    rounds.reverse().forEach(function(r){ var o=document.createElement("option"); o.value=String(r[0]); o.textContent="Round "+r[0]+" · "+r[1].toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); sel.appendChild(o); });
+    sel.value=String(rounds[0][0]);
+  }
   function markPreview(){
     try{
-      var walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); var tn, headEl=null;
-      while(tn=walker.nextNode()){ if(/Round \\d+ \\u2014 full report|Round \\d+ — full report/.test(tn.nodeValue)){ headEl=tn.parentElement; break; } }
-      if(!headEl)return;
-      if(!headEl.querySelector(".lxrw-preview")&&!(headEl.nextElementSibling&&headEl.nextElementSibling.classList&&headEl.nextElementSibling.classList.contains("lxrw-preview"))){
-        var b=document.createElement("span"); b.className="lxrw-preview"; b.textContent="Illustrative preview"; headEl.appendChild(b); }
-      var card=headEl.closest("section,[class*=card],[class*=panel],div")||headEl.parentElement;
-      // the "Distributed <date> on Stellar" sub-line may be split across nodes — match the element whose
-      // text STARTS with "Distributed" and rewrite it whole (idempotent: rewritten text no longer matches).
-      var els=[].slice.call(card.querySelectorAll("*")).filter(function(el){ return el.children.length<=2&&/^\\s*Distributed\\s/.test(el.textContent||"")&&(el.textContent||"").length<70; });
-      if(els.length){ var tgt=els[els.length-1]; if(tgt.textContent.indexOf("Sample data")<0)tgt.textContent="Sample data \\u2014 the first live distribution has not run yet"; }
+      var t=document.getElementById("repTitle"), rows=document.getElementById("repRows");
+      if(!t||!rows)return;
+      if(t.textContent!==RT)t.textContent=RT;
+      var s=document.getElementById("repSub"); if(s&&s.textContent!==RS)s.textContent=RS;
+      var f=rows.firstElementChild;
+      if(!(rows.children.length===1&&f&&f.getAttribute("data-lxrep")==="1")){
+        rows.innerHTML="";
+        var r=document.createElement("div"); r.className="rr"; r.setAttribute("data-lxrep","1");
+        r.style.cssText="justify-content:center;opacity:.7;padding:22px 8px;text-align:center"; r.textContent=RR; rows.appendChild(r);
+      }
+      var c=document.getElementById("repCount");
+      if(c){ if(c.textContent!=="0")c.textContent="0"; var sh=c.previousElementSibling; if(sh&&sh.tagName==="B"&&sh.textContent!=="0")sh.textContent="0"; }
+      var p=document.getElementById("psum"); if(p&&p.textContent!==RP)p.textContent=RP;
+      fixRounds(); paintDistributed();
+      if(!repObs){ repObs=1; document.addEventListener("change",function(e){ if(e.target&&e.target.id==="roundSel")e.stopPropagation(); },true); var card=t.closest(".rep")||rows.parentElement; new MutationObserver(function(){ markPreview(); }).observe(card,{childList:true,subtree:true,characterData:true}); }
     }catch(_){}
   }
   function boot(){
