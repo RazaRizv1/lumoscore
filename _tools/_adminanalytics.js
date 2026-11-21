@@ -835,7 +835,7 @@ function mapPaint(d){
     if(!row.classList.contains("open")) toggleCountry(geo,row);
     try{ row.scrollIntoView({block:"center",behavior:"smooth"}); }catch(_){ row.scrollIntoView(); } });
 }
-function bounceInto(valEl,deltaEl,noteEl,own,entry){
+function bounceInto(valEl,deltaEl,noteEl,own,entry){ if(!valEl)return;
   var cur=own&&own.cur, prv=own&&own.prev;
   if(cur&&cur.sessions>0){ var br=cur.bounces/cur.sessions*100; valEl.textContent=br.toFixed(0)+"%";
     if(prv&&prv.sessions>0) delta(deltaEl,br,prv.bounces/prv.sessions*100,{points:true,lowerIsBetter:true}); else if(deltaEl) deltaEl.innerHTML="";
