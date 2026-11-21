@@ -1410,7 +1410,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'  var strip=q(".top-strip"); if(strip)retitle(strip.previousElementSibling,"Largest curated pools (Stellar)");'
 +'  var feed=q("#actFeed"); if(feed){ feed.id="lxActFeed"; feed.innerHTML="<div class=\\"lxadm-empty\\">Loading\u2026</div>"; }'
 // nothing on a static site watches for anomalies, so the alert list is emptied rather than invented
-+'  var alertRows=qa(".alert-row");'
++'  var alertRows=qa(".alert-row"); /* D05: the card is removed, not emptied */ if(alertRows.length){ var acard=alertRows[0].closest(".adm-card"), agrid=acard&&acard.parentNode; if(acard){ acard.remove(); if(agrid&&agrid.classList&&agrid.classList.contains("dash-grid"))agrid.style.gridTemplateColumns="1fr"; } alertRows=[]; }'
 +'  if(alertRows.length){ var wrap=alertRows[0].parentNode;'
 +'    wrap.innerHTML="<div class=\\"lxadm-empty\\">No monitoring connected. Alerts need a service watching the chain and a place to store what it finds \u2014 nothing is being generated here.</div>";'
 +'    var pill=wrap.previousElementSibling&&wrap.previousElementSibling.querySelector(".pill"); if(pill)pill.remove(); }'
