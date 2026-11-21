@@ -333,7 +333,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'function j(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}'
 +'function setT(el,t){ if(el&&el.textContent!==t)el.textContent=t; }'
 +'function usd(n){ if(n==null||!isFinite(n))return "\\u2014"; if(n===0)return "$0"; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(n>=1e3)return "$"+(n/1e3).toFixed(1)+"K"; if(n<0.0001)return "$"+(+n).toPrecision(3); return "$"+n.toFixed(n<1?4:2); }'
-+'function num(n){ if(n==null||!isFinite(n))return "\\u2014"; return (+n).toLocaleString(undefined,{maximumFractionDigits:7}); }'
++'function num(n){ if(n==null||!isFinite(n))return "\\u2014"; if(n&&Math.abs(+n)<0.0000001)return (+n).toLocaleString(undefined,{maximumSignificantDigits:3,maximumFractionDigits:20}); return (+n).toLocaleString(undefined,{maximumFractionDigits:7}); }'
 +'function shortG(a){ return a?a.slice(0,4)+"\\u2026"+a.slice(-4):""; }'
 +'function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}'
 +'function avatar(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;'
@@ -672,7 +672,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'function chainTag(c){ return c==="xrpl"?"XRPL":(c==="near"?"NEAR":"Stellar"); }'
 // A NEAR account is usually a NAME (lumos01.near), and cutting it to four-and-four makes it unreadable;
 // only a long one -- a 64-hex implicit account -- is shortened like a G- or r-address.
-+'function shortA(c,a){ a=String(a||""); return (c==="near"&&a.length<=24)?a:shortG(a); }'
++'function shortA(c,a){ a=String(a||""); return (c==="near"&&a.length<=32)?a:shortG(a); }'
 +'function exAcct(c,a){ a=encodeURIComponent(a||""); return c==="xrpl"?("https://bithomp.com/explorer/"+a):(c==="near"?("https://nearblocks.io/address/"+a):("https://stellar.expert/explorer/public/account/"+a)); }'
 +'function exTx(c,h){ h=encodeURIComponent(h||""); return c==="xrpl"?("https://bithomp.com/explorer/"+h):(c==="near"?("https://nearblocks.io/txns/"+h):("https://stellar.expert/explorer/public/tx/"+h)); }'
 // Every surface that dashes a total while a chain is missing asks this, so a fourth chain is one edit.
@@ -725,7 +725,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // receipt past the sixtieth was simply unreachable -- and had the cap been lifted instead, the table
 // would grow without limit and take the page down with it. The pager below is drawn from the same
 // array, so the count, the window and the rows cannot disagree.
-+'    var LEDN=50; if(window.__lxLedPage==null)window.__lxLedPage=0;'
++'    if(sub&&led.length>rows.length)sub.textContent=sub.textContent.replace(" receipts "," fee receipts + "+(led.length-rows.length)+" not counted "); var LEDN=50; if(window.__lxLedPage==null)window.__lxLedPage=0;'
 +'    var pages=Math.max(1,Math.ceil(led.length/LEDN));'
 +'    if(window.__lxLedPage>pages-1)window.__lxLedPage=pages-1;'
 +'    var from=window.__lxLedPage*LEDN, win=led.slice(from,from+LEDN);'
