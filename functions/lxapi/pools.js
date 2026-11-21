@@ -241,10 +241,11 @@ async function volPage(row, want, price, cut, cursor) {
     newest: !cursor && recs[0] ? recs[0].ledger_close_time : undefined };
 }
 
-// Walk (or continue walking) one pool, at most `maxPages` pages this time. Exactly one of three answers:
+// Walk (or continue walking) one pool, at most `maxPages` pages this time. Exactly one of four answers:
 //   {usd}                            the 24h boundary was reached -- a complete, publishable figure
 //   {pend:[sum,cursor,pages,fails]}  more pages needed; resume from here on a later request
-//   {drop:1}                         past VOL_MAX_PAGES, or unreadable too many times -- show a dash
+//   {drop:1}                         past VOL_MAX_PAGES -- show a dash
+//   {giveup:1}                       unreadable VOL_MAX_FAILS times running -- keep any figure, retry next sweep
 //
 // A PAGE WE COULD NOT READ IS NOT A POOL THAT IS TOO BIG, and conflating the two is what RAZA reported on
 // 2026-11-10: XLM/AQUA, XLM/ETH and XLM/LIBRE all dashed on the live page. Measured, they reach the 24h
@@ -267,7 +268,8 @@ async function volWalk(row, px, start, maxPages) {
     const p = await volPage(row, want, price, cut, cursor);
     // Unreadable: stop THIS step, keep the cursor, and let a later one carry on from here. Bounded, so a
     // pool Horizon will never serve cannot hold the sweep open for ever -- after VOL_MAX_FAILS it dashes.
-    if (!p) return (fails + 1 >= VOL_MAX_FAILS) ? { drop: 1 } : { pend: [sum, cursor, pages, fails + 1] };
+    // After VOL_MAX_FAILS it stops trying until the next sweep, but {giveup} is NOT {drop}: see volApply.
+    if (!p) return (fails + 1 >= VOL_MAX_FAILS) ? { giveup: 1 } : { pend: [sum, cursor, pages, fails + 1] };
     fails = 0;                                             // a page that read resets the run of failures
     if (p.newest) newest = p.newest;
     sum += p.sum; pages++; cursor = p.next;
@@ -311,9 +313,16 @@ function volEmpty() { return { ts: 0, idx: 0, rev: 0, dq: 0, done: false, busy: 
 // Note this makes `map` and `pend` no longer disjoint, so volDiag's filled + pending can exceed
 // VOL_TOP. That is the honest reading of both: filled is how many columns show a figure, pending is
 // how many walks are in flight.
+// HORIZON REFUSING US IS NOT THE POOL BEING UNMEASURABLE (F03 follow-up, 2026-11-21). The run-of-failures
+// exit still returned {drop:1}, so four 503s in a row deleted a good figure: XLM/SHX (2,373 trades in 24h,
+// 12 pages, nowhere near VOL_MAX_PAGES) dashed on the live page with Horizon answering 503 in ~11s, and
+// stayed dashed for hours because a bot-traded pool (XLM/USDM, 121+ pages) held the sweep open and SHX
+// is only re-walked once the sweep finishes. {giveup} ends the walk for this sweep and KEEPS whatever
+// figure the pool already has; the next sweep tries again. A pool never measured still has none, and dashes.
 function volApply(v, id, r) {
   if (r.pend) { v.pend[id] = r.pend; return; }
   delete v.pend[id];
+  if (r.giveup) return;
   if (r.drop) delete v.map[id];                            // positively unobtainable -- not merely unfinished
   else v.map[id] = r.usd;
   // Evidence for every $0: how many pages were read and the newest trade page one showed. Small, and it
