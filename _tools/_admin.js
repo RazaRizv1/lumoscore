@@ -2083,6 +2083,7 @@ function paintAssets(){
   // The listing queue answers different questions from the asset table, so it gets its own columns.
   // Set per render rather than once, because the tab can change under a table that is already built.
   var TH_REQ=["Asset","Applicant","Paid","Submitted","Status","Actions"];
+  var TH_NET=["Asset","Issuer / contract","Price","24h","Volume 24h","Liquidity","Links"];
   var thr=tbl.querySelector("thead tr");
   // Which TH index sorts by what. Only the numeric columns: sorting by Asset or Issuer domain is what
   // the search box is for, and Actions is not a value.
@@ -2092,10 +2093,10 @@ function paintAssets(){
   var COL=null, DIR=-1;
   function setHead(){
     if(!thr)return;
-    var want=(MODE==="requests")?TH_REQ:TH, first=(MODE==="requests")?2:1;
+    var want=(MODE==="requests")?TH_REQ:(isNet()?TH_NET:TH), first=(MODE==="requests")?2:1;
     var made=want.map(function(h,i){
       var al=(i>first?" style='text-align:right'":"");
-      var col=(MODE==="requests")?null:SORTABLE[i];
+      var col=(MODE==="requests"||isNet())?null:SORTABLE[i];
       if(!col)return "<th"+al+">"+esc(h)+"</th>";
       var on=(COL===col);
       return "<th"+al+"><button type='button' class='lxth"+(on?" on":"")+"' data-lxsort='"+col+"'"
@@ -2150,7 +2151,9 @@ function paintAssets(){
   // Requests are not assets: they have no price, no volume and nothing to look up. Returning an empty
   // list keeps every caller that walks the asset rows -- load, sort, kpis -- a harmless no-op in this
   // mode rather than a special case in each of them.
-  function rows(){ return MODE==="requests"?[]:(MODE==="mints"?MINTS:CUR); }
+  // D04: the XRPL and NEAR tabs are view-only lists with their own table; the asset-row machinery sees none.
+  function isNet(){ return MODE==="xrpl"||MODE==="near"; }
+  function rows(){ return (MODE==="requests"||isNet())?[]:(MODE==="mints"?MINTS:CUR); }
   function key(a){ return a.code+"-"+a.iss; }
   function parse(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; }
 
@@ -2169,10 +2172,15 @@ function paintAssets(){
       // The count shown is the number still WAITING, not the number ever received: a queue chip is
       // read as work outstanding, and a growing all-time total would stop meaning anything.
       +"<button class='seg-chip"+(MODE==="requests"?" active":"")+"' type='button' data-lxtab='requests'>"
-       +"<span class='seg-label'>Listing requests</span><span class='seg-count'>"+(LR===null?"…":String(reqOpen().length))+"</span></button>";
+       +"<span class='seg-label'>Listing requests</span><span class='seg-count'>"+(LR===null?"…":String(reqOpen().length))+"</span></button>"
+      +["xrpl","near"].map(function(m){ var N=NET[m];
+        return "<button class='seg-chip"+(MODE===m?" active":"")+"' type='button' data-lxtab='"+m+"' title='View only: this list is edited in the "+(m==="xrpl"?"XRPL":"NEAR")+" build, not here'>"
+          +"<span class='seg-label'>"+(m==="xrpl"?"XRPL":"NEAR")+" curated</span><span class='seg-count'>"+(N&&N.rows?String(N.rows.length):(N&&N.err?"—":"…"))+"</span></button>"; }).join("");
     qa("[data-lxtab]").forEach(function(b){ b.addEventListener("click",function(){
       MODE=b.getAttribute("data-lxtab");
       if(MODE==="requests"&&LR===null)reqLoad();
+      if(isNet())netLoad(MODE);
+      qa(".admin-page-actions .adm-btn, .filter-strip .fs-select").forEach(function(x){ x.disabled=isNet(); x.style.opacity=isNet()?".45":""; x.style.cursor=isNet()?"not-allowed":""; });
       tabs(); render(); kpis(); rows().forEach(load); }); });
   }
 
@@ -2212,6 +2220,7 @@ function paintAssets(){
 
   function kpis(){
     if(MODE==="requests")return reqKpis();
+    if(isNet())return netKpis();
     setNote();
     var LI=rows();
     var vals=LI.map(function(a){ return DATA[key(a)]; }).filter(function(v){ return !!v; });
@@ -2325,7 +2334,79 @@ function paintAssets(){
   function setNote(){
     var n=q(".lxadm-note"); if(!n)return;
     if(NOTE0===null)NOTE0=n.textContent;
-    setT(n, MODE==="requests"?NOTE_REQ:NOTE0);
+    setT(n, MODE==="requests"?NOTE_REQ:(isNet()?NOTE_NET:NOTE0));
+  }
+
+  // ---- XRPL and NEAR curated lists, view only (D04) ------------------------------------------------
+  // Read from the live site's own endpoints, so this shows exactly what the public Trade tables list. Prices
+  // arrive in XRP / NEAR and are turned into USD with the same answer's own XRP / NEAR price.
+  var NET={xrpl:null,near:null};
+  var NOTE_NET="View only. These are the tokens the live site lists on the XRP Ledger and on NEAR, read from the public Trade "
+    +"tables. XRPL’s list is the vouched list in the XRPL build and NEAR’s is built into the NEAR build, so adding or removing one "
+    +"is a site release, not a change made here. Volume and liquidity are each token’s whole market, not only LumosCore’s trades.";
+  function netLoad(m){
+    if(NET[m]&&(NET[m].rows||NET[m].loading))return;
+    NET[m]={loading:1};
+    // XRPL's 24h change is against XRP (RLUSD read +7.38% on a day XRP fell 7.12%), so XRP's own move is read too
+    // and the column shows the change in dollars. NEAR's rows already carry a dollar change (USDC reads 0).
+    function gj(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); }
+    Promise.all([gj("https://lumoscore.com/lxapi/"+(m==="xrpl"?"xrpltokens":"nearmarket")), m==="xrpl"?gj("https://lumoscore.com/lxapi/xrpltoken?id=XRP"):null])
+      .then(function(z){ var d=z[0], b=z[1];
+        if(!d||!d.ok||!Array.isArray(d.rows))NET[m]={err:"the live site did not answer"};
+        else NET[m]={rows:d.rows.filter(function(x){ return !!x.vf; }), usd:(+d.usd>0?+d.usd:null), stale:!!d.stale,
+          base24:(m==="xrpl"?((b&&b.ok&&isFinite(+b.p24))?+b.p24:null):0)};
+        tabs(); if(MODE===m){ render(); kpis(); } })
+      .catch(function(){ NET[m]={err:"the live site did not answer"}; tabs(); if(MODE===m){ render(); kpis(); } });
+  }
+  function netName(){ return MODE==="xrpl"?"XRPL":"NEAR"; }
+  function netUsd(r,x){ var N=NET[MODE]; return (x!=null&&N&&N.usd)?(+x)*N.usd:null; }
+  function netKpis(){
+    setNote();
+    var N=NET[MODE]||{}, L=N.rows||[], priced=0, vol=0, liq=0;
+    L.forEach(function(r){ if(netUsd(r,r.p)>0)priced++; vol+=netUsd(r,r.v)||0; liq+=netUsd(r,r.t)||0; });
+    var cards=qa(".kpi-grid .kpi"), wait=!N.rows;
+    function set(i,label,val,foot){ var c=cards[i]; if(!c)return;
+      var l=c.querySelector(".kpi-label"); if(l)setT(l,label);
+      setT(c.querySelector(".kpi-value"),val);
+      var f=c.querySelector(".kpi-foot"); if(f){ f.innerHTML=""; f.textContent=foot; } }
+    set(0,"Curated on "+netName(),wait?(N.err?"—":"…"):String(L.length),"listed on the live site · view only");
+    set(1,"Priced",wait?(N.err?"—":"…"):String(priced),"have a market price now");
+    set(2,"24h volume",wait?(N.err?"—":"…"):usd(vol),"all markets, not only LumosCore");
+    set(3,"Liquidity",wait?(N.err?"—":"…"):usd(liq),MODE==="near"?"each token’s main pair":"across their markets");
+    fixPager(L.length);
+    var sub=q(".admin-page-sub"); if(sub)sub.textContent="Curated tokens on "+(MODE==="xrpl"?"the XRP Ledger":"NEAR")+", read from the live site";
+  }
+  function netRender(){
+    var m=MODE, N=NET[m];
+    if(!N||N.loading){ tb.innerHTML="<tr><td colspan='7' class='lxadm-empty'>Reading the "+netName()+" curated list from the live site…</td></tr>"; return; }
+    if(N.err){ tb.innerHTML="<tr><td colspan='7' class='lxadm-empty'>Could not read the "+netName()+" list: "+esc(N.err)+". Switch tabs to try again.</td></tr>"; NET[m]=null; return; }
+    var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
+    var L=N.rows.filter(function(r){ return !qy||(String(r.n||"")+" "+String(r.nm||"")+" "+String(r.i||"")+" "+String(r.u||r.o||"")).toLowerCase().indexOf(qy)>=0; });
+    if(!L.length){ tb.innerHTML="<tr><td colspan='7' class='lxadm-empty'>"+(N.rows.length?"No token matches that search.":"The live site lists no curated tokens here.")+"</td></tr>"; return; }
+    function gray(t){ return "<span style='color:var(--text-muted)'>"+t+"</span>"; }
+    tb.innerHTML=L.map(function(r){
+      var sym=String(r.n||"?"), id=String(r.i||""), fb=avatar(sym);
+      var logo=m==="xrpl"?(r.m?("https://lumoscore.com/lxapi/xrplthumb?id="+encodeURIComponent(r.m)):fb):(r.logo||fb);
+      var who=m==="xrpl"?(r.u||r.o||""):(r.nm&&r.nm!==sym?r.nm:"");
+      var idShort=id.length>24?shortG(id):id;
+      var ex=m==="xrpl"?("https://xrpscan.com/account/"+encodeURIComponent(id)):("https://nearblocks.io/token/"+encodeURIComponent(id));
+      var pub=m==="xrpl"?("https://lumoscore.com/trade/xrpl/"+encodeURIComponent(sym+"-"+id)):("https://lumoscore.com/trade/near/"+encodeURIComponent(id));
+      var px=netUsd(r,r.p), vv=netUsd(r,r.v), tt=netUsd(r,r.t);
+      // The change in dollars: the token's move against XRP / NEAR combined with that coin's own move.
+      var ch=(r.d==null||N.base24==null)?null:((1+(+r.d)/100)*(1+N.base24/100)-1)*100;
+      return "<tr>"
+        +"<td><div class='asset-cell'><img class='lxa-ico' data-lxc='"+esc(sym)+"' alt='' src='"+esc(logo)+"' data-fb='"+esc(fb)+"' onerror='this.onerror=null;this.src=this.getAttribute(&quot;data-fb&quot;)'>"
+        +"<div><div class='asset-name'>"+esc(sym)+(who?(" <span style='font-weight:500;color:var(--text-muted);font-size:13.5px'>"+esc(who)+"</span>"):"")+"</div>"
+        +"<div class='asset-sub mono'>"+netName()+(r.st?" · stablecoin":"")+"</div></div></div></td>"
+        +"<td class='mono' title='"+esc(id)+"'>"+esc(idShort)+"</td>"
+        +"<td class='num-cell' style='text-align:right'>"+(px>0?esc(usd(px)):gray("—"))+"</td>"
+        +"<td style='text-align:right'>"+pct(ch)+"</td>"
+        +"<td class='num-cell' style='text-align:right'>"+(vv>0?esc(usd(vv)):gray("—"))+"</td>"
+        +"<td class='num-cell' style='text-align:right'>"+(tt>0?esc(usd(tt)):gray("—"))+"</td>"
+        +"<td style='text-align:right'><span class='row-act'>"
+        +"<a class='ext-link' title='Open the public trade page' target='_blank' rel='noopener' href='"+esc(pub)+"'>"+EXTICON+"</a>"
+        +"<a class='ext-link' title='The token on the "+netName()+" explorer' target='_blank' rel='noopener' href='"+esc(ex)+"'>"+EXTICON+"</a>"
+        +"</span></td></tr>"; }).join("");
   }
 
   function reqKpis(){
@@ -2644,6 +2725,7 @@ function paintAssets(){
   function render(){ if(!tb)return;
     setHead();
     if(MODE==="requests")return reqRender();
+    if(isNet())return netRender();
     var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
     var LI=rows().filter(function(a){ return !qy || (a.code+" "+a.iss+" "+((DATA[key(a)]||{}).domain||"")).toLowerCase().indexOf(qy)>=0; });
     // Sorted on the FILTERED copy, never on rows() itself. The curated array is the saved order and
@@ -2731,6 +2813,8 @@ function paintAssets(){
   // moment the page settles -- an unreviewed application is the one thing here nobody should have to
   // go looking for.
   reqLoad();
+  // D04: the XRPL and NEAR counts are read on load too, so their chips are not "…" until clicked.
+  netLoad("xrpl"); netLoad("near");
 
   var si=q(".fs-search input"); if(si){ si.placeholder="Search by code, issuer or domain…"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){
