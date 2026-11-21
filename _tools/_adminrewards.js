@@ -397,9 +397,11 @@ function generate(btn){
   var jobs=pools.map(function(p){
     return a.poolInfo(p.def).then(function(z){
       var ts=z.total, hold=z.holders; if(!(ts>0))return {code:p.code,paid:0,holders:0};
+      // B09 (2026-11-21): excluded wallets leave the denominator, so their slice goes to the real providers.
+      var exT=0; Object.keys(hold).forEach(function(k){ if(a.excl[k])exT+=hold[k]; }); var den=ts-exT; if(!(den>0))return {code:p.code,paid:0,holders:0};
       var paid=0,n=0;
       Object.keys(hold).forEach(function(k){ if(a.excl[k])return;
-        var share=hold[k]/ts, amt=p.pot*share; if(amt>0){ add(k,p.native?"native":"eco",amt); paid+=amt; n++; } });
+        var share=hold[k]/den, amt=p.pot*share; if(amt>0){ add(k,p.native?"native":"eco",amt); paid+=amt; n++; } });
       return {code:p.code,paid:paid,holders:n}; })
       .catch(function(){ return {code:p.code,paid:null,holders:null}; }); });
   jobs.push(a.whales().then(function(w){
