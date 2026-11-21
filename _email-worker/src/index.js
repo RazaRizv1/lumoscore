@@ -1,4 +1,4 @@
-// Cloudflare Email Worker for the lumoscore.com addresses: support@, info@ and raza@.
+// Cloudflare Email Worker for the lumoscore.com addresses: support@, info@, raza@ and abeeha@.
 //
 // FORWARD_TO must match what the routing rule it replaces already delivered to. Cloudflare only
 // delivers to VERIFIED destination addresses, so pointing this at the wrong mailbox does not quietly

@@ -192,15 +192,28 @@ async function logo(request, id) {
   return res;
 }
 
-export async function onRequestGet({ request, env }) {
+// STORED BY THE CACHE API, not by the s-maxage header. A Pages Function response is not kept by the
+// edge on the strength of cache-control alone -- measured on the live site, this answered
+// `cf-cache-status: DYNAMIC` every time, so the 600-second TTL had never once been honoured and every
+// visitor paid for the full upstream read. Same fault, same fix, as xrplaxelar.js; see the long note
+// there. Caching is per-colo, and only a 200 is ever stored.
+async function cachedTokens(request, env, waitUntil) {
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).origin + '/lxapi/xrploneclick?op=tokens');
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const list = await tokens(env);
+  const res = json({ ok: 1, keyed: !!(env && env.ONECLICK_JWT), tokens: list, natives: NATIVES || {} }, 200, 600);
+  try { const put = cache.put(key, res.clone()); if (waitUntil) waitUntil(put); else await put; } catch (e) {}
+  return res;
+}
+
+export async function onRequestGet({ request, env, waitUntil }) {
   const q = new URL(request.url).searchParams;
   const op = q.get('op');
   try {
     if (op === 'logo') return await logo(request, q.get('id'));
-    if (op === 'tokens') {
-      const list = await tokens(env);
-      return json({ ok: 1, keyed: !!(env && env.ONECLICK_JWT), tokens: list, natives: NATIVES || {} }, 200, 600);
-    }
+    if (op === 'tokens') return await cachedTokens(request, env, waitUntil);
     if (op === 'status') {
       // No memo parameter: XRP deposits are SIMPLE mode, one address per quote. See the header.
       const a = (q.get('depositAddress') || '').trim();

@@ -85,6 +85,25 @@ async function assets() {
     const to = Object.keys(ch).filter((c) => c !== 'xrpl');
     if (!to.length) continue;
     to.forEach((c) => { dests[c] = 1; });
+    // WHAT THE ASSET IS CALLED WHERE IT LANDS (RAZA 2026-10-24: "For XRPL to Hedera using Axelar, you
+    // should show wXRP as the destination asset because its wrapped XRP and not actual XRP").
+    //
+    // He is right, and the registry says so per chain -- this is not a rule that can be hardcoded:
+    //   XRP   xrpl → XRP      xrpl-evm → XRP            hedera → wXRP  "Wrapped XRP"
+    // On XRPL EVM, XRP IS the native gas token, so labelling that leg "wXRP" would be wrong in the
+    // other direction. Only Axelar knows which chains wrap and which do not, and it already publishes
+    // a symbol and a name for every chain the token is registered on. Those were being thrown away
+    // here -- `chains` kept the names and dropped everything else -- so the page had nothing to say
+    // except the symbol on the sending side.
+    //
+    // Carried for every destination rather than only the ones that differ, so the client's lookup is
+    // a plain map read with no "did it differ" rule to get wrong. About 1.4KB over the whole list.
+    const recv = {};
+    for (const c of to) {
+      const e = ch[c];
+      if (!e) continue;
+      recv[c] = { sym: e.symbol || t.symbol || '', name: e.name || t.name || '' };
+    }
     out.push({
       tokenId: t.id,
       symbol: ch.xrpl.symbol || t.symbol || '',
@@ -94,6 +113,7 @@ async function assets() {
       currency: id.currency,
       issuer: id.issuer,
       chains: to,
+      recv: recv,
     });
   }
   DESTS = dests;
@@ -102,14 +122,36 @@ async function assets() {
   return ASSETS;
 }
 
-export async function onRequestGet({ request }) {
+// THE s-maxage HEADER ON ITS OWN CACHES NOTHING (RAZA 2026-10-19: "check why xrplaxelar is taking 11
+// seconds"). A Pages Function's response is not stored by the edge just because it carries
+// cache-control -- measured on the live site, this endpoint answers `cf-cache-status: DYNAMIC` on every
+// request, so the 600-second header has never once been honoured and every page load ran the whole
+// function: fetch 178 KB from api.axelarscan.io, parse it, return 5 KB. That is the eleven seconds.
+//
+// The Cache API is the thing that actually stores it, and this file already had a working example of it
+// next door in oneclick.js (op=logo). Caching is per-colo, so the first visitor through each location
+// still pays full price; everyone behind them does not.
+//
+// ONLY A 200 IS STORED. An upstream failure must never be served for ten minutes as though it were the
+// registry -- see the note on never caching a failure as an answer. assets() throws on a bad fetch, so
+// the catch below returns an uncached error and the next request tries again.
+async function cachedAssets(request, waitUntil) {
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).origin + '/lxapi/xrplaxelar?op=assets');
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const list = await assets();
+  const res = json({ ok: 1, gateway: GATEWAY, assets: list, destinations: Object.keys(DESTS || {}) }, 200, 600);
+  // Stored after the response is on its way, so the write never adds to this request's latency.
+  try { const put = cache.put(key, res.clone()); if (waitUntil) waitUntil(put); else await put; } catch (e) {}
+  return res;
+}
+
+export async function onRequestGet({ request, waitUntil }) {
   const q = new URL(request.url).searchParams;
   const op = q.get('op');
   try {
-    if (op === 'assets') {
-      const list = await assets();
-      return json({ ok: 1, gateway: GATEWAY, assets: list, destinations: Object.keys(DESTS || {}) }, 200, 600);
-    }
+    if (op === 'assets') return await cachedAssets(request, waitUntil);
     if (op === 'gas') {
       const list = await assets();
       const symbol = String(q.get('symbol') || '');

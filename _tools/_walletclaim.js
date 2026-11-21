@@ -297,7 +297,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
         var p=window.lxSign(tx.toXDR(),S);
         if(window.lxTimeout)p=window.lxTimeout(p,200000,"Signing timed out \\u2014 open your wallet and try again");
         return p.then(function(signed){
-          if(!signed)throw new Error("Signing cancelled");
+          if(!signed)throw new Error("Cancelled by the user.");
           btn.textContent="Submitting\\u2026";
           return fetch(H+"/transactions",{method:"POST",
             headers:{"Content-Type":"application/x-www-form-urlencoded"},

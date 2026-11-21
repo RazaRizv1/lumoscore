@@ -73,3 +73,10 @@ export async function onRequestGet(ctx) {
   // honestly than an invented image.
   return new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=300' } });
 }
+
+// HEAD HAS TO ANSWER TOO -- see the long note in ogcard.js. Only onRequestGet was exported, so a
+// crawler that checks the image with HEAD before downloading it got a 404 and dropped the card.
+export async function onRequestHead(ctx) {
+  const res = await onRequestGet(ctx);
+  return new Response(null, { status: res.status, headers: res.headers });
+}

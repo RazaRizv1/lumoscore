@@ -126,6 +126,9 @@ const STYLE = '<style id="lx-mobwallet-css">'
   + '.lxmw-ico{position:relative;overflow:hidden}'
   + '.lxmw-ico.lxmw-hasico::after{display:none}'
   + '.lxmw-nm{font:800 14px/1.2 "Hanken Grotesk",system-ui,sans-serif}'
+// Same nudge the desktop ticker line needs: .lx-vfd is an inline-flex box, which otherwise sits on
+// the text baseline and hangs below the capitals it is meant to sit beside. Matches the pin star.
+  + '.lxmw-nm .lx-vfd{vertical-align:middle;margin-left:6px;position:relative;top:-1px}'
   // the shared issuer line has to survive a 375px row: it wraps rather than pushing the balance off
   + '.lxmw-ast .lxmw-sub .lx-asb{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}'
   + '.lxmw-ast .lxmw-sub .lx-vfd{width:13px;height:13px;flex:0 0 13px;border-radius:50%;background:#35c07f;color:#fff;display:inline-flex;align-items:center;justify-content:center}'
@@ -338,7 +341,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 // Stable: only the pinned move, and only ahead of the rest. Sorting by index keeps a pinned XLM above a
 // pinned USDC in the order they were pinned, which is what the desktop list does.
 + 'if(PIN.length){hold=hold.slice().sort(function(a,b){'
-+ 'var ia=PIN.indexOf(a.code||(a.native?"XLM":"")),ib=PIN.indexOf(b.code||(b.native?"XLM":""));'
++ 'var ia=rmRank(PIN,a),ib=rmRank(PIN,b);'
 + 'if(ia<0&&ib<0)return 0; if(ia<0)return 1; if(ib<0)return -1; return ia-ib;});}'
 + 'var u=rate();'
 + 'var sig="a|"+PIN.join(",")+"|"+(window.__lxRows?"v":"n")+"|"+hold.map(function(h){'
@@ -353,9 +356,14 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
   // value, so the USD line stays blank rather than inventing one.
 + 'var v=(xlm!=null&&u)?xlm*u:null;'
 + 'var ico=h.logo||h.ico||resolveLogo(code,h.iss,h.native);'
-+ 'html+=\'<div class="lxmw-row lxmw-ast\'+(PIN.indexOf(code)>=0?" lxmw-pinned":"")+((window.__lxmwSel||"")===code?" lxmw-sel":"")+\'" data-lxsel="\'+esc(code)+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
-+ '+\'<div><div class="lxmw-nm">\'+esc(code)+(PIN.indexOf(code)>=0?\'<span class="lxmw-pinbadge" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></span>\':"")+\'</div>\''
-+ '+\'<div class="lxmw-sub">\'+((window.__lxIssLine)?window.__lxIssLine(code,h.iss||"",!!h.native):esc(h.name||h.domain||""))+\'</div></div>\''
++ 'html+=\'<div class="lxmw-row lxmw-ast\'+(rmIsPinned(PIN,code,h.iss)?" lxmw-pinned":"")+((window.__lxmwSel||"")===code?" lxmw-sel":"")+\'" data-lxsel="\'+esc(code)+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
+// The tick moved up to the ticker line on the desktop table (RAZA 2026-11-07); the phone row has a
+// ticker line of its own, so it moves here too rather than leaving the same asset marked in two
+// different places depending on the screen. __lxVtk and the fourth argument to __lxIssLine both come
+// from lx-walletdata, which this page also loads -- the old fallback stays for the case where it does
+// not, and that fallback never drew a tick anyway.
++ '+\'<div><div class="lxmw-nm"\'+((h.native||!h.iss)?"":\' data-vk="\'+esc(code+"|"+(h.iss||""))+\'"\')+\'>\'+esc(code)+((window.__lxVtk)?window.__lxVtk(code,h.iss||"",!!h.native):"")+(rmIsPinned(PIN,code,h.iss)?\'<span class="lxmw-pinbadge" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></span>\':"")+\'</div>\''
++ '+\'<div class="lxmw-sub">\'+((window.__lxIssLine)?window.__lxIssLine(code,h.iss||"",!!h.native,1):esc(h.name||h.domain||""))+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(bal))+\'</div>\''
 + '+\'<div class="u">\'+(v==null?"":esc(usd(v)))+\'</div></div>\''
 // Same three controls as the desktop table, same marks: the nav's candlestick for Trade, the paper plane
@@ -614,8 +622,24 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'if(all[i].classList.contains("lxmw-sel")!==on)all[i].classList.toggle("lxmw-sel",on);}'
 + '},true);}'
 + 'function rmPinned(){try{var p=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");return Array.isArray(p)?p:[];}catch(_){return [];}}'
-+ 'function rmTogglePin(code){var p=rmPinned(),i=p.indexOf(code);'
-+ 'if(i>=0)p.splice(i,1); else p.unshift(code);'
+// A PIN NAMES AN ASSET, AND ON THIS LEDGER A TICKER DOES NOT.
+//
+// RAZA 2026-10-19: pinning XAU sent TWO rows to the top, because his account holds two different XAU
+// assets from two different issuers and the pin was stored as the bare code. Same rule the rest of
+// this site already follows -- see the RLUSD pools, where fifty issuers share one ticker.
+//
+// The key is code-issuer, with the native asset keeping its bare code since it has no issuer.
+//
+// LEGACY PINS STILL MATCH. Anything saved before this is a bare code, and rmIsPinned accepts that as
+// a match for any issuer of that code -- the old, loose behaviour, kept so nobody's saved pins vanish
+// on deploy. New pins are written in the precise form, so the looseness fades as they are re-pinned.
++ 'function rmKey(c,i){return i?(c+"-"+i):c;}'
++ 'function rmIsPinned(P,c,i){return P.indexOf(rmKey(c,i))>=0||P.indexOf(c)>=0;}'
+// Where a holding sits in the pin order: its exact key first, the legacy bare code as a fallback.
++ 'function rmRank(P,h){var c=h.code||(h.native?"XLM":""),i=h.iss||"";'
++ 'var k=P.indexOf(rmKey(c,i));return k>=0?k:P.indexOf(c);}'
++ 'function rmTogglePin(code,iss){var p=rmPinned(),K=rmKey(code,iss),i=p.indexOf(K);if(i<0)i=p.indexOf(code);'
++ 'if(i>=0)p.splice(i,1); else p.unshift(K);'
 + 'try{localStorage.setItem("lumos.pinned",JSON.stringify(p));}catch(_){}'
 + 'try{var l=document.getElementById("assetList");if(l)l.removeAttribute("data-lxmw");}catch(_){}'
 + 'try{if(window.__lxMWassets)window.__lxMWassets();}catch(_){}}'
@@ -625,9 +649,16 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();'
 + 'var open=!!document.querySelector(".lxmw-astmenu"); rmShut(); if(open)return;'
 + 'var code=t.getAttribute("data-astmenu")||"",iss=t.getAttribute("data-astmi")||"";'
-+ 'var pinned=rmPinned().indexOf(code)>=0;'
++ 'var pinned=rmIsPinned(rmPinned(),code,iss);'
 + 'var m=document.createElement("div");m.className="lxmw-astmenu";'
-+ 'm.innerHTML=\'<button type="button" data-rm="view">View asset</button>\''
+// THE PHONE'S HALF OF THE SAME FIX (RAZA 2026-11-07: the row menu "continue to display the View
+// asset option" for native coins). Desktop removes it in _walletdata.js wireAssetActions; this menu
+// is built from scratch here, so it kept offering it. XLM has no asset page -- "view" below builds
+// /trade/stellar/XLM, which resolves to nothing -- and "Copy issuer address" on the next line was
+// ALREADY gated on the same `iss`, so a native row showed one dead item beside a correctly hidden
+// one. Gated identically rather than on a native flag: this menu never receives one, and an issued
+// asset without an issuer has no asset page either.
++ 'm.innerHTML=(iss?\'<button type="button" data-rm="view">View asset</button>\':"")'
 + '+\'<button type="button" data-rm="pin"\'+(pinned?\' class="on"\':"")+\'>\'+(pinned?"Unpin":"Pin to top")+\'</button>\''
 + '+(iss?\'<button type="button" data-rm="copy">Copy issuer address</button>\':"")'
 + '+\'<button type="button" data-rm="exp">View on Stellar Explorer</button>\';'
@@ -643,7 +674,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();'
 + 'var k=b.getAttribute("data-rm");'
 + 'if(k==="view"){ rmShut(); location.href="/trade/stellar/"+encodeURIComponent(code+(iss?("-"+iss):"")); return; }'
-+ 'if(k==="pin"){ rmShut(); rmTogglePin(code); return; }'
++ 'if(k==="pin"){ rmShut(); rmTogglePin(code,iss); return; }'
 + 'if(k==="copy"){ try{navigator.clipboard.writeText(iss);}catch(_){} b.textContent="Copied \u2713"; setTimeout(rmShut,700); return; }'
 + 'if(k==="exp"){ rmShut(); window.open(iss?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(code+"-"+iss)):"https://stellar.expert/explorer/public/asset/XLM","_blank","noopener"); return; }'
 + '},true);'

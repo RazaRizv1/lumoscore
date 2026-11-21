@@ -13,6 +13,7 @@
 
 // Shared with xrplsearch, so the two surfaces cannot drift apart on what an issuer's home domain is.
 import { issuerDomains } from './_issuerdomain.js';
+import { vouched, issuerName, issuerDomain } from './_unvouched.js';
 
 const UP = 'https://api.xrpl.to/api';
 const TTL = 60;
@@ -69,7 +70,7 @@ export async function onRequest(context) {
       ok: true,
       id,
       name: String(t.name || ''),
-      user: String(t.user || ''),
+      user: issuerName(t.issuer, t.currency, t.user),
       issuer: String(t.issuer || ''),
       currency: String(t.currency || ''),
       price: num(t.exch),                    // in XRP
@@ -84,7 +85,7 @@ export async function onRequest(context) {
       tvl: num(t.tvl), marketcap: num(t.marketcap),
       holders: num(t.holders), trustlines: num(t.trustlines), offers: num(t.offers),
       issued: num(t.amount), circulating: num(t.supply),
-      verified: t.verified ? 1 : 0,
+      verified: vouched(t.issuer, t.currency, t.verified),
       md5: String(t.md5 || ''),
       domain: String(t.domain || ''),
       origin: String(t.origin || ''),
@@ -129,7 +130,7 @@ export async function onRequest(context) {
       // 3s, not the search default: the header has nowhere else to get this from.
       const map = await issuerDomains([out.issuer], url.origin, context, null, 3000);
       domReached = Object.prototype.hasOwnProperty.call(map, out.issuer);
-      out.domain = map[out.issuer] || '';
+      out.domain = issuerDomain(out.issuer, out.currency, map[out.issuer] || '');
     } catch (e) { out.domain = ''; }
   }
 

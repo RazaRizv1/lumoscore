@@ -1,4 +1,4 @@
-// ADMIN — Support: the inbox for team@ and raza@lumoscore.com.
+// ADMIN — Support: the inbox for team@, raza@ and abeeha@lumoscore.com.
 //
 // Mail arrives via the Email Worker in _email-worker/, which forwards to the real mailbox first and
 // keeps a copy second. This page is a VIEW of that copy. Nothing done here can touch what was already
@@ -118,6 +118,25 @@ const CSS = `<style id="lx-adminsupport-css">
 /* The compose textarea: the modal input style is built for one-line fields, so only what a
    textarea needs differently is set and nothing else about the modal is touched. */
 .lxn-ta{min-height:160px;resize:vertical;font:inherit;line-height:1.5;padding:10px 12px}
+/* THE COMPOSE EDITOR. A bordered shell holding a toolbar and the editable area, so the two read as
+   one field the way the plain textarea did -- the focus ring is on the shell, not the inner box. */
+.lxn-ed{border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);overflow:hidden}
+.lxn-ed:focus-within{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
+.lxn-tb{display:flex;flex-wrap:wrap;gap:4px;padding:7px 8px;border-bottom:1px solid var(--border)}
+.lxn-tbb{min-width:30px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--text-muted);font:600 13px/1 "Hanken Grotesk",system-ui,sans-serif;cursor:pointer}
+.lxn-tbb:hover{background:rgba(127,127,140,.14);color:var(--text)}
+.lxn-tbb.on{background:rgba(234,106,44,.15);color:var(--accent,#ea6a2c)}
+.lxn-link{display:flex;gap:8px;align-items:center;padding:0 8px 8px}
+.lxn-link[hidden]{display:none}
+.lxn-link input{flex:1;min-width:0;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,transparent);color:var(--text);font:400 13.5px/1.3 "Hanken Grotesk",system-ui,sans-serif}
+.lxn-body{min-height:170px;max-height:46vh;overflow:auto;padding:12px 14px;color:var(--text);font:400 16px/1.6 "Hanken Grotesk",system-ui,sans-serif;outline:none}
+/* A contenteditable is never :empty once it has been typed in and cleared, so the placeholder is
+   driven by a class the script sets from textContent instead. */
+.lxn-body.is-empty:before{content:attr(data-ph);color:var(--text-muted);pointer-events:none}
+.lxn-body p{margin:0 0 10px}
+.lxn-body ul,.lxn-body ol{margin:0 0 10px;padding-left:22px}
+.lxn-body li{margin:0 0 3px}
+.lxn-body a{color:var(--accent,#ea6a2c)}
 /* A native select inherits .lxmodal-i for the closed state, but the OPTION list is drawn by the
    platform and defaults to light-on-light on some of them. */
 .lxmodal-i option{background:var(--surface-2);color:var(--text)}
@@ -217,6 +236,16 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-read-subj{font:800 19px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text)}
 .lxm-read-meta{margin-top:7px;font-size:13px;color:var(--text-muted);line-height:1.7}
 .lxm-read-meta a{color:var(--accent,#ea6a2c);text-decoration:none}
+/* This class had NO rule of its own, so a sent message set with textContent lost every line break --
+   a three-paragraph mail read back as one run-on block. pre-wrap is what .lxm-sent-b already uses for
+   the same job. A message written in the rich editor carries its own paragraphs, so that one turns
+   pre-wrap OFF or every tag boundary would print as extra blank space. */
+.lxm-read-body{white-space:pre-wrap;word-break:break-word;font:400 16px/1.65 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
+.lxm-read-body.is-html{white-space:normal}
+.lxm-read-body p{margin:0 0 10px}
+.lxm-read-body ul,.lxm-read-body ol{margin:0 0 10px;padding-left:22px}
+.lxm-read-body li{margin:0 0 3px}
+.lxm-read-body a{color:var(--accent,#ea6a2c)}
 /* +2pt on everything that is the EMAIL ITSELF -- the received body, a sent reply, and the box you type
    the reply into, so what you write matches what you read (RAZA 2026-09-23). The list rows keep their
    smaller type: those are an index, not the mail. */
@@ -256,6 +285,12 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-sent{margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,106,44,.07);border:1px solid rgba(234,106,44,.18)}
 .lxm-sent-h{font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c);margin-bottom:7px}
 .lxm-sent-b{white-space:pre-wrap;word-break:break-word;font-size:16px;line-height:1.65;color:var(--text-soft,#6b6b76)}
+/* A formatted reply carries its own paragraphs and bullets, so pre-wrap would double every gap. */
+.lxm-sent-b.is-html{white-space:normal}
+.lxm-sent-b p{margin:0 0 10px}
+.lxm-sent-b ul,.lxm-sent-b ol{margin:0 0 10px;padding-left:22px}
+.lxm-sent-b li{margin:0 0 3px}
+.lxm-sent-b a{color:var(--accent,#ea6a2c)}
 /* delivery state, read from Resend when the thread opens: what the reader actually needs to know about a reply */
 .lxm-st{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font:700 10.5px/1.5 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.2px;vertical-align:1px}
 .lxm-st.ok{background:rgba(53,192,127,.14);color:#2aa56c}
@@ -267,6 +302,11 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-ta:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
 .lxm-reply-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
 .lxm-reply-hint{font-size:12.5px;color:var(--text-muted)}
+/* WHO the reply goes out as. Same control as the compose box, so the two paths look like one feature. */
+.lxm-reply-from{display:flex;align-items:center;gap:8px}
+.lxm-reply-fl{font:700 11px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.lxm-reply-sel{max-width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2,transparent);color:var(--text);font:600 13.5px/1.3 "Hanken Grotesk",system-ui,sans-serif}
+.lxm-reply-sel:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
 </style>`;
 
 const SCRIPT = '<script id="lx-adminsupport">' + `(function(){
@@ -369,7 +409,12 @@ function loadSent(){
         pane.innerHTML="<div class='lxm-read-head'><div class='lxm-read-subj'>"+esc(x.subject||"(no subject)")+"</div>"
           +"<div class='lxm-read-meta'>"+(x.from_addr?("From <b>"+esc(x.from_addr)+"</b><br>"):"")+"To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
           +" \u00b7 "+(x.err?"<b>failed</b>":lxmStatus(x.status))+"</div></div>";
-        var b=document.createElement("div"); b.className="lxm-read-body"; b.textContent=x.body||"";
+        // OUR OWN markup, already cut to the allowlist by the server before it was stored, so this
+        // one is rendered. Inbound mail from strangers is still shown as TEXT and always will be --
+        // see the file header. body holds the plain-text copy and stays the fallback for everything
+        // sent before the editor existed.
+        var b=document.createElement("div"); b.className="lxm-read-body"+(x.body_html?" is-html":"");
+        if(x.body_html) b.innerHTML=x.body_html; else b.textContent=x.body||"";
         pane.appendChild(b);
         if(x.err){ var e=document.createElement("div"); e.className="lxm-reply-hint";
           e.textContent="Resend said: "+x.err; pane.appendChild(e); }
@@ -384,31 +429,136 @@ function loadSent(){
 // The one place in this panel that sends to an address somebody typed. /lxapi/reply deliberately
 // refuses to do that -- it answers the address on a stored message -- which is correct for a reply
 // and is exactly what made it impossible to write to anyone who had not emailed first.
+// The formatting controls, as [execCommand, label, tooltip]. Deliberately a short list: the markup
+// that survives sanitising on the way out is bold, italic, underline, links and lists, so a button
+// for anything else would promise formatting the recipient never sees.
+var LXN_TB=[["bold","<b>B</b>","Bold"],["italic","<i>I</i>","Italic"],["underline","<u>U</u>","Underline"],
+            ["insertUnorderedList","&bull; List","Bulleted list"],["insertOrderedList","1. List","Numbered list"],
+            ["createLink","Link","Add a link"],["removeFormat","Clear","Clear formatting"]];
+
+// ONE editor, built into whatever element it is handed, used by BOTH the compose modal and the reply
+// box. A factory rather than a second copy: two copies of this wiring drift, and the way they drift
+// is invisible here -- the two boxes would quietly disagree about what a link may start with, or
+// about what a paste does, and only the person receiving the mail would ever find out.
+//
+// NO IDS ANYWHERE INSIDE. Both boxes can be on the page at the same time; duplicate ids would cross
+// their wires, and the bug would look like the reply box formatting the compose box's text.
+//
+// onErr is how it reports a bad link, because the two hosts put that message in different places:
+// the modal has an error line, the reply box has its hint. (No backticks in this comment: this file
+// is one big template literal, and a backtick ends it -- see template-literal-eats-escapes.)
+function lxnEditor(root, ph, onErr){
+  root.className="lxn-ed";
+  root.innerHTML="<div class='lxn-tb' role='toolbar' aria-label='Formatting'>"
+    +LXN_TB.map(function(t){ return "<button class='lxn-tbb' type='button' data-cmd='"+t[0]+"' title='"+t[2]+"' aria-label='"+t[2]+"'>"+t[1]+"</button>"; }).join("")
+    +"</div>"
+    +"<div class='lxn-link' hidden><input class='lxn-url' type='url' placeholder='https://example.com' autocomplete='off'>"
+    +"<button class='adm-btn ghost lxm-mini lxn-go' type='button'>Add link</button>"
+    +"<button class='adm-btn ghost lxm-mini lxn-x' type='button'>Cancel</button></div>"
+    +"<div class='lxn-body' contenteditable='true' data-lxnonav role='textbox' aria-multiline='true' data-ph='"+esc(ph)+"'></div>";
+  // execCommand is deprecated and is still the only thing every browser implements for an editor this
+  // small; the alternative is hand-rolled Range surgery for five buttons. Whatever it produces is cut
+  // down to an allowlist server-side before it is sent (_lib/mailbody.js), so a browser quirk here can
+  // make the mail look plain, never make it unsafe.
+  try{ document.execCommand("defaultParagraphSeparator",false,"p"); }catch(e0){}
+  var ed=root.querySelector(".lxn-body"), tbEl=root.querySelector(".lxn-tb");
+  var linkRow=root.querySelector(".lxn-link"), linkUrl=root.querySelector(".lxn-url");
+  var savedRange=null;
+  function say(s){ if(typeof onErr==="function") onErr(s||""); }
+  function phPaint(){ ed.classList[ed.textContent.trim()||ed.querySelector("li,a")?"remove":"add"]("is-empty"); }
+  function saveSel(){ var s=window.getSelection&&window.getSelection();
+    if(s&&s.rangeCount&&ed.contains(s.getRangeAt(0).commonAncestorContainer)) savedRange=s.getRangeAt(0).cloneRange(); }
+  function restoreSel(){ if(!savedRange)return false;
+    var s=window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); return true; }
+  // Scoped to THIS editor's toolbar, so the lit B on one box never reflects the caret in the other.
+  function tbPaint(){ [].slice.call(root.querySelectorAll(".lxn-tbb")).forEach(function(b){
+    var on=false; try{ on=document.queryCommandState(b.getAttribute("data-cmd")); }catch(e1){}
+    b.classList[on?"add":"remove"]("on"); }); }
+  ["keyup","mouseup","input"].forEach(function(ev){
+    ed.addEventListener(ev,function(){ saveSel(); tbPaint(); phPaint(); }); });
+  // PASTE ARRIVES AS PLAIN TEXT. Otherwise the editor shows a web page's own styling while the
+  // server strips it back out, so what you proof-read is not what the recipient gets -- and pasted
+  // markup is exactly how a tracking pixel from somebody else's page ends up in our mail.
+  ed.addEventListener("paste",function(e){ e.preventDefault();
+    var cd=e.clipboardData||window.clipboardData;
+    try{ document.execCommand("insertText",false,cd?cd.getData("text/plain"):""); }catch(e2){}
+    phPaint(); });
+  // mousedown inside the toolbar would move focus out of the editor and drop the selection before
+  // the click ever lands, so the button would format nothing.
+  tbEl.addEventListener("mousedown",function(e){ if(e.target.closest&&e.target.closest(".lxn-tbb")) e.preventDefault(); });
+  tbEl.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest(".lxn-tbb"); if(!b)return;
+    var cmd=b.getAttribute("data-cmd");
+    if(cmd==="createLink"){ saveSel(); linkRow.hidden=false; linkUrl.value=""; linkUrl.focus(); return; }
+    ed.focus(); try{ document.execCommand(cmd,false,null); }catch(e3){}
+    saveSel(); tbPaint(); phPaint();
+  });
+  function closeLink(){ linkRow.hidden=true; linkUrl.value=""; }
+  root.querySelector(".lxn-x").addEventListener("click",closeLink);
+  root.querySelector(".lxn-go").addEventListener("click",function(){
+    var u=(linkUrl.value||"").trim();
+    // The server refuses anything that is not http(s) or mailto; saying so here means finding out
+    // before the mail is written rather than after Send. Tested with indexOf rather than a regex
+    // because an escaped slash would not survive this file's template literal, and WITHOUT the
+    // slashes the two checks disagree: "https:lumoscore.com" would pass here, then the server would
+    // drop the link and send the words bare, which nobody proof-reads for.
+    var lu=String(u).toLowerCase(), ss="/"+"/";
+    if(!(lu.indexOf("https:"+ss)===0||lu.indexOf("http:"+ss)===0||lu.indexOf("mailto:")===0)){ say("A link has to start with https:// or mailto:"); linkUrl.focus(); return; }
+    say(""); ed.focus(); restoreSel();
+    try{
+      if(!savedRange||savedRange.collapsed)
+        document.execCommand("insertHTML",false,"<a href='"+u.replace(/'/g,"&#39;")+"'>"+u.replace(/[<>&]/g,"")+"</a>");
+      else document.execCommand("createLink",false,u);
+    }catch(e4){}
+    closeLink(); saveSel(); phPaint();
+  });
+  linkUrl.addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ e.preventDefault(); root.querySelector(".lxn-go").click(); }
+    else if(e.key==="Escape"){ e.preventDefault(); closeLink(); ed.focus(); } });
+  phPaint();
+  return {
+    el: ed,
+    // text() is only the fallback the server uses when there is no markup at all; whenever html()
+    // carries something the server derives its own plain text from the SANITISED markup, so the two
+    // halves of the mail cannot disagree.
+    text: function(){ return (ed.innerText||ed.textContent||"").trim(); },
+    html: function(){ return ed.innerHTML; },
+    clear: function(){ ed.innerHTML=""; savedRange=null; phPaint(); tbPaint(); },
+    focus: function(){ ed.focus(); }
+  };
+}
+
 function compose(){
   if(q(".lxmodal"))return;
   var m=document.createElement("div"); m.className="lxmodal";
   m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>New email</h3>"
-    +"<p class='lxmodal-s'>Sent from support@mail.lumoscore.com so it passes SPF and DKIM. Replies come back to support@lumoscore.com and land in this inbox.</p>"
+    +"<p class='lxmodal-s'>Sent from mail.lumoscore.com so it passes SPF and DKIM. Replies come back to the matching @lumoscore.com address and land in this inbox.</p>"
     +"<label class='lxmodal-l' for='lxnFrom'>From</label>"
     +"<select class='lxmodal-i' id='lxnFrom'>"
     +"<option value='support'>LumosCore Support — support@lumoscore.com</option>"
-    +"<option value='raza'>Raza Rizvi — raza@lumoscore.com</option></select>"
+    +"<option value='raza'>Raza Rizvi — raza@lumoscore.com</option>"
+    +"<option value='abeeha'>Abeeha Zaidi — abeeha@lumoscore.com</option></select>"
     +"<label class='lxmodal-l' for='lxnTo'>To</label><input class='lxmodal-i' id='lxnTo' type='email' placeholder='name@example.com' autocomplete='off'>"
     +"<label class='lxmodal-l' for='lxnSubj'>Subject</label><input class='lxmodal-i' id='lxnSubj' maxlength='200' autocomplete='off'>"
-    +"<label class='lxmodal-l' for='lxnBody'>Message</label><textarea class='lxmodal-i lxn-ta' id='lxnBody' rows='8'></textarea>"
+    +"<label class='lxmodal-l'>Message</label>"
+    +"<div id='lxnEd'></div>"
     +"<p class='lxmodal-e' id='lxnErr'></p>"
     +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxnCancel'>Cancel</button>"
     +"<button class='adm-btn primary' type='button' id='lxnSend'>Send</button></div></div>";
   document.body.appendChild(m);
-  var to=m.querySelector("#lxnTo"), subj=m.querySelector("#lxnSubj"), body=m.querySelector("#lxnBody"), err=m.querySelector("#lxnErr");
+  var to=m.querySelector("#lxnTo"), subj=m.querySelector("#lxnSubj"), err=m.querySelector("#lxnErr");
+  var body=lxnEditor(m.querySelector("#lxnEd"),"Write your message…",function(s){ err.textContent=s; });
   to.focus();
+
   function close(){ m.remove(); }
   m.addEventListener("click",function(e){ if(e.target===m)close(); });
   m.querySelector("#lxnCancel").addEventListener("click",close);
   m.querySelector("#lxnSend").addEventListener("click",function(){
     var btn=m.querySelector("#lxnSend");
     var fromEl=m.querySelector("#lxnFrom");
-    var payload={from:fromEl?fromEl.value:"support",to:(to.value||"").trim(),subject:(subj.value||"").trim(),body:(body.value||"").trim()};
+    // body is the plain-text fallback; html is what the server sanitises and sends as the rich part.
+    // The server derives its own plain text from the sanitised markup, so these cannot drift.
+    var payload={from:fromEl?fromEl.value:"support",to:(to.value||"").trim(),subject:(subj.value||"").trim(),body:body.text(),html:body.html()};
     if(!payload.to){ err.textContent="Who is it going to?"; to.focus(); return; }
     if(!payload.subject){ err.textContent="Give it a subject."; subj.focus(); return; }
     if(!payload.body){ err.textContent="Write something first."; body.focus(); return; }
@@ -447,7 +597,7 @@ function render(){
          +". Try another box \\u2014 search only looks in the one you are on.")
       : (BOX==="archived"?"Nothing archived."
         :(BOX==="spam"?"Nothing in spam. Mark a message as spam and everything from that sender moves here."
-        :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to support@, info@ or raza@lumoscore.com will appear here.")));
+        :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to support@, info@, raza@ or abeeha@lumoscore.com will appear here.")));
     list.innerHTML="<div class='lxadm-empty'>"+msg+"</div>";
     return;
   }
@@ -652,27 +802,54 @@ function open(id){
     fetch("/lxapi/reply?id="+encodeURIComponent(m.id)+"&t="+Date.now()).then(function(r){ return r.json(); })
       .then(function(d){ var rs=(d&&d.replies)||[]; if(!rs.length)return;
         thread.innerHTML=rs.map(function(x){
-          return "<div class='lxm-sent'><div class='lxm-sent-h'>You replied · "+esc(new Date(x.ts).toLocaleString())
+          return "<div class='lxm-sent'><div class='lxm-sent-h'>"+(x.from_addr?("Replied as "+esc(String(x.from_addr).split("@")[0])):"You replied")+" · "+esc(new Date(x.ts).toLocaleString())
             +(x.err?" · <b>failed</b>":lxmStatus(x.status))+"</div><div class='lxm-sent-b'></div></div>"; }).join("");
-        [].slice.call(thread.querySelectorAll(".lxm-sent-b")).forEach(function(el,i){ el.textContent=rs[i].body; });
+        // body_html is OUR OWN markup, already cut to the allowlist by the server before it was
+        // stored, so putting it back in the page is not a second trust decision. Older rows have
+        // none and keep the plain-text path, which is why the pre-wrap rule has to stay.
+        [].slice.call(thread.querySelectorAll(".lxm-sent-b")).forEach(function(el,i){
+          if(rs[i].body_html){ el.className="lxm-sent-b is-html"; el.innerHTML=rs[i].body_html; }
+          else el.textContent=rs[i].body; });
       });
     // The reply box. It sends to the address on the STORED message, never to anything typed here.
+    //
+    // WHO IT GOES OUT AS defaults to the address the mail was sent TO, so a mail to abeeha@ is answered
+    // by Abeeha without anyone having to remember to change it. The POST carries a KEY, never an
+    // address, and lxapi/reply.js applies the same default when no key arrives.
+    var RSEND=[["support","LumosCore Support","support@lumoscore.com"],
+               ["raza","Raza Rizvi","raza@lumoscore.com"],
+               ["abeeha","Abeeha Zaidi","abeeha@lumoscore.com"]];
+    var rkm=/([a-z0-9._%+-]+)@/.exec(String(m.to_addr||"").toLowerCase());
+    var rdef=(function(l){ for(var i=0;i<RSEND.length;i++){ if(RSEND[i][0]===l) return RSEND[i][0]; } return "support"; })(rkm?rkm[1]:"");
     var box=document.createElement("div"); box.className="lxm-reply";
-    box.innerHTML="<textarea class='lxm-ta' id='lxmReply' rows='5' placeholder='Write your reply…'></textarea>"
-      +"<div class='lxm-reply-bar'><span class='lxm-reply-hint' id='lxmReplyHint'>Sends to "+esc(m.from_addr)+" · replies come back to support@lumoscore.com</span>"
+    box.innerHTML="<div class='lxm-reped'></div>"
+      +"<div class='lxm-reply-bar'><span class='lxm-reply-hint' id='lxmReplyHint'></span>"
+      +"<span class='lxm-reply-from'><label class='lxm-reply-fl' for='lxmFrom'>From</label>"
+      +"<select class='lxm-reply-sel' id='lxmFrom'>"
+      +RSEND.map(function(s){ return "<option value='"+s[0]+"'"+(s[0]===rdef?" selected":"")+">"+esc(s[1])+" — "+esc(s[2])+"</option>"; }).join("")
+      +"</select></span>"
       +"<button class='adm-btn primary' type='button' id='lxmSend'>Send reply</button></div>";
     pane.appendChild(box);
+    var rFrom=box.querySelector("#lxmFrom");
+    var hintEl=box.querySelector("#lxmReplyHint");
+    // The same editor the compose box uses. A reply is the mail a customer is most likely to read,
+    // so it gets the same bold, lists and links -- and, being one function, it cannot drift from the
+    // compose box's idea of what a link may be.
+    var red=lxnEditor(box.querySelector(".lxm-reped"),"Write your reply…",function(s){ hintEl.textContent=s; });
+    function rPaint(){ var s=RSEND[0]; for(var i=0;i<RSEND.length;i++){ if(RSEND[i][0]===rFrom.value) s=RSEND[i]; }
+      hintEl.textContent="Sends to "+m.from_addr+" · comes back to "+s[2]; }
+    rPaint(); rFrom.addEventListener("change",rPaint);
     box.querySelector("#lxmSend").addEventListener("click",function(){
-      var ta=box.querySelector("#lxmReply"), btn=box.querySelector("#lxmSend"), hint=box.querySelector("#lxmReplyHint");
-      var text=(ta.value||"").trim();
-      if(!text){ hint.textContent="Write something first."; return; }
+      var btn=box.querySelector("#lxmSend"), hint=hintEl;
+      var text=red.text();
+      if(!text){ hint.textContent="Write something first."; red.focus(); return; }
       btn.disabled=true; btn.textContent="Sending…";
       fetch("/lxapi/reply",{method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({id:m.id,body:text})})
+        body:JSON.stringify({id:m.id,body:text,html:red.html(),from:rFrom.value})})
         .then(function(r){ return r.json(); })
         .then(function(d){ btn.disabled=false; btn.textContent="Send reply";
           if(!d||d.error){ hint.textContent="Not sent: "+((d&&(d.message||d.error))||"unknown error"); return; }
-          ta.value=""; hint.textContent="Sent to "+d.to+"."; open(m.id); })
+          red.clear(); hint.textContent="Sent to "+d.to+"."; open(m.id); })
         .catch(function(e){ btn.disabled=false; btn.textContent="Send reply"; hint.textContent="Not sent: "+e.message; });
     });
     var acts=document.createElement("div"); acts.className="lxm-acts";

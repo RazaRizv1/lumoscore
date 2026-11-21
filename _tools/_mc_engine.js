@@ -74,7 +74,7 @@ var LOCAL_CHAIN='stellar';
 // connect, which is the step they actually need. chainFromPath benefits from the same omission: a bare
 // /dashboard genuinely does not name a chain any more, so it correctly defers to the saved one.
 var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewards:'/rewards/xrpl',
-  lumos:'/lumos/xrpl',mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl',
+  lumos:'/lumos/xrpl',mcp:'/mcp','list-your-token':'/list-your-token/xrpl',
   launchpad:'/launchpad/xrpl'};
 var TO_STELLAR={trade:'/trade/stellar',pools:'/pools/stellar',bridge:'/bridge/stellar',
   rewards:'/rewards/stellar',lumos:'/lumos/stellar',mcp:'/mcp','list-your-token':'/list-your-token',
@@ -152,6 +152,10 @@ function chainFromPath(){
   if(/\/xrpl(\/|$)/.test(p))return 'xrpl';
   if(/\/stellar(\/|$)/.test(p))return 'stellar';
   var m=p.match(/^\/([a-z-]+)/);
+  // /mcp IS ONE PAGE FOR EVERY NETWORK (RAZA 2026-11-15: on /mcp with a NEAR wallet, every side-menu link opened the
+  // Stellar page). It sits in TO_STELLAR only as a switch target, so it must not claim the page for Stellar: say
+  // nothing, and the saved network decides, as it does for any url that names no chain.
+  if(m&&m[1]==='mcp')return null;
   return (m&&TO_STELLAR[m[1]])?'stellar':null;
 }
 // RE-SKIN ONLY. What boot needs, and all it ever needed: adopt a chain for rendering without moving the
@@ -318,7 +322,7 @@ function boot(){
   // To change networks the user disconnects and reconnects on another network. We still re-skin the
   // app to whichever network was connected (via the saved lumos.chain), but show no topbar dropdown.
   startObserver();
-  var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){}
+  var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){} if(!saved){try{var lxWalNet=localStorage.getItem("lumos.network");if(lxWalNet&&CHAINS[lxWalNet])saved=lxWalNet;}catch(_){}}
   // Nothing saved means a visitor who has never connected — and they were being shown the raw Aptos
   // base: "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
   // a product that only runs on Stellar. The base is an artefact of where these pages came from, never

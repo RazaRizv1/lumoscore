@@ -121,6 +121,26 @@ const JS = '<script id="lx-connectgate">' + `(function(){
     var SEL="#openCreatePool,.lx-cplink,button.summary-cta"
       + ",a[href^='/launchpad/review'],a[href^='/launchpad/confirm']"
       + "," + NAVSEL;
+    // THE HAND-OFF FROM AN XRPL PAGE. RAZA 2026-10-20 asked for the network popup on XRPL pages too,
+    // and said what picking Stellar there should do: "they will select stellar wallet, and then they
+    // connect and land to stellar dashboard. its straight forward."
+    //
+    // XRPL's connect layer cannot open this one — it has no business holding a G-address, and the two
+    // builds share lumos.address. So it navigates to the matching Stellar section with #connect, and
+    // this opens the picker on arrival. The hash is cleared first so a reload or a shared link does
+    // not reopen it.
+    try{
+      if(location.hash==="#connect"&&!connected()){
+        try{ history.replaceState(null,"",location.pathname+location.search); }catch(_){}
+        setTimeout(function(){
+          try{
+            sessionStorage.setItem("lumos.connDest","home");   // finish on the dashboard
+            if(window.lxwOpenWallet) window.lxwOpenWallet("stellar",location.href);
+          }catch(_){}
+        },400);
+      }
+    }catch(_){}
+
     window.addEventListener("click",function(e){
       var t=e.target; if(!t||!t.closest) return;
       var hit=t.closest(SEL);

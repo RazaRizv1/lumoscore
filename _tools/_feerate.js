@@ -85,6 +85,26 @@ const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;
 // a transaction of theirs lands; it drops the memoised account so the next read is genuinely fresh.
 +'window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
 +'if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};'
+// THE REVIEW MODAL'S OWN NUDGE, which asks nobody anything.
+//
+// RAZA 2026-10-19, holding 282,378 LUMOS: "its all working fine, except in review popup, its still
+// showing hold 250K lumos message but it shouldn't because i already hold more than that." His side
+// panel read "You qualify for 0.1% trading fees" and "Trading fee 0.1%" at the same moment.
+//
+// _feemodal.js hardcodes `<div class="lx-rv-lumos">Hold 250,000 LUMOS...` into the review dialog with
+// no holder test of any kind, so it shows for everyone regardless of tier. Exactly the same defect
+// was found and fixed on the XRPL side on 2026-10-18; this is that fix brought across, since the two
+// builds share the design and therefore share the bug.
+//
+// Lives here rather than in _feemodal because this file OWNS the tier and already publishes it. The
+// modal is built on demand long after the tier is known, so the observer catches it whenever it
+// appears. It only ever HIDES a promo -- it cannot invent a discount and never touches the fee figure.
++'function applyNudge(){var q=Number(window.__lxFeeRate)<=0.001;'
++'var n=document.querySelectorAll(".lx-rv-lumos");'
++'for(var i=0;i<n.length;i++){n[i].style.display=q?"none":"";}}'
++'window.addEventListener("lx:feetier",applyNudge);'
++'try{new MutationObserver(applyNudge).observe(document.documentElement,{childList:true,subtree:true});}catch(_){}'
++'applyNudge();'
 +'resolve();'
 +'window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});'
 +'setTimeout(resolve,1200);setTimeout(resolve,4000);'                          // wallet connects after load

@@ -488,7 +488,12 @@ function runtime() {
     }
     var hint = step.querySelector('.lx-s2hint');
     if (hint) {
-      var t = d.name ? 'Make sure the address is on ' + d.name : 'Make sure the address is on the destination network';
+      // Hedera is told BEFORE it is refused. Its accounts have two forms and only the EVM one can
+      // receive a bridge transfer, so the hint names it up front rather than letting someone paste a
+      // perfectly real 0.0.x id and be told it is invalid (RAZA 2026-10-23).
+      var t = (d.name === 'Hedera')
+        ? 'Enter the Hedera EVM address (0x…), not the 0.0.x account id'
+        : (d.name ? 'Make sure the address is on ' + d.name : 'Make sure the address is on the destination network');
       if (hint.textContent !== t) hint.textContent = t;
     }
     var input = step.querySelector('.br-addr-in');

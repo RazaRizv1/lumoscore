@@ -539,7 +539,7 @@ var A={
         if(f&&(f.requestAccess||f.getAddress||f.getPublicKey)){
           return Promise.resolve(f.setAllowed?f.setAllowed():null).catch(function(){}).then(function(){
             return f.requestAccess?f.requestAccess():(f.getAddress?f.getAddress():f.getPublicKey());
-          }).then(function(r){if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error);return r&&(r.address||r.publicKey||r);});
+          }).then(function(r){if(r&&r.error)throw new Error((r.error&&(r.error.message||r.error.description||r.error.reason))||(typeof r.error==="string"?r.error:"")||"Cancelled by the user.");return r&&(r.address||r.publicKey||r);});
         }
         return loadMod('https://esm.sh/@stellar/freighter-api@6').then(function(m){
           var api=m.default||{};
@@ -549,16 +549,16 @@ var A={
             if(c&&c.isConnected===false)throw notInstalled('Freighter');
             return Promise.resolve(setAllowed?setAllowed():null).catch(function(){});
           }).then(function(){return requestAccess();}).then(function(r){
-            if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error);
+            if(r&&r.error)throw new Error((r.error&&(r.error.message||r.error.description||r.error.reason))||(typeof r.error==="string"?r.error:"")||"Cancelled by the user.");
             var a=r&&(r.address||r.publicKey);if(a)return a;
-            if(getAddress)return getAddress().then(function(g){if(g&&g.error)throw new Error((g.error&&g.error.message)||g.error);return g&&(g.address||g);});
+            if(getAddress)return getAddress().then(function(g){if(g&&g.error)throw new Error((g.error&&(g.error.message||g.error.description||g.error.reason))||(typeof g.error==="string"?g.error:"")||"Cancelled by the user.");return g&&(g.address||g);});
             throw notInstalled('Freighter');
           });
         });
       });
     },
     rabet:function(){return waitFor(function(){return window.rabet;},1800).then(function(r){if(!r)throw notInstalled('Rabet');
-      return Promise.resolve(r.connect()).then(function(x){if(x&&x.error)throw new Error((x.error&&x.error.message)||x.error);return x&&(x.publicKey||x.address||x);});});},
+      return Promise.resolve(r.connect()).then(function(x){if(x&&x.error)throw new Error((x.error&&(x.error.message||x.error.description||x.error.reason))||(typeof x.error==="string"?x.error:"")||"Cancelled by the user.");return x&&(x.publicKey||x.address||x);});});},
     xbull:function(){return waitFor(function(){return window.xBullSDK;},1800).then(function(x){if(!x)throw notInstalled('xBull');
       return Promise.resolve(x.connect?x.connect({canRequestPublicKey:true,canRequestSign:true}):null).catch(function(){}).then(function(){return x.getPublicKey?x.getPublicKey():null;}).then(function(pk){return pk&&(pk.publicKey||pk);});});},
     // Albedo is a web wallet (no extension): its SDK opens a popup to albedo.link and returns the pubkey.

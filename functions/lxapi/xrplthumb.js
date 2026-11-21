@@ -27,6 +27,35 @@ const BRK_TTL = 8;
 // md5('rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha_4C554D4F53' + 30 zeros) — LUMOS, under the same scheme as every other token.
 const LUMOS_ID = '5c4fb27e6ea19e0bde8900d2c0a7b177';
 
+// LOGOS WE SERVE OURSELVES, BECAUSE THE UPSTREAM HOLDS THE WRONG ARTWORK FOR THEM.
+//
+// RAZA 2026-10-16, on FLR ("the logo is incorrect") and SHX ("the logo shown is incorrect"). The
+// instinct is that we are asking for the wrong token — that is what a wrong logo usually means on
+// this ledger, where a ticker is not an identity. It is not what happened here. Both ids were
+// checked against xrpl.to's own `m` field for those exact issuers and match character for
+// character:
+//
+//   FLR  rcxJwVnftZzXqyH9YheB8TgeiZUhNo1Eu (GateHub)       bf1d3327125323e992c2fefcbf19a905
+//   SHX  rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw (Axelar Bridge) 9b4ddc2e62f736881eef8f9f02812dbc
+//
+// So we are correctly asking "give me GateHub's FLR" and being handed a navy disc with an F on it,
+// and "give me Axelar's SHX" and being handed a blue triangle. The artwork on their side is simply
+// wrong, and nothing we can derive fixes that. Neither issuer offers a way out either: GateHub's
+// FLR account sets no Domain on the ledger, and stronghold.co serves no xrp-ledger.toml, so the
+// toml fallback further down has nothing to read.
+//
+// Hence a table. It is deliberately a LAST resort to add to — every entry is a logo that stops
+// tracking its issuer, so a token that later gets its artwork fixed upstream keeps showing ours
+// until someone deletes the line. Prefer fixing it at the source; use this when there is no source.
+//
+// Keyed by id rather than issuer+currency because that is what this endpoint always has: the wallet
+// derives the id from a holding and never names the issuer at all.
+const OVERRIDE = {
+  [LUMOS_ID]: '/assets/tokens/lumos.png',
+  bf1d3327125323e992c2fefcbf19a905: '/assets/tokens/xrpl/FLR-rcxJwVnftZzXqyH9YheB8TgeiZUhNo1Eu.png',
+  '9b4ddc2e62f736881eef8f9f02812dbc': '/assets/tokens/xrpl/SHX-rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw.png',
+};
+
 // Only the sizes xrpl.to actually serves. Anything else is rejected rather than passed through,
 // so this cannot be turned into an open image proxy for arbitrary upstream paths.
 const SIZES = [16, 32, 40, 48, 64, 96, 128];
@@ -37,7 +66,10 @@ const SIZES = [16, 32, 40, 48, 64, 96, 128];
 // Bumped with the thin-image fallback: SOLO's near-black 150-byte webp is already sitting in the
 // edge cache for a week under v2, and a fix nobody can see because the bad answer is cached is not
 // a fix.
-const CACHEV = '5';
+// Bumped with the OVERRIDE table: FLR's navy disc and SHX's blue triangle are sitting in every colo
+// that has served them, for a week, marked immutable. Shipping the override without a new key would
+// change nothing anyone can see — same class of non-fix as the two above.
+const CACHEV = '6';
 
 // The eight-byte PNG signature. Cheap, exact, and the one thing that would have caught the Access page.
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -106,8 +138,8 @@ export async function onRequest(context) {
   //
   // AND THE BYTES ARE CHECKED BEFORE THEY ARE CALLED A PNG. The signature check is the actual lesson here: whatever a
   // subrequest hands back, this must never label it `image/png` on trust. A 404 at least lets the page draw a letter.
-  if (id === LUMOS_ID) {
-    const href = url.origin + '/assets/tokens/lumos.png';
+  if (Object.prototype.hasOwnProperty.call(OVERRIDE, id)) {
+    const href = url.origin + OVERRIDE[id];
     const want = new Request(href, { headers: { accept: 'image/png,image/*' } });
     let own = null, src = 'assets';
     if (env && env.ASSETS && typeof env.ASSETS.fetch === 'function') {

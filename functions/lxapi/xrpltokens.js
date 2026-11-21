@@ -12,6 +12,11 @@
 // which proxies the image server-side -- xrpl.to's thumbnail endpoint needs the API key, and that
 // key must never reach the browser. Initials remain the fallback when a token has no logo.
 
+// Shared with xrplsearch and xrpltoken, so a token cannot be ticked on one surface and plain on
+// another — which is worse than either answer on its own.
+import { vouched, hidden, issuerName, issuerDomain, tickerOf, currencyOf, vouchedTokens } from './_unvouched.js';
+import { issuerDomains } from './_issuerdomain.js';
+
 const UP = 'https://api.xrpl.to/api';
 const TTL = 120;
 
@@ -63,11 +68,15 @@ export async function onRequest(context) {
     for (const t of ((bulk && bulk.tokens) || [])) {
       const p = Number(t.exch);
       if (!isFinite(p)) continue;
+      // Dropped before anything else reads it. This endpoint IS the roster -- the Trade table, the
+      // asset page's curated test, the wallet and the swap pickers all come through here -- so one
+      // skip here removes the token from all of them at once.
+      if (hidden(t.issuer, t.currency)) continue;
       const mm = Array.isArray(t.maxMin24h) ? t.maxMin24h : [];
       rows.push({
         c: t.currency, i: t.issuer,
         n: String(t.name || ''),
-        u: String(t.user || ''),               // the issuer's display name, e.g. "Fuzzybear"
+        u: issuerName(t.issuer, t.currency, t.user),  // the issuer's display name, e.g. "Fuzzybear"
         p: p,                                  // price in XRP
         d: num(t.pro24h), w: num(t.pro7d),
         v: num(t.vol24hxrp), t: num(t.tvl),
@@ -75,10 +84,94 @@ export async function onRequest(context) {
         m: String(t.md5 || ''),               // logo id; the page fetches it via /lxapi/xrplthumb
         hi: num(mm[0]), lo: num(mm[1]),
         h: num(t.holders),
-        vf: t.verified ? 1 : 0,
+        // MEMBERSHIP OF THIS LIST IS ITSELF THE VOUCH, hence `1` rather than `t.verified`.
+        //
+        // This endpoint IS the curated roster — the top of the XRP Ledger market by volume, which is
+        // what the Trade table lists and what the asset page, the wallet and the search panel all
+        // test against. The tick on those surfaces has meant "LumosCore lists this" since 2026-10-02,
+        // and the asset page already implemented exactly that by testing membership here.
+        //
+        // The Trade TABLE did not: it read this `vf`, which is the upstream's gateway flag and is 0
+        // for most of the roster, so the same token was ticked on the asset page and bare in the
+        // table one click away. RAZA, 2026-10-17: "Why arent the curated assets on XRPL carrying
+        // verification icon on Trade-main page. For eg phnix, bchamp, army, drop". Both surfaces now
+        // read one field decided in one place.
+        //
+        // vouched() still has the final say, so the deny list can veto a row that is in the roster --
+        // which is the whole point of its one entry: GateHub's USDC ranks ninth and must not be
+        // ticked anywhere ("Remove curated and verification icon from this usdc because its not the
+        // real by circle").
+        //
+        // NOT the Mints view: those rows are built in the browser from the launchpad, never from
+        // here, and carry vf:0 of their own. The 2026-10-11 rule ("A MINT IS NOT CURATED") is
+        // untouched by this.
+        vf: vouched(t.issuer, t.currency, 1),
         o: String(t.origin || ''),
       });
       if (rows.length >= n) break;
+    }
+
+    // VOUCHED MEANS LISTED, not merely ticked. NO BACKTICKS IN THIS COMMENT.
+    //
+    // RAZA 2026-10-20: "ATOM is a curated asset but its not in the assets list on Trade-main page."
+    // Measured: the roster is the top hundred by 24h volume, its lowest member trades 424.56 XRP a
+    // day, and ATOM trades 0.22 — about 1,900x below the cut, so no ranking rule can ever reach it.
+    // The allow list in _unvouched.js gave it a tick on every surface while this endpoint, which IS
+    // the roster, still answered purely by volume. One token ticked everywhere and listed nowhere.
+    //
+    // Appended HERE rather than pinned in the page, for the reason stated at the top of this file:
+    // the Trade table, the asset page's curated test, the wallet and the swap pickers all read this
+    // response, and a token pinned into one of them would be missing from the other three. It also
+    // means the next entry added to ALLOW appears everywhere with no second edit — which is the
+    // mismatch that produced this report.
+    //
+    // AFTER the n cap on purpose. These rows are not competing for a ranked seat; they are listed
+    // because we vouch for them, so a caller asking for the top 50 gets 50 ranked rows plus the
+    // vouched ones. They are appended last, which is also where they sort once the page orders by
+    // volume — honest about how little they trade.
+    //
+    // Degrades to absence: each lookup is independent, failures are swallowed, and the whole group
+    // is given one ceiling so a slow upstream delays the market table by at most that much rather
+    // than by one timeout per token. A vouched token that cannot be fetched is simply not listed
+    // this minute, which is what the page showed before this existed.
+    const have = new Set(rows.map((r) => r.i + '|' + tickerOf(r.c)));
+    const missing = vouchedTokens().filter((v) => !have.has(v.issuer + '|' + v.ticker)
+      && !hidden(v.issuer, currencyOf(v.ticker)));
+    //
+    // Each lookup races the ONE deadline and returns a row or null; nothing writes to rows from
+    // inside a promise. A fetch that lands after the deadline has already lost its race and is
+    // discarded — if it pushed instead, it could mutate the array between building the response and
+    // serialising it, and two visitors a second apart would get different rows from one cache fill.
+    if (missing.length) {
+      const deadline = sleep(2500).then(() => null);
+      const fetchOne = async (v) => {
+        try {
+          const one = await upstream('/token/' + encodeURIComponent(v.issuer + '-' + currencyOf(v.ticker)), env);
+          const t = one && one.token;
+          if (!t) return null;
+          const p = Number(t.exch);
+          if (!isFinite(p)) return null;
+          const mm = Array.isArray(t.maxMin24h) ? t.maxMin24h : [];
+          return ({
+            c: t.currency, i: t.issuer,
+            n: String(t.name || v.ticker),
+            u: issuerName(t.issuer, t.currency, t.user),
+            p: p,
+            d: num(t.pro24h), w: num(t.pro7d),
+            v: num(t.vol24hxrp), t: num(t.tvl),
+            x: num(t.vol24htx),
+            m: String(t.md5 || ''),
+            hi: num(mm[0]), lo: num(mm[1]),
+            h: num(t.holders),
+            // Reads the same decision as every other row. It is in ALLOW by definition of being
+            // here, so this is 1 — but it is asked, not asserted, so a later DENY entry would win.
+            vf: vouched(t.issuer, t.currency, 1),
+            o: String(t.origin || ''),
+          });
+        } catch (e) { return null; }            // not listed this minute
+      };
+      const got = await Promise.all(missing.map((v) => Promise.race([fetchOne(v), deadline])));
+      for (const r of got) if (r) rows.push(r);
     }
 
     // Same stablecoin guard as xrplprices: USD here is derived from the XRP rate, and an inverted
@@ -138,7 +231,36 @@ export async function onRequest(context) {
     return res;
   }
 
-  const res = json(out, TTL);
+  // THE ISSUER'S HOME DOMAIN, READ FROM THE LEDGER, for the line under each asset in the market table
+  // (RAZA 2026-10-17: "Still shown the company/project name instead of the homedomain. For eg: it
+  // should have been circle.com instead or just circle").
+  //
+  // NOT xrpl.to's `domain` field, even though it sits right there in the same payload and would have
+  // been one line. That field is supplied by whoever listed the token, so a token can claim anything —
+  // the four ATOMs claimed x.com and cosmos.github.io — which is the exact complaint _issuerdomain.js
+  // was written for on 2026-10-02. The AccountRoot Domain is set by the issuing account itself, in a
+  // transaction it signed, and that is what this resolves.
+  //
+  // Same call the search panel makes, so the two agree and share the per-issuer cache: a warm issuer
+  // costs nothing, and the deadline means a cold one degrades to no domain rather than a slow table.
+  let domReached = true;
+  try {
+    // 3000ms, NOT the 1200ms default. That default was chosen for the search box, where the domain is
+    // a badge beside a result that must not wait for it; here the domain is the second line of every
+    // row in the market table and a blank one is the bug RAZA reported twice. The lookups run in
+    // parallel, so this is one 3s ceiling for all 99 issuers, not 99 of them — and a warm per-issuer
+    // cache returns in milliseconds, so only a cold colo ever approaches it.
+    const map = await issuerDomains(out.rows.map((r) => r.i), url.origin, context, null, 3000);
+    // EVERY row is overwritten, the unresolved ones included — keeping a claimed domain for those
+    // would make a row say "x.com" or nothing depending on how fast the ledger answered.
+    for (const r of out.rows) r.dom = issuerDomain(r.i, r.c, map[r.i] || '');
+    domReached = out.rows.every((r) => Object.prototype.hasOwnProperty.call(map, r.i));
+  } catch (e) { for (const r of out.rows) r.dom = issuerDomain(r.i, r.c, ''); }
+
+  // A cold run that could not reach every issuer is cached briefly, so the first visitor's slow ledger
+  // call does not become everyone else's answer while the per-issuer cache warms.
+  const res = json(out, domReached ? TTL : 30);
+  res.headers.set('x-lx-upstream', 'live');
   context.waitUntil(cache.put(key, res.clone()));
   // …and the copy that outlives the upstream's daily budget.
   context.waitUntil(cache.put(lastKey(url, n), json({ ...out, cachedAt: Date.now() }, 86400)));

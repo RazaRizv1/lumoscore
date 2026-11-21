@@ -54,7 +54,13 @@ const SCRIPT='<script id="lx-feetier">(function(){'
 +'+\'<div class="lx-ft-p"><div class="lx-ft-pf" style="width:\'+pct+\'%"></div></div>\''
 +'+\'<div class="lx-ft-foot"><div class="lx-ft-s">\'+foot+\'</div>\''
 +'+\'<button class="lx-ft-buy" type="button">Buy LUMOS'+ARROW+'</button></div>\';}'
-+'function boot(){var panes=document.querySelectorAll(".dxa-pane-swap,.dxa-pane-limit");if(!panes.length)return false;'
+// SWAP ONLY. This card reads "Hold 250,000 LUMOS to lower your fee to 0.1%", which is a promise about
+// a fee the limit pane does not charge -- Stellar limit orders are free, placed as a native
+// manageSellOffer with no LumosCore operation in the path to attach anything to (RAZA 2026-11-01).
+// Sitting under "Place Limit Order" it read as the rate that order would pay. The sibling claims in
+// the same pane -- the "Trading fee 0.2%" row and the "50% off trading fees" banner -- are dropped in
+// _feemodal.js, where that function appends both.
++'function boot(){var panes=document.querySelectorAll(".dxa-pane-swap");if(!panes.length)return false;'
 +'var b=bal(),qualifies=(b!==null&&b>=THRESH);'
 +'[].forEach.call(panes,function(p){var ex=p.querySelector(".lx-feetier");'
 +'if(qualifies){if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);return;}'   // already on the 0.1% tier -> no nudge

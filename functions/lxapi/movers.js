@@ -42,6 +42,35 @@ const KEY = new Request('https://lumoscore.internal/lxapi/movers', { method: 'GE
 // damage control on a hang, not a repair of the feature. The self-fetch is the thing to rethink.
 const SUB_TIMEOUT_MS = 5000;
 
+// THE SELF-FETCH IS GONE FOR THE PRICING STEP, which is what the note above said to rethink.
+//
+// Measured on production 2026-10-16: /lxapi/dexassets answers in 0.17s and /lxapi/pools in 0.08s when
+// called from OUTSIDE, while this Function asking its own origin for the same thing never came back
+// inside 5s. The endpoint returned 200 with `candidates: 128, qualified: 0` in 5.33s — exactly the
+// sub-timeout — so the pools page-walk was getting through and all eight pricing calls were timing
+// out together. One self-fetch survives; eight at once contend with each other.
+//
+// Calling dexassets' handler directly removes the hop entirely: same code, same cache, no network.
+// The cost is that its Horizon subrequests now land on THIS invocation's budget instead of eight
+// separate ones, which is the whole reason the fan-out existed. dexassets spends 2 per asset, so the
+// candidate ceiling has to come down to fit — see MAX_CAND. Fewer assets ranked honestly beats 128
+// candidates and an empty board.
+import { onRequestGet as dexAssets } from './dexassets.js';
+
+// The free plan allows 50 subrequests per invocation. The pool walk takes POOL_PAGES (4), dexassets
+// takes 2 per asset, and the margin is deliberate: going over does not degrade, it throws.
+const SUB_BUDGET = 50;
+const MAX_INPROC = Math.floor((SUB_BUDGET - POOL_PAGES - 6) / 2);   // 20 assets
+
+async function priceInProcess(origin, keys) {
+  const url = origin + '/lxapi/dexassets?a=' + encodeURIComponent(keys.join(','));
+  try {
+    const res = await dexAssets({ request: new Request(url) });
+    if (!res || !res.ok) return null;
+    return await res.json();
+  } catch (_) { return null; }
+}
+
 async function j(origin, path) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), SUB_TIMEOUT_MS);
@@ -105,13 +134,16 @@ export async function onRequestGet(ctx) {
     // 2. Price them, and read the holder count from the same answer.
     // Same again, and simpler: the batches are disjoint key groups, so nothing here was ever
     // sequential by nature -- only by how it was written. MAX_CAND 128 over BATCH 16 caps this at 8.
-    const keys = [...cand.keys()];
+    // Ranked TVL-descending by the walk above, so trimming to the budget keeps the DEEPEST pools —
+    // which is the right end to keep: a mover on $40k of liquidity is a fact, one on $500 is noise.
+    const keys = [...cand.keys()].slice(0, MAX_INPROC);
     const out = [];
     const groups = [];
     for (let i = 0; i < keys.length; i += BATCH) groups.push(keys.slice(i, i + BATCH));
-    const answers = await Promise.all(
-      groups.map((grp) => j(origin, '/lxapi/dexassets?a=' + encodeURIComponent(grp.join(',')))),
-    );
+    // SEQUENTIAL, not Promise.all. These are in-process now, so they share one subrequest budget and
+    // one CPU slice; firing them together buys nothing and makes the peak worse.
+    const answers = [];
+    for (const grp of groups) answers.push(await priceInProcess(origin, grp));
     for (let gi = 0; gi < groups.length; gi++) {
       const grp = groups[gi], d = answers[gi];
       if (!d || !d.a) continue;

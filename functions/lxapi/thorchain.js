@@ -113,19 +113,66 @@ async function pools() {
   return POOLS;
 }
 
+// WHICH CHAINS ARE PAUSED RIGHT NOW. A pool can be `status: "Available"` and still refuse every swap:
+// trading is halted per chain through mimir, and the pool list says nothing about it. Measured
+// 2026-10-23 -- SOL.SOL, GAIA.ATOM and ZEC.ZEC were all Available, and every quote to them came back
+// "failed to simulate swap: ... trading is halted, can't process swap", while BTC quoted fine.
+//
+// The bridge was therefore OFFERING those destinations by THORChain, and only discovered the halt when
+// a quote ran -- which, on this route, needs a destination address, because THORChain builds the memo.
+// So the route looked fine, was chosen, and withdrew itself the moment an address was pasted. The halt
+// is knowable before any of that, from one call, and it belongs beside the pools.
+//
+// /thorchain/inbound_addresses carries all three forms in one read: `halted` (the chain's own
+// observation is paused), `chain_trading_paused` and `global_trading_paused`.
+//
+// A FAILED READ IS NOT "NOTHING IS HALTED". The key is omitted entirely when this call fails, never
+// sent as an empty list -- an empty list means "asked, and none are", and the client refuses a route
+// only on that. One value must not mean both.
+async function halts() {
+  const j = await node('/thorchain/inbound_addresses');
+  if (!Array.isArray(j)) throw new Error('inbound_addresses: not a list');
+  const out = [];
+  for (const c of j) {
+    if (!c || typeof c.chain !== 'string') continue;
+    if (c.halted || c.chain_trading_paused || c.global_trading_paused) out.push(c.chain);
+  }
+  return out;
+}
+
 const ASSET_RE = /^[A-Za-z0-9]{2,12}\.[A-Za-z0-9/\-_.]{1,64}$/;
 const AMT_RE = /^[0-9]{1,20}$/;
 
-export async function onRequestGet({ request }) {
+// STORED BY THE CACHE API, not by the s-maxage header — see the long note in xrplaxelar.js. A Pages
+// Function response answers `cf-cache-status: DYNAMIC` however it is labelled, so this TTL had never
+// been honoured and every visitor paid for the upstream read. Per-colo, and only a 200 is stored.
+async function cachedPools(request, waitUntil) {
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).origin + '/lxapi/thorchain?op=pools');
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const list = await pools();
+  // Both reads together, and the halt one is allowed to fail on its own: pools is what this endpoint
+  // exists for, and losing the route entirely because a second call timed out would be a worse answer
+  // than the one the client already copes with.
+  const halted = await halts().catch(() => null);
+  // XRP has to be swappable in its own right or this route cannot start from here at all -- and a
+  // halted XRP chain means exactly that, whatever the pool says, so it folds into the same flag the
+  // client already gates the whole route on.
+  const xrp = list.some((p) => p.asset === 'XRP.XRP')
+    && !(halted && halted.indexOf('XRP') >= 0);
+  const body = { ok: 1, e8: THOR_E8, xrpTradeable: xrp, pools: list };
+  if (halted) body.halted = halted;
+  const res = json(body, 200, 300);
+  try { const put = cache.put(key, res.clone()); if (waitUntil) waitUntil(put); else await put; } catch (e) {}
+  return res;
+}
+
+export async function onRequestGet({ request, waitUntil }) {
   const q = new URL(request.url).searchParams;
   const op = q.get('op');
   try {
-    if (op === 'pools') {
-      const list = await pools();
-      // XRP has to be swappable in its own right or this route cannot start from here at all.
-      const xrp = list.some((p) => p.asset === 'XRP.XRP');
-      return json({ ok: 1, e8: THOR_E8, xrpTradeable: xrp, pools: list }, 200, 300);
-    }
+    if (op === 'pools') return await cachedPools(request, waitUntil);
     if (op === 'quote') {
       const to = String(q.get('to') || '');
       const amount = String(q.get('amount') || '');

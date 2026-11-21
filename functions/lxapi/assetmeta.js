@@ -131,11 +131,27 @@ async function stampVerified(kv, asset) {
 // No handshake is needed to repair this: "LumosCore lists this" is a decision, not a network fact, so
 // the record can be rebuilt from the list alone. Everything already carrying a tick is left untouched,
 // so a handshake or grandfathered record is never downgraded to our own word.
-function reconcileCurated(list, vmap) {
+// A LAUNCHPAD MINT NEVER EARNS A TICK BY BEING CURATED (RAZA 2026-11-07, on LFQP: "you cant just get a
+// curated tick automatically just because you're minted on LumosCore").
+//
+// The rule below -- curated means ticked -- was granting one anyway. Curating a token is what makes it
+// tradeable, so every mint we put on Trade had a tick handed to it on the next read, with the stored
+// reason "Ticked because LumosCore curates it." The mint check further down in stampVerified was
+// already refusing these (21 mints sit there today with v:0, correctly unticked); this path quietly
+// overrode it the moment one of them was curated.
+//
+// `mints` is the launchpad's own list, the same one the panel keeps apart from the curated list, so
+// this needs no new state and no domain sniffing. It only stops a tick being CREATED: an asset that
+// already carries one is skipped a line above and keeps it, which is why TDT and LIBERATOR -- mints
+// RAZA ticked on purpose -- are untouched by this. Removing a tick stays an admin action
+// (`override:false`), and once removed it no longer comes back.
+function reconcileCurated(list, vmap, mints) {
+  const minted = new Set(Array.isArray(mints) ? mints : []);
   const fixed = [];
   for (const a of list) {
     const r = vmap[a];
     if (r && r.v) continue;
+    if (minted.has(a)) continue;
     vmap[a] = {
       v: 1, s: 'curated', d: (r && r.d) || '', t: Date.now(),
       why: 'Ticked because LumosCore curates it.'
@@ -203,15 +219,16 @@ export async function onRequestGet({ request, env }) {
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
   let verified = {};
   try { verified = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
-  // Applied to the ANSWER, not to the store: a read must not write, and an unauthenticated caller
-  // reaches this handler. It only means the panel never shows a curated asset as unticked while the
-  // stored record catches up -- the PUT above is what persists the repair.
-  reconcileCurated(Array.isArray(list) ? list : [], verified);
   // Two different things, kept apart. CURATED is what LumosCore chooses to list -- the same set Trade
   // main shows. MINTS are the tokens issued through our own launchpad: ours by definition, not a
   // curation decision, and folding them into the curated list made it look like we had picked 55.
+  // Read BEFORE the reconcile below, which needs it to leave mints alone.
   let mints = [];
   try { mints = (await kv.get(MINTS, 'json')) || []; } catch (_) {}
+  // Applied to the ANSWER, not to the store: a read must not write, and an unauthenticated caller
+  // reaches this handler. It only means the panel never shows a curated asset as unticked while the
+  // stored record catches up -- the PUT above is what persists the repair.
+  reconcileCurated(Array.isArray(list) ? list : [], verified, mints);
   // What each mint is CALLED, alongside the bare ids. `mints` is a list of "CODE-ISSUER" strings, which
   // is enough to know a token exists and nothing else -- so search could not render a row for one even
   // once it knew about it, and a freshly minted token was unfindable by the name its minter gave it.
@@ -227,6 +244,39 @@ export async function onRequestGet({ request, env }) {
       }
     }
   } catch (_) { mintmeta = {}; }
+  if (!Array.isArray(mints)) mints = [];
+  // THE XRP LEDGER MINTS, which lived under a different key and so were invisible here.
+  //
+  // The launchpad writes every XRPL mint to `mintmeta:xrpl` (lxapi/xrplmintmeta.js) because that is
+  // the key the SEP-1 document reads. This list reads `assets:mints`. Two keys and no bridge between
+  // them, so six real tokens -- POP, BRO, RAC, NPENGU, LLAMA, XRLINK -- were published in the XRPL
+  // toml and absent from the panel whose job is to list what we have issued.
+  //
+  // They join the SAME list instead of getting a tab of their own, which is the shape asked for on
+  // 2026-10-07 ("Just integrate XRPL on admin. dont reinvent anything"). syncXrplToml() already
+  // writes an admin edit back into this key, so with this read the round trip finally closes --
+  // before it, that function could only ever update a token the panel could not show.
+  //
+  // The ids ARE the map's keys. A Set because an id in both stores must produce one row, not two,
+  // and ASSET_RE because a malformed key must not become a row at all.
+  try {
+    const live = (await kv.get(LIVE_XRPL, 'json')) || {};
+    if (live && typeof live === 'object' && !Array.isArray(live)) {
+      const seen = new Set(mints);
+      const add = [];
+      for (const k of Object.keys(live)) {
+        if (!ASSET_RE.test(k)) continue;
+        const v = live[k] || {};
+        mintmeta[k] = { name: v.name || '', image: v.image || '' };
+        if (!seen.has(k)) { add.push(k); seen.add(k); }
+      }
+      // A NEW ARRAY, not a push into the one KV handed back. Today kv.get re-parses on every call so
+      // mutating it is harmless, but that is a property of the caller, not of this code -- and a
+      // handler that quietly edits its input is the kind of thing that only misbehaves once something
+      // else starts sharing the value.
+      if (add.length) mints = mints.concat(add);
+    }
+  } catch (_) { /* the Stellar mints still answer; one store failing is not the whole list failing */ }
   // `list` stays an array of plain ids so existing callers keep working; the rest rides alongside.
   //
   // NEVER CACHED, and this is the bug that ate an asset. The admin panel reads this list and can then
@@ -266,7 +316,7 @@ export async function onRequestPut({ request, env }) {
     for (const k of Object.keys(vmap)) if (!keep.has(k)) { delete vmap[k]; dropped++; }
     // The other half of the same job. Pruning alone kept the map from over-ticking and did nothing
     // about under-ticking, which is how a curated asset could sit there with no mark.
-    const ticked = reconcileCurated(list, vmap);
+    const ticked = reconcileCurated(list, vmap, mints);
     if (dropped || ticked.length) await kv.put(VMAP, JSON.stringify(vmap));
 
     await audit(env, request, 'asset.list.replace', '', { count: list.length, unticked: dropped, ticked: ticked.length });

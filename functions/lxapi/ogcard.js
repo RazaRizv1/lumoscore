@@ -140,3 +140,21 @@ export async function onRequestGet(ctx) {
   // louder, more honest answer than an invented one.
   return new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=300' } });
 }
+
+// A CRAWLER THAT ASKS HEAD FIRST MUST NOT BE TOLD THE CARD DOES NOT EXIST.
+//
+// Pages routes each method to its own export, so with only onRequestGet here a HEAD fell past the
+// Function to the static-asset lookup and answered 404 with an HTML body. Measured on production
+// 2026-11-14: GET returned the 1200x630 png, HEAD on the very same url returned 404 text/html.
+//
+// Several link-preview crawlers check an image with HEAD before spending bandwidth on it, and a 404
+// there drops the picture while the title and description -- read from the page's own GET -- still
+// render. That is exactly the shape the bug was reported in: everything present except the image.
+//
+// The work is the same work, so the GET path runs and only the body is dropped. Returning its
+// Response unchanged would risk writing 170KB to a request that asked for none; replacing the body
+// explicitly cannot. Running the real path also warms both caches, so the GET that follows is a read.
+export async function onRequestHead(ctx) {
+  const res = await onRequestGet(ctx);
+  return new Response(null, { status: res.status, headers: res.headers });
+}

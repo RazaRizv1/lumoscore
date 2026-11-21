@@ -475,14 +475,48 @@ function restoreSel(){
 // A link with no scheme is the common case -- people paste "lumoscore.com". Left alone the browser
 // treats it as a relative path and the link goes nowhere. javascript: is refused outright: the body is
 // sanitised on save anyway, but an editor that lets you build one is a trap for whoever uses it next.
+// A PASTED POOL ADDRESS IS NOT A HOSTNAME (RAZA 2026-10-16: blog pool links "generated as incomplete
+// links"). The rule below used to end by prefixing "https://", which is right for "lumoscore.com"
+// and wrong for everything that has no dot in it. A pasted XRPL pool address looks identical to this
+// function — no scheme, no leading slash — so it became https://rJnv9wSoSECHzWsNXR7E74hi8mbKX9ZnDM,
+// a host that does not exist. Nine links in one published post, each one dead.
+//
+// Two changes. An XRPL address becomes the pool path it was meant to be, and anything else that
+// cannot possibly be a hostname is refused with a sentence instead of silently made broken.
+var XADDR=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 function tidyUrl(u){
   u=String(u||"").trim();
   if(!u)return "";
   var lc=u.toLowerCase();
   if(lc.indexOf("javascript:")===0||lc.indexOf("data:")===0)return "";
+  // A bare XRPL address, with or without someone having already typed a scheme in front of it.
+  // Pools, not accounts: that is what these links are for in practice, and /account/xrpl/<addr> is
+  // still reachable by typing the path, which the branch below leaves alone. Same choice, and the
+  // same reasoning, as _lib/bloglinks.js — keep the two together if either changes.
+  // DOUBLED BACKSLASHES, because this is emitted from a template literal and a single one does not
+  // survive it: \\/ here is what puts \/ in the page. Written the obvious way it emitted
+  // /^https?:///i — a regex that ends at the third slash — and the whole editor script stopped
+  // parsing. Same loss the stripById note in _xrpldexasset.js records from a shell heredoc.
+  var bare=u.replace(/^https?:\\/\\//i,"");
+  if(XADDR.test(bare))return "/pools/xrpl/id/"+bare;
   if(lc.indexOf("http://")===0||lc.indexOf("https://")===0)return u;
   if(u.charAt(0)==="/"||u.charAt(0)==="#")return u;          // site-relative and anchors are fine
   if(lc.indexOf("mailto:")===0)return u;
+  // No dot means no hostname. Prefixing https:// here cannot produce a working link, so say so
+  // rather than storing one that looks fine in the editor and is dead on the published page.
+  if(u.indexOf(".")<0){
+    // ONE LINE, NO ESCAPES, AND NO BACKTICKS. This block is emitted from inside a TEMPLATE LITERAL,
+    // which makes two things fatal that look harmless. A backslash-n written here is consumed at
+    // build time and lands in the page as a real newline, inside a single-quoted string, which is
+    // then unterminated. And a backtick in a COMMENT closes the literal that carries this whole
+    // script. Both happened here, in that order, within a minute of each other.
+    //
+    // A syntax check on this transform cannot see either one: the transform is valid JavaScript
+    // whichever way it goes. predeploy_check caught both by parsing the script that is actually
+    // emitted. Keeping the sentence on one line, in plain prose, removes the whole class.
+    try{ alert('"'+u+'" is not a web address. For a page on this site, start the link with "/" — for example /pools/xrpl or /trade/stellar.'); }catch(_){}
+    return "";
+  }
   return "https://"+u;
 }
 

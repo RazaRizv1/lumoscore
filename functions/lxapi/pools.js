@@ -41,11 +41,37 @@
 // attempt, so SDF is still the retry.
 const HOSTS = ['https://horizon.stellar.lobstr.co', 'https://horizon.stellar.org'];
 const USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-const XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
 const PAGE = 200;            // Horizon max per request
 const RANK_TTL = 900;        // 15 min — reserves move, but the ORDER of a 10k list barely does
 const UPSTREAM_TTL = 900;
-const VOL_PAGES = 6;         // stellar.expert overlay depth — see the volume note below
+const DAY = 86400000;
+// How far the 24h volume sweep reaches, and what it costs. See volWalk()/volSweep().
+const VOL_TOP = 100;         // ranked pools that get a figure; the rest report null and show a dash
+const VOL_PAR = 10;          // trades pages in flight at once — 20 starts drawing non-200s from Horizon
+const VOL_BATCH = 20;        // pools whose first page one request reads
+const VOL_DEEP_PAR = 15;     // pools whose walk one request continues...
+const VOL_DEEP_PAGES = 10;   // ...by this many pages each. Raised 2026-11-18 (5x4 -> 15x10): the paid plan allows 10,000
+                             // subrequests (the 50 cap this was sized for is gone) and LOBSTR reads a page in ~1s, so a
+                             // step is ~10-12s -- well inside the ~30s a background step may run. 15x10x2 = 300 worst case.
+// Pages one pool may ever cost before it is given up on. 16 was too low and it dashed three pools that
+// genuinely trade: measured 2026-11-10, XLM/MTL needs 63 pages (12,503 trades in 24h), XLM/XAU 35 and
+// XLM/XCHF 26. 80 covers all three with headroom. It is not expensive in the way it looks — a walk is
+// resumed VOL_DEEP_PAGES at a time BEHIND the response, so a deeper cap costs more sweep steps, never a
+// slower page, and only for the handful of pools that are actually this busy.
+// 80 -> 160 on 2026-11-18: XLM/EURMTL ran 91 pages (18,196 trades in 24h) and was given up on, showing
+// a dash; XLM/SSLX 53 and SSLX/USDC 45 were close behind. A bot-traded pool costs sweep steps, never a page.
+const VOL_MAX_PAGES = 160;
+// Consecutive unreadable pages before a pool is given up on, counted per POOL and reset by any page that
+// reads. See volWalk: this is what keeps a transient Horizon non-200 from costing a pool its figure.
+const VOL_MAX_FAILS = 4;
+const VOL_TTL = 3600;        // a figure stands this long before the sweep walks the head again
+const VOL_HOLD = 604800;     // how long the map survives in the store — far past TTL, so it never blanks
+// A WEEK, NOT SIX HOURS (RAZA 2026-11-20 "Yes, keep them"). KV expiry only moves on a write, and this site can go six
+// hours without a visitor: the key then EXPIRED, every finished figure went with it, and the next visitor saw Vol and
+// Fees as dashes while the walk restarted from zero (prod 2026-11-20: ts 0, rev 6, 46 of 100). With the map kept, a
+// quiet stretch takes the same path as the hourly refresh: last figures shown, re-walked in the background.
+const VOL_BUSY = 20000;      // ms a sweep step is assumed to still be running, so polls do not stampede
+                             // — measured at 5-23s per step, and a step cut short simply retries
 
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -53,14 +79,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // GUARDRAILS E12: throttle + retry + host fallback. Horizon's 429 carries no CORS header, so in the
 // browser it surfaces as an opaque "Failed to fetch"; here we see the status, but the fallback matters
 // just as much because a single throttled page would corrupt the ranking.
-async function j(path, ttl = UPSTREAM_TTL) {
-  for (let attempt = 0; attempt < 4; attempt++) {
+// `tries` is capped lower by the volume sweep, where the subrequest budget is counted per POOL and a
+// silent 4x retry would make that count a guess -- see volSweep.
+async function j(path, ttl = UPSTREAM_TTL, tries = 4, valid) {
+  for (let attempt = 0; attempt < tries; attempt++) {
     const host = HOSTS[attempt % HOSTS.length];
     try {
-      const r = await fetch(host + path, { cf: { cacheTtlByStatus: { '200-299': ttl, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
+      // ttl 0 = READ LIVE, no edge cache at all (a pool's newest trades: see volPage). cacheEverything overrides Horizon's
+      // own no-store, so a cached head page could outlive its TTL and make a busy pool read as idle (2026-11-20).
+      const r = await fetch(host + path, ttl > 0 ? { cf: { cacheTtlByStatus: { '200-299': ttl, '300-399': 0, '400-599': 0 }, cacheEverything: true } } : {});
       if (r.status === 429) { await sleep(700 * (attempt + 1)); continue; }
       if (!r.ok) { await sleep(200); continue; }
-      return r.json();
+      const body = await r.json();
+      // A 200 that is not the shape we asked for is a failure, not an answer -- and with cacheEverything the
+      // edge would hand the same body back for the rest of the TTL, so the NEXT HOST is the only real retry.
+      if (valid && !valid(body)) { await sleep(200); continue; }
+      return body;
     } catch (_) { await sleep(200); }
   }
   return null;
@@ -111,76 +145,258 @@ async function xlmUsd() {
   return (usd > 0.02 && usd < 2) ? usd : 0;
 }
 
-const A32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-// stellar.expert keys pools by strkey ("L..."), Horizon by hex. Decode base32, drop the version byte and
-// the 2-byte checksum, and the remaining 32 bytes ARE the Horizon id.
-function strkeyToHex(s) {
-  let bits = '';
-  for (const c of s) { const i = A32.indexOf(c); if (i < 0) return null; bits += i.toString(2).padStart(5, '0'); }
-  const bytes = [];
-  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
-  return bytes.slice(1, 33).map((b) => b.toString(16).padStart(2, '0')).join('');
+
+// ---- 24h volume and fees, from Horizon ------------------------------------------------------
+//
+// THE OLD SOURCE WENT PAID. Until 2026-11-08 both columns came from one stellar.expert overlay
+// (volume_value['1d'] per pool, Fees derived as volume x the pool's fee rate). The whole
+// api.stellar.expert surface now answers **HTTP 402 Payment Required** with an x402 payment demand in
+// the header -- measured on /liquidity-pool, /liquidity-pool/<id> and /asset alike, from the edge and
+// from a laptop. So the overlay returned nothing, every row carried vol24 null, and both columns were
+// a dash for every pool. The 2026-09-17 instrumentation is what said so outright rather than leaving
+// it to be guessed at: the published meta read `volDiag {"status":402,"stop":"http 402"}`, withVol 0.
+//
+// Paying per request is not a dependency this file is going to take on, so the figure is computed from
+// HORIZON, which is free, already the source of every other number here, and is the ledger itself.
+//
+// WHAT IT COSTS. Horizon has no volume field and no time filter, so the only way is to read a pool's
+// own /trades newest-first and stop at the 24h boundary. Measured against Horizon 2026-11-09:
+//
+//   * a /trades page costs **~4.5 SECONDS**, at any limit from 10 to 200. A /liquidity_pools page costs
+//     0.29s. Same host, same link -- it is the query, not the network, and the page size is free.
+//   * walking the top 100 pools to the boundary needs 230 pages (69 pools need 1, XLM/USDC needs 8,
+//     and XLM/MTL, XLM/XCHF, XLM/XAU, LSP/USDC each did over 3,200 trades and never finish).
+//   * run inside the build it took **342 seconds over 8 steps**, and a deep walk cannot be parallelised
+//     away because a cursor chain is sequential: XLM/USDC alone is 8 x 4.5s of waiting.
+//   * past ~12 pages in flight Horizon starts answering non-200 (7 of 40 did), so VOL_PAR is 10.
+//
+// So volume is NOT part of the build. It is swept BEHIND the response, in waitUntil, a bounded slice of
+// work per request: the ranking appears as fast as it did before, the columns fill over the following
+// requests, and the map then stands for VOL_TTL -- keyed by pool id, so a ranking rebuild reuses it
+// instead of paying again. The client is told `volFilling` and comes back for the rest.
+//
+// NOTHING IS EVER PUBLISHED AS A LOWER BOUND. The first version of this did: one page per pool, and a
+// page that had not reached 24h was published as a "&ge;" figure. Measured, that read **XLM/USDC as
+// &ge;$6,892 against a true $52,025** -- 13% of the answer, on the biggest pool on the page, with
+// XLM/MTL showing "&ge;0". A number that wrong is not rescued by a symbol in front of it
+// ([[a-partial-fetch-presented-as-complete]]). So a pool whose walk is unfinished is simply ABSENT from
+// the map and dashes until the walk finishes, and the sweep keeps going: first page for VOL_BATCH
+// pools, then VOL_DEEP_PAGES more for VOL_DEEP_PAR of the unfinished ones per request, resuming from a
+// stored cursor. 96 of the top 100 finish; the four bot-traded ones hit VOL_MAX_PAGES and dash.
+//
+// (A resumed walk recomputes its 24h boundary, so it drifts by the seconds or minutes between requests
+// out of a 24-hour window. That is a rounding error; carrying the original cut would instead make the
+// figure older than the column claims.)
+//
+// Volume is ONE LEG of each swap, converted at that leg's price -- the conventional denomination, and
+// the one the browser layer in _ammdata.js already uses. A pool's two legs are equal in value, so
+// summing both would double every figure on the page.
+function wantLeg(row) {
+  for (const leg of [row.a, row.b]) {
+    if (!leg) continue;
+    if (leg.code === 'XLM' && !leg.issuer) return { native: true, usePx: true };
+  }
+  const [uc, ui] = USDC.split(':');
+  for (const leg of [row.a, row.b]) {
+    if (leg && leg.code === uc && leg.issuer === ui) return { native: false, code: uc, issuer: ui, usePx: false };
+  }
+  return null;
+}
+// Which side of this trade is the leg we price, and how much of it moved. A trade names its two assets
+// as base/counter in whichever order the ledger recorded them, so both sides are checked -- and a
+// credit asset is matched on CODE AND ISSUER, never code alone.
+function sideAmount(t, want) {
+  const bN = t.base_asset_type === 'native', cN = t.counter_asset_type === 'native';
+  if (want.native) {
+    if (bN) return +t.base_amount || 0;
+    if (cN) return +t.counter_amount || 0;
+    return 0;
+  }
+  if (!bN && t.base_asset_code === want.code && t.base_asset_issuer === want.issuer) return +t.base_amount || 0;
+  if (!cN && t.counter_asset_code === want.code && t.counter_asset_issuer === want.issuer) return +t.counter_amount || 0;
+  return 0;
+}
+// One page of one pool's trades. Returns null when the page could not be read -- an unknown, not a zero.
+//
+// Two attempts, not j()'s four: the sweep counts its subrequest budget per POOL, and a retry it cannot
+// see would turn that count into a guess against a hard 50-per-invocation cap.
+async function volPage(row, want, price, cut, cursor) {
+  // $0 THAT WAS NEVER MEASURED (RAZA 2026-11-18, "looks like this bug is back on staging"): XLM/EURZ, XLM/GBPZ,
+  // XLM/SSLX and SSLX/USDC were stored as 0 by a finished pass while Horizon, read directly, gave them
+  // $174, $99 and hundreds of in-window trades on page one. A page with no record list -- or an empty FIRST page
+  // for a pool that is in the ranking because people trade it -- read as "history ended, sum 0". Neither is
+  // evidence of zero volume, so both now count as unread: the other host is tried, and the walk retries later.
+  const okPage = (b) => !!(b && b._embedded && Array.isArray(b._embedded.records) && (cursor || b._embedded.records.length));
+  const d = await j('/liquidity_pools/' + row.id + '/trades?order=desc&limit=' + PAGE
+    + (cursor ? '&cursor=' + cursor : ''), cursor ? VOL_TTL : 0, 2, okPage);   // head page LIVE, history pages cached (2026-11-20: a 28h-stale cached head summed busy pools to $0)
+  if (!d) return null;
+  const recs = (d._embedded && d._embedded.records) || [];
+  let sum = 0, reached = recs.length < PAGE;               // a short page IS the end of this pool's history
+  for (const t of recs) {
+    const ts = Date.parse(t.ledger_close_time || '');
+    if (!(ts >= cut)) { reached = true; break; }            // crossed the boundary: the sum is exact
+    sum += sideAmount(t, want);
+  }
+  return { sum: sum * price, reached, next: recs.length ? recs[recs.length - 1].paging_token : '',
+    newest: !cursor && recs[0] ? recs[0].ledger_close_time : undefined };
 }
 
-// 24h volume is the one column Horizon cannot answer: a pool record carries reserves, fee and
-// total_trustlines but no volume, and per-pool /trades across 10,962 pools is not a request budget that
-// exists. stellar.expert does carry volume_value, so it is used as an OVERLAY only -- never for ranking,
-// where its ordering was already shown to be unusable. Its coverage is size-correlated, so the pools a
-// user actually sees on page 1 have a figure and deep dust pages do not. Missing means missing: those
-// rows report null and the page shows a dash, rather than a fabricated 0.
-// Also harvests LOGOS while it is here. Each stellar.expert pool record carries toml_info.image for both
-// of its assets, so the icons cost nothing extra once this request is being made anyway.
+// Walk (or continue walking) one pool, at most `maxPages` pages this time. Exactly one of three answers:
+//   {usd}                            the 24h boundary was reached -- a complete, publishable figure
+//   {pend:[sum,cursor,pages,fails]}  more pages needed; resume from here on a later request
+//   {drop:1}                         past VOL_MAX_PAGES, or unreadable too many times -- show a dash
 //
-// This matters because the page cannot resolve them on its own: its amTokUrl() reads a static map keyed
-// by asset CODE, which knows the curated handful and nothing else, so across the network most pairs fell
-// back to coloured letter tiles. Resolving them client-side instead would be 50 lookups per 25-row page.
-// Shipping the URL with the row is one lookup for everybody, and it is issuer-correct rather than
-// code-keyed -- which matters on Stellar, where a ticker is not an identity.
-// RAZA 2026-09-17: "on pools main page, why are Vol and Fees column empty". Both columns come from this one
-// overlay (Fees is vol x the pool's fee rate), and it was returning an EMPTY MAP at the edge while the same
-// upstream request answered fine from a laptop -- api.stellar.expert served real volume_value['1d'] figures, and
-// the ids converted to exactly the ids the rows carry, so neither the source nor the key was at fault.
-//
-// The previous shape of this function could not tell us which: every failure -- a non-200, a body in an
-// unexpected shape, a thrown fetch -- ended as the same silent empty Map, and 'break' on the first empty page
-// made a single bad response look identical to "upstream has no pools". That is why this is instrumented rather
-// than patched on a hunch: diag is carried into the published meta and out of the API, so the NEXT build states
-// the reason instead of leaving it to be guessed at again.
-async function volumeOverlay() {
-  const vol = new Map(), img = new Map();
-  const diag = { pages: 0, recs: 0, status: null, err: null, stop: null };
-  for (let p = 0; p < VOL_PAGES; p++) {
-    let d = null;
-    try {
-      const r = await fetch(XPERT + '?limit=' + PAGE + '&cursor=' + p * PAGE,
-        { headers: { accept: 'application/json' }, cf: { cacheTtlByStatus: { '200-299': UPSTREAM_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
-      diag.status = r.status;
-      if (r.ok) d = await r.json(); else if (!diag.stop) diag.stop = 'http ' + r.status;
-    } catch (e) { diag.err = String((e && e.message) || e).slice(0, 120); }
-    const recs = (d && d._embedded && d._embedded.records) || [];
-    diag.pages++; diag.recs += recs.length;
-    if (!recs.length) { if (!diag.stop) diag.stop = diag.err ? 'threw' : 'empty page ' + p; break; }
-    for (const r of recs) {
-      const hex = strkeyToHex(r.id);
-      if (!hex) continue;
-      vol.set(hex, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7);
-      for (const a of (r.assets || [])) {
-        // Key by CODE-ISSUER, never by code alone -- a ticker is not an identity on Stellar.
-        // NOTE the shape: upstream writes "AQUA-GBNZ...-1", with a trailing asset-TYPE digit
-        // (1 = alphanum4, 2 = alphanum12). Keying on the raw string never matched what the page
-        // asks for, so every credit leg came back without a logo while XLM, matched separately,
-        // looked fine -- which is exactly how it presented.
-        const raw = (a.asset || a.name || '');
-        const key = raw.split('-').slice(0, 2).join('-');
-        const src = a.toml_info || a.tomlInfo || {};
-        const u = src.image || src.orgLogo || '';
-        if (key && u && !img.has(key)) img.set(key, u);
-      }
-    }
+// A PAGE WE COULD NOT READ IS NOT A POOL THAT IS TOO BIG, and conflating the two is what RAZA reported on
+// 2026-11-10: XLM/AQUA, XLM/ETH and XLM/LIBRE all dashed on the live page. Measured, they reach the 24h
+// boundary in 3, 4 and 7 pages -- nowhere near the cap. They dashed because ONE page read failed and a
+// failure returned {drop:1}, which deletes the pool from the map for the rest of VOL_TTL. With VOL_PAR
+// pages in flight a transient non-200 from Horizon is ordinary, so this was losing real figures every
+// sweep, and losing them in a way that looked exactly like the cap being hit
+// ([[never-cache-a-failure-as-an-answer]]). A failed read now keeps its place and is retried.
+async function volWalk(row, px, start, maxPages) {
+  const want = wantLeg(row);
+  if (!want) return { drop: 1 };                           // cannot happen in the ranking; not assumed
+  const price = want.usePx ? px : 1;
+  const cut = Date.now() - DAY;
+  let sum = start ? +start[0] || 0 : 0;
+  let cursor = start ? String(start[1] || '') : '';
+  let pages = start ? +start[2] || 0 : 0;
+  let fails = start ? +start[3] || 0 : 0;
+  let newest = start ? start[4] : undefined;
+  for (let i = 0; i < maxPages; i++) {
+    const p = await volPage(row, want, price, cut, cursor);
+    // Unreadable: stop THIS step, keep the cursor, and let a later one carry on from here. Bounded, so a
+    // pool Horizon will never serve cannot hold the sweep open for ever -- after VOL_MAX_FAILS it dashes.
+    if (!p) return (fails + 1 >= VOL_MAX_FAILS) ? { drop: 1 } : { pend: [sum, cursor, pages, fails + 1] };
+    fails = 0;                                             // a page that read resets the run of failures
+    if (p.newest) newest = p.newest;
+    sum += p.sum; pages++; cursor = p.next;
+    if (p.reached || !cursor) return { usd: Math.round(sum * 100) / 100, pages, newest };
+    if (pages >= VOL_MAX_PAGES) return { drop: 1 };         // traded past any budget worth spending
   }
-  if (!diag.stop) diag.stop = 'ok';
-  diag.matchable = vol.size;
-  return { vol, img, diag };
+  return { pend: [sum, cursor, pages, fails, newest] };
+}
+
+// The volume map: { ts, idx, done, busy, map: { poolId: usd }, pend: { poolId: [sum,cursor,pages] } }.
+// A few KB, so it is read on every request and written twice per sweep step without going anywhere near
+// the 3.4 MB ranking. Every value in `map` is a finished measurement; `pend` holds the unfinished ones,
+// which are deliberately NOT in the map.
+//
+// `idx` is how far through the ranking head this sweep has got. A finished sweep is left alone until it
+// is VOL_TTL old, then restarted from 0 WITHOUT clearing the map, so the columns never blank while they
+// are being refreshed.
+// `dq` is the deep queue's rotation cursor — see the note in volSweep's deep branch.
+function volEmpty() { return { ts: 0, idx: 0, rev: 0, dq: 0, done: false, busy: 0, map: {}, pend: {} }; }
+
+// A PARTIAL SUM IS NOT A FIGURE; LAST HOUR'S FINISHED MEASUREMENT STILL IS.
+//
+// The pend branch used to `delete v.map[id]`, and that is what RAZA reported on 2026-11-13 as "some
+// assets not showing vol and fees": XLM/USDC, XLM/SHX, XLM/AQUA, XLM/BTC and XLM/XRP dashed while the
+// quiet pools beside them showed figures. Not a coincidence and not a failure -- those are the pools
+// whose 24h history runs past one Horizon page. Every VOL_TTL the sweep re-walks the head from idx 0,
+// each of those goes `pend` on its first page, and the delete threw away a complete figure measured an
+// hour ago. They then dashed for the whole deep walk, which on a deployment with this little traffic
+// is many requests -- so the busiest pools on the page were blank for a large part of every hour.
+//
+// It also defeated the intent stated three lines above volEmpty(): the refresh deliberately keeps
+// `map` "so the columns never blank while they are being refreshed". It kept the map and then emptied
+// it one pool at a time, for exactly the pools a reader most wants a number against.
+//
+// So: going pending no longer clears anything. A pool that has never been measured still has no entry
+// and still dashes, which is right -- there is nothing to show. A pool being RE-measured keeps the
+// figure it already has until the new walk replaces it (or `drop` removes it, below, which is the one
+// case where we have positively learned the figure is not obtainable). Worst case a reader sees a
+// figure up to VOL_TTL + the walk old, which is what the column already meant between sweeps.
+//
+// Note this makes `map` and `pend` no longer disjoint, so volDiag's filled + pending can exceed
+// VOL_TOP. That is the honest reading of both: filled is how many columns show a figure, pending is
+// how many walks are in flight.
+function volApply(v, id, r) {
+  if (r.pend) { v.pend[id] = r.pend; return; }
+  delete v.pend[id];
+  if (r.drop) delete v.map[id];                            // positively unobtainable -- not merely unfinished
+  else v.map[id] = r.usd;
+  // Evidence for every $0: how many pages were read and the newest trade page one showed. Small, and it
+  // turns the next "why is this $0" into a lookup instead of a guess.
+  if (!r.drop && r.usd === 0) { if (!v.z) v.z = {}; v.z[id] = [r.pages || 0, r.newest || null]; }
+  else if (v.z) delete v.z[id];
+}
+
+async function volSweep(store, rows, px) {
+  const v = Object.assign(volEmpty(), (await store.get(K.vol)) || {});
+  if (!v.map) v.map = {};
+  if (!v.pend) v.pend = {};
+  const top = Math.min(VOL_TOP, rows.length);
+  const now = Date.now();
+  // The client polls while filling, and each poll would otherwise start its own sweep over the same
+  // pools -- 10 concurrent trades pages is already where Horizon starts refusing them.
+  if (v.busy && now - v.busy < VOL_BUSY) return v;
+  if (v.done) {
+    if (now - (v.ts || 0) < VOL_TTL * 1000) return v;
+    v.done = false; v.idx = 0; v.pend = {};
+  }
+  v.busy = now;
+  await store.put(K.vol, v, VOL_HOLD);
+
+  if (v.idx < top) {
+    // First page of the next VOL_BATCH pools. VOL_PAR at a time, 2 subrequests each worst case.
+    const batch = rows.slice(v.idx, v.idx + VOL_BATCH);
+    for (let i = 0; i < batch.length; i += VOL_PAR) {
+      const group = batch.slice(i, i + VOL_PAR);
+      const got = await Promise.all(group.map((r) => volWalk(r, px, null, 1)));
+      for (let k = 0; k < group.length; k++) volApply(v, group[k].id, got[k]);
+    }
+    v.idx += batch.length;
+  } else {
+    // Head read; now finish the pools that need depth, a few at a time.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    // ROTATE THE QUEUE. This took `.slice(0, VOL_DEEP_PAR)` — always the same five keys, in insertion
+    // order, until one of them finished. A pool that needs four more pages finishes in one step; a
+    // bot-traded pool walks to VOL_MAX_PAGES and sits at the front of the queue for twenty. So the few
+    // most expensive pools owned every step while dozens of cheap ones waited behind them, and the
+    // columns filled in the slowest possible order — which is what made the fill outlast the page.
+    //
+    // Serving a moving window instead costs nothing and finishes the cheap ones first, so the table is
+    // visibly complete long before the handful of heavy walks are. The cursor is approximate on purpose:
+    // finished pools leave `pend` and shift the list, and a rotation does not need to be exact.
+    const pkeys = Object.keys(v.pend);
+    const start = pkeys.length ? ((+v.dq || 0) % pkeys.length) : 0;
+    const ids = pkeys.slice(start, start + VOL_DEEP_PAR);
+    if (ids.length < VOL_DEEP_PAR && pkeys.length > ids.length) {
+      ids.push(...pkeys.slice(0, Math.min(VOL_DEEP_PAR - ids.length, pkeys.length - ids.length)));
+    }
+    v.dq = pkeys.length ? ((start + ids.length) % pkeys.length) : 0;
+    const got = await Promise.all(ids.map((id) => (byId.has(id)
+      ? volWalk(byId.get(id), px, v.pend[id], VOL_DEEP_PAGES)
+      : Promise.resolve({ drop: 1 }))));                   // dropped out of the ranking mid-sweep
+    for (let k = 0; k < ids.length; k++) volApply(v, ids[k], got[k]);
+  }
+
+  if (v.idx >= top && !Object.keys(v.pend).length) { v.done = true; v.ts = Date.now(); }
+  v.busy = 0;
+  v.rev = (+v.rev || 0) + 1;                               // see volVer: this is what retires cached slices
+  await store.put(K.vol, v, VOL_HOLD);
+  return v;
+}
+
+// The sweep needs the ranking head in TVL order. That is exactly what K.hot is -- 500 rows, 158 KB --
+// so it is read instead of the 3.4 MB full list. A missing hot slice means the ranking was only just
+// published and KV has not caught up; the next request picks it up.
+async function volSweepFrom(store, meta) {
+  const hot = await store.get(K.hot);
+  if (!hot || !hot.rows || !hot.rows.length) return null;
+  return volSweep(store, hot.rows, (hot.px != null ? hot.px : meta && meta.px) || 0);
+}
+
+// Stamp the figures onto the rows being served. The map is the source of truth for both columns:
+// `vol24` null means the table shows a dash.
+function volStamp(rows, v) {
+  const map = (v && v.map) || {};
+  for (const r of rows) {
+    const e = map[r.id];
+    r.vol24 = e == null ? null : e;
+  }
+  return rows;
 }
 
 function legOf(rec, want) {
@@ -236,6 +452,11 @@ const K = {
   hot:   'pools:hot:v2',
   full:  'pools:full:v2',
   state: 'pools:state:v2',
+  // v2: the v1 map holds `drop` verdicts made by the old rule, where one unreadable page gave up on a
+  // pool for the rest of VOL_TTL. Bumping starts the sweep from nothing rather than waiting up to an
+  // hour for those to expire, so the fix is visible on the page instead of eventually.
+  vol:   'pools:vol:v3',     // v3 2026-11-18: retire $0 figures stored from unreadable pages (see volPage)
+      // the 24h figures, swept separately from the ranking — see volSweep
 };
 
 // KV when the binding is present, the per-colo Cache API when it is not. The fallback is the previous
@@ -276,10 +497,18 @@ function mkStore(env) {
 }
 
 // The cached page RESPONSE key. `q` is already uppercased and length-capped by the caller.
-function pageKey(ts, per, page, q, sort, dir) {
-  return new Request('https://lumoscore.internal/pools-page/' + ts + '/' + per + '/' + page
+// `vv` is the volume map's own version. The body carries figures from that map, so a slice cached under
+// an older one is a slice with dashes in it: without vv in the key, the columns would stay empty for
+// RANK_HOLD no matter how much the sweep had filled in behind it.
+function pageKey(ts, per, page, q, sort, dir, vv) {
+  return new Request('https://lumoscore.internal/pools-page/' + ts + '/' + (vv || '0') + '/' + per + '/' + page
     + '/' + encodeURIComponent(q || '') + '/' + (sort || 'tvl') + (dir === 'asc' ? 'a' : 'd'), { method: 'GET' });
 }
+// `rev` is in here and not just ts/idx because of a measured failure: during the deep pass neither ts
+// (still 0) nor idx (already at VOL_TOP) moves, so the key stopped changing and the fast path served one
+// request's body verbatim for the next TWELVE while 29 more figures were landing in the map behind it.
+// rev is bumped on every sweep write, so a slice is only reused while the map behind it is unchanged.
+function volVer(v) { return v ? ((v.ts || 0) + '-' + (v.idx || 0) + '-' + (v.rev || 0)) : '0'; }
 
 // COLUMN SORTING, RANKED ACROSS THE WHOLE LIST (RAZA 2026-09-17: "Let me short the pool columns (Liq, Vol, Fees,
 // Participants) from high to low just like im able to sort Trade main page columns").
@@ -445,14 +674,12 @@ async function searchPools(ranked, q) {
 
 // Publish a completed build. Data first, meta last: a reader that sees meta can rely on hot/full being
 // there, and one that races in between simply sees no meta and treats it as not-yet-built.
-async function publish(store, rows, px, volDiag) {
+async function publish(store, rows, px) {
   const meta = {
     ts: Date.now(),
     px,
     total: rows.length,
     ranked: rows.length,
-    withVol: rows.filter((r) => r.vol24 !== null).length,
-    volDiag: volDiag || null,
     hot: Math.min(HOT_ROWS, rows.length),
   };
   await store.put(K.full, { rows, px }, RANK_HOLD);
@@ -468,24 +695,16 @@ async function publish(store, rows, px, volDiag) {
 //
 // It returns the rows it just built rather than re-reading them, because KV is eventually consistent --
 // a read immediately after a write can still answer with the old value, or nothing.
-// A PUBLISHED BUILD WITH NO VOLUME IS A FAILED BUILD, NOT A FRESH ONE.
 //
-// When the overlay cannot run -- the 50-subrequest cap did exactly this until 2026-09-17 -- the ranking still
-// publishes, with withVol 0, and then reports itself fresh for RANK_HOLD (6 hours). That is how a deployed fix
-// stays invisible: production recovered only because real traffic kept advancing the state machine, while staging,
-// which gets almost no traffic, carried on serving the pre-fix build and looked unfixed for hours after the code
-// that fixed it was live. RAZA 2026-09-17: "make sure that stellar staging is alligned with stellar main".
-//
-// So a zero-volume ranking is treated as stale once it is a few minutes old, and rebuilt in the background like any
-// other stale one. The floor stops a genuinely unreachable upstream from forcing a rebuild on every request, and
-// stale-while-revalidate means visitors keep seeing the existing rows the whole time.
-const ZERO_VOL_RETRY = 300;
+// THE RANKING'S FRESHNESS NO LONGER SAYS ANYTHING ABOUT VOLUME. It used to: a build that published with
+// withVol 0 reported itself fresh for RANK_HOLD (6 hours), so a deployed fix stayed invisible --
+// production only recovered because real traffic kept advancing the state machine, while staging, which
+// gets almost no traffic, served the pre-fix build for hours after the fix was live (RAZA 2026-09-17:
+// "make sure that stellar staging is alligned with stellar main"). Volume now has its own map with its
+// own TTL, advanced by its own sweep on every request, so that coupling is gone rather than tuned.
 function needsRebuild(meta) {
   if (!meta || !meta.ts) return true;
-  const age = Date.now() - meta.ts;
-  if (age > RANK_TTL * 1000) return true;
-  if (!meta.withVol && age > ZERO_VOL_RETRY * 1000) return true;
-  return false;
+  return Date.now() - meta.ts > RANK_TTL * 1000;
 }
 
 async function advance(store) {
@@ -495,7 +714,7 @@ async function advance(store) {
     await store.put(K.state, state, 900);
     return null;
   }
-  return publish(store, state.rows, state.px, state.volDiag);
+  return publish(store, state.rows, state.px);
 }
 
 function rowsFrom(recs, priceLeg, px, seen, rows) {
@@ -540,24 +759,15 @@ async function buildStep(state) {
     // same pool off two different legs would give it two different TVLs depending on which loop won.
     rowsFrom(r.recs, USDC, 1, state.seen, state.rows);
     state.cursor = r.cursor;
-    if (r.done) { state.phase = 'overlay'; return state; }
-    if (spent >= STEP_BUDGET - VOL_PAGES) return state;
-  }
-  if (state.phase === 'overlay') {
-    const { vol, img, diag } = await volumeOverlay();
-    state.volDiag = diag;
-    for (const r of state.rows) {
-      if (vol.has(r.id)) r.vol24 = Math.round(vol.get(r.id) * 100) / 100;
-      for (const leg of [r.a, r.b]) {
-        if (!leg) continue;
-        if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
-        const u = img.get(leg.code + '-' + leg.issuer) || img.get(leg.code);
-        if (u) leg.img = u;
-      }
+    // THE RANKING IS SORTED HERE, where it is also the thing that decides which pools the volume sweep
+    // walks: "the top VOL_TOP" is only meaningful once the list is in order, and the sweep reads that
+    // order back out of K.hot rather than sorting again.
+    if (r.done) {
+      state.rows.sort((x, y) => y.tvl - x.tvl);
+      state.phase = 'done';
+      delete state.seen;                        // ~10,962 keys that nothing reads again
     }
-    state.rows.sort((x, y) => y.tvl - x.tvl);
-    state.phase = 'done';
-    delete state.seen;                          // ~10,962 keys that nothing reads again
+    if (spent >= STEP_BUDGET - 1) return state;
   }
   return state;
 }
@@ -579,13 +789,27 @@ export async function onRequestGet(ctx) {
 
   try {
     let meta = await store.get(K.meta);
+    // The volume map, read alongside meta. It is a few KB, so this costs nothing next to the ranking,
+    // and both the cache key and the figures in the body depend on it.
+    const vol = await store.get(K.vol);
+    // NOT computed here. `meta` can still be null at this point -- the very first request builds the
+    // ranking further down and only then has one -- and a volFilling read off a null meta is how the
+    // first request that actually serves rows told the client there was nothing more to come, and then
+    // never swept. It is decided once meta is settled, in volFill() below.
+    // A FINISHED MAP IS RE-MEASURED EVERY VOL_TTL (2026-11-20). This used to be `!(vol && vol.done)` alone, and it is the
+    // only thing that schedules volSweepFrom -- so volSweep's "finished and VOL_TTL old: walk the head again" branch was
+    // never reached. Finished figures, stale $0s included, froze until the KV expiry deleted them, then dashed while the walk
+    // restarted from zero (RAZA: "i have literally got this fixed so many times but it comes back again"). The re-walk
+    // keeps the map, so nothing blanks while it runs.
+    const volFill = () => !(vol && vol.done) || (Date.now() - ((vol && vol.ts) || 0) >= VOL_TTL * 1000);
 
     // FAST PATH -- one cache read, no JSON parsed, response returned verbatim. This is what makes a warm
     // request cost ~0 ms of CPU instead of the 14-45 ms that parsing 3.38 MB to emit 8 KB used to cost.
     if (meta && meta.ts) {
-      const hit = await cache.match(pageKey(meta.ts, per, page, qRaw, sort, dir));
+      const hit = await cache.match(pageKey(meta.ts, per, page, qRaw, sort, dir, volVer(vol)));
       if (hit) {
         if (needsRebuild(meta)) later(advance(store));
+        else if (volFill()) later(volSweepFrom(store, meta));
         // Re-headered, not re-read: the stored copy carries a long max-age so it survives as long as its
         // ranking does, but the CLIENT must still be told 120s or a browser would hold this for hours.
         // Passing the body through as a stream copies no bytes and parses nothing.
@@ -635,6 +859,9 @@ export async function onRequestGet(ctx) {
         })));
       }
       // A search result set is small and already in hand, so the same column ordering applies there for free.
+      // Stamped BEFORE the sort, because sort=vol and sort=fees both read vol24 — ordering rows by a
+      // figure that has not been written onto them yet would rank the whole list as unmeasured.
+      volStamp(hitS.rows, vol);
       rows = reranked ? rankBy(hitS.rows, sort, dir) : hitS.rows;
       total = rows.length;
       pages = Math.max(1, Math.ceil(total / per));
@@ -658,17 +885,29 @@ export async function onRequestGet(ctx) {
           headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
         });
       }
+      volStamp(blob.rows, vol);
       rows = reranked ? rankBy(blob.rows, sort, dir) : blob.rows;
     }
 
+    const vmap = (vol && vol.map) || {};
+    const vkeys = Object.keys(vmap);
     const body = JSON.stringify({
       page: Math.floor(start / per) + 1,
       per, pages, total,
       ranked: meta.ranked,
       sort, dir,
       unpriceable: 28882,          // measured; pools with neither an XLM nor a Circle USDC leg
-      withVol: meta.withVol,
-      volDiag: meta.volDiag || null,
+      withVol: vkeys.length,
+      // Told to the client so it comes back for the rest instead of settling for the dashes it got.
+      volFilling: volFill(),
+      volDiag: {
+        top: VOL_TOP,
+        swept: (vol && vol.idx) || 0,
+        filled: vkeys.length,
+        pending: Object.keys((vol && vol.pend) || {}).length,
+        ts: (vol && vol.ts) || 0,
+        zeros: (vol && vol.z) || {},
+      },
       xlmUsd: meta.px,
       ts: meta.ts,
       // Present only on a search, and only worth reading when assetsChased < assetsMatched: the query
@@ -680,9 +919,12 @@ export async function onRequestGet(ctx) {
     // The stored copy outlives the served one on purpose. The client is told 120s so its own numbers
     // refresh; the slice is keyed on the ranking's ts, so it stays valid for as long as that ranking is
     // the published one and never needs invalidating.
-    later(cache.put(pageKey(meta.ts, per, page, qRaw, sort, dir), new Response(body, {
+    later(cache.put(pageKey(meta.ts, per, page, qRaw, sort, dir, volVer(vol)), new Response(body, {
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_HOLD },
     })));
+    // Behind the response, never in front of it: a /trades page costs ~4.5s and there are VOL_BATCH of
+    // them to do. The answer has already been built above; this only decides what the NEXT request sees.
+    if (volFill()) later(volSweepFrom(store, meta));
 
     return new Response(body, {
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' },

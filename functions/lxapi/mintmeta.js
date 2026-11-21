@@ -71,6 +71,65 @@ function clip(s, max) {
   return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
 }
 
+// A HANDLE, NOT A URL — which is what LIMITS.handle has always said this field holds, and what every
+// renderer downstream assumes when it prefixes the host.
+//
+// Nothing normalised what the minter typed, so the field stored whatever arrived. RAZA 2026-11-05: a
+// minter entered his X and Telegram URLs and the token page linked to
+// "https://x.com/https://x.com/username". The launchpad's own placeholder reads "x.com/yourproject",
+// so the host-bearing form is the likeliest thing anyone types — and both chains mishandle it
+// differently: Stellar's socialUrl() prepends the host again, XRPL's safeUrl() cannot parse it and
+// drops the link entirely. One unnormalised value, two symptoms.
+//
+// Normalising HERE fixes both at once, because this endpoint is the single point every client passes
+// through on the way to storage. The renderers were hardened too, which repairs values already stored.
+const X_HOSTS = ['x.com/', 'www.x.com/', 'twitter.com/', 'www.twitter.com/', 'mobile.twitter.com/'];
+const TG_HOSTS = ['t.me/', 'www.t.me/', 'telegram.me/', 'www.telegram.me/', 'telegram.dog/'];
+
+// keepPath because a Telegram link is not always one segment: invite links are "t.me/joinchat/<id>"
+// and "t.me/+<id>", and cutting at the first slash would silently turn a working invite into a dead
+// profile link. An X handle IS one segment, so anything after it (a status url, a ?s=20 tracker) is
+// not part of the name and goes.
+function handleOf(v, hosts, keepPath) {
+  let s = String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  if (!s) return '';
+  // A scheme we did not name is not a handle and not a link. "javascript:" and "data:" carry no "//",
+  // so they slip past the absolute-url test below and the peel would store them as a path — harmless
+  // in the href (it comes out as "x.com/javascript:alert(1)", host x.com) but junk in the record.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^https?:\/\//i.test(s)) return '';
+  // AN ABSOLUTE URL TO SOMEWHERE ELSE IS NOT A HANDLE. People do put their site in the X box, and
+  // peeling "https://leafquip.ai.studio/" down to a path would store "leafquip.ai.studio" and link to
+  // "x.com/leafquip.ai.studio" — the doubling bug again, wearing a different hat. Kept whole instead,
+  // which the renderer already leaves alone. http(s) only: these strings end up in an href, so a
+  // scheme we did not name is dropped rather than carried (the javascript:/data: rule safeSite keeps).
+  const abs = s.match(/^[a-z][a-z0-9+.-]*:\/\/(.*)$/i);
+  if (abs) {
+    const rest = abs[1].toLowerCase();
+    if (!hosts.some((h) => rest.indexOf(h) === 0 || rest === h.slice(0, -1))) {
+      return /^https?:\/\//i.test(s) ? s : '';
+    }
+  }
+  // Peel scheme, leading @ or / and host as many times as they appear, not once. A record written
+  // before this fix can hold "https://x.com/https://x.com/u", and for X — where only the FIRST path
+  // segment is the handle — a single pass would leave "x.com" and store that as the handle.
+  for (let g = 0; g < 4; g += 1) {
+    const before = s;
+    s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^[@/]+/, '');
+    const lc = s.toLowerCase();
+    for (const h of hosts) {
+      if (lc.indexOf(h) === 0) { s = s.slice(h.length); break; }
+    }
+    if (s === before) break;
+  }
+  s = s.replace(/^[@/]+/, '').split('?')[0].split('#')[0];
+  if (!keepPath) s = s.split('/')[0];
+  s = s.replace(/\/+$/, '').trim();
+  // A bare host names no account, and the peel above only removes a host FOLLOWED by a slash. Storing
+  // "x.com" would link the reader to the network's own front page as if it were the project's.
+  if (hosts.indexOf(s.toLowerCase() + '/') >= 0) return '';
+  return s;
+}
+
 // Same rule as listing.js's safeSite: a scheme we did not name is refused rather than guessed at,
 // because these strings end up in an href on a public page. javascript: and data: are the reason this
 // is not a length check.
@@ -165,8 +224,8 @@ export async function onRequestPost({ request, env }) {
     name: clip(b.name, LIMITS.name),
     description: clip(b.description != null ? b.description : b.desc, LIMITS.description),
     website: safeSite(b.website, LIMITS.website),
-    twitter: clip(b.twitter, LIMITS.handle),
-    telegram: clip(b.telegram, LIMITS.handle),
+    twitter: clip(handleOf(b.twitter, X_HOSTS, false), LIMITS.handle),
+    telegram: clip(handleOf(b.telegram, TG_HOSTS, true), LIMITS.handle),
     logoId: logoId || null,
     at: (prev && prev.at) || Date.now(),
     updated: Date.now(),

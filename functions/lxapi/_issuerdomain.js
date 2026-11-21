@@ -16,7 +16,25 @@
 // account when the .toml it points at names that account back (see the Stellar side's SEP-1 notes). It
 // is simply the assertion made by the account rather than one made about it, which is the difference
 // between "this token says x.com" and "someone told a price site x.com".
-const RPCS = ['https://s1.ripple.com:51234/', 'https://s2.ripple.com:51234/', 'https://xrplcluster.com/'];
+// ORDER IS LOAD-BEARING, because the list is walked SERIALLY and the walk races a deadline.
+//
+// Measured 2026-10-17, same account, same payload, from one machine:
+//
+//   s1.ripple.com:51234   2.74s
+//   s2.ripple.com:51234   1.43s
+//   xrplcluster.com       0.48s
+//
+// The fastest node was tried LAST and the slowest FIRST, so a single lookup could not finish inside
+// the 1200ms deadline the search page passes — and it did not. Measured on the deployed build:
+// `x-lxdom: asked=16 resolved=0 none=0 unreachable=0 cached=0`. Every counter zero is the signature
+// of a race lost before any branch ran: not one issuer resolved, failed, OR was found unreachable,
+// because none of them had got that far. The feature had never worked in production; the only
+// domains the market table showed were the two hardcoded overrides and whatever another endpoint's
+// 3000ms call had warmed into the cache.
+//
+// Fastest first. The slower public nodes stay as fallbacks — they answer correctly, they are simply
+// not worth waiting on first.
+const RPCS = ['https://xrplcluster.com/', 'https://s2.ripple.com:51234/', 'https://s1.ripple.com:51234/'];
 
 // TWO TTLs, AND THE SPLIT IS THE WHOLE POINT OF THIS FILE'S SECOND VERSION.
 //
@@ -74,8 +92,30 @@ async function rpcDomain(account) {
     const j = await r.json().catch(() => null);
     const res = j && j.result;
     if (!res) continue;
-    // actNotFound and friends are a real answer from this node: the account has no domain to give.
-    if (res.error) return { reached: true, domain: '' };
+    // ONLY ERRORS ABOUT THE ACCOUNT ARE ANSWERS. NO BACKTICKS IN THIS COMMENT.
+    //
+    // This line used to read `if (res.error) return { reached: true, domain: '' }`, on the stated
+    // grounds that "actNotFound and friends are a real answer". Its friends are not. rippled returns
+    // `error` for tooBusy, slowDown, noCurrent, noNetwork, amendmentBlocked and internal too, and
+    // this endpoint asks about a HUNDRED accounts at once from a Worker against a node that meters
+    // hard (2000 units per 10s — see the notes on the shared ledger transport). Throttling is not an
+    // edge case here, it is the normal case.
+    //
+    // So every throttled lookup was recorded as "this account has set no Domain" AND cached under
+    // TTL_OK for a full day. Measured on production 2026-10-20: the roster carried a resolved domain
+    // on 1 row of 102, while `x-lxdom` read `asked=46 resolved=0 none=27 unreachable=0` — not one
+    // failure, supposedly, just twenty-seven accounts with nothing to say. Asked directly, every one
+    // of them had a Domain: Ripple https://ripple.com/, Circle https://circle.com, ARMY and PHNIX
+    // their firstledger toml hosts.
+    //
+    // This is the same mistake the header of this file describes and claims to have fixed. It was
+    // fixed for an unreachable NODE and left in place for an unhelpful ANSWER, which is the subtler
+    // half: a reply arrived, so it looked like knowledge.
+    if (res.error) {
+      // actNotFound / actMalformed are about this account and settle the question.
+      if (res.error === 'actNotFound' || res.error === 'actMalformed') return { reached: true, domain: '' };
+      continue;                     // anything else: this node could not answer — try the next one
+    }
     return { reached: true, domain: decodeDomain(res.account_data && res.account_data.Domain) };
   }
   return { reached: false, domain: '' };
@@ -124,7 +164,14 @@ export async function issuerDomains(issuers, origin, ctx, stat, deadlineMs) {
   // It keeps running past the deadline under waitUntil, so a slow lookup still warms the cache for
   // the next search rather than being wasted.
   const work = uniq.map(async (acct) => {
-    const key = new Request(origin + '/__issuerdomain/' + acct);
+    // VERSIONED, because the entries already out there are poisoned and good for a day.
+    //
+    // Every throttled lookup before this fix was stored as a reached answer with TTL_OK, so each
+    // colo is holding up to 24 hours of "this issuer has no domain" that a code change alone would
+    // not clear — the fix would look like it had done nothing until tomorrow. Bumping the key
+    // abandons them. Same reason the previous version distrusted entries with no H_REACHED header;
+    // this is that trick applied again, and the next cache-shape change should bump it again.
+    const key = new Request(origin + '/__issuerdomain/v2/' + acct);
     if (cache) {
       const hit = await cache.match(key).catch(() => null);
       // A hit only counts as an answer if it was stored as one. Entries written by the FIRST version of

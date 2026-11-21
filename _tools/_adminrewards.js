@@ -188,7 +188,18 @@ var X_ECO=[
  {code:"SHX",   cur:"SHX",   iss:"rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw"},                                      // axelar.foundation
  {code:"XPM",   cur:"XPM",   iss:"rXPMxBeefHGxx2K7g5qmmWq3gFsgawkoa"},
  {code:"XLM",   cur:"XLM",   iss:"rKiCet8SdvWxPXnAgYarFUXMh1zCPz432Y"},                                      // ripplefox.com
- {code:"USDT",  cur:"5553445400000000000000000000000000000000", iss:"rGbUjUtNVq5M3Un5r4efJqHed4o5P2Usdt"},  // xrps.io
+ // GATEHUB'S USDT, not xrps.io's. Both are real USDT issuers on the XRP Ledger (985K and 585K issued),
+ // and the rule above -- resolve the issuer, do not match a ticker -- picked the wrong one of the two:
+ // it is not enough for an issuer to be genuine, it has to be the one THIS SITE LISTS. Trade's curated
+ // stablecoin table (browser/trade.js) carries GateHub's, so that is the USDT a user can hold and pool
+ // here; xrps.io's appears nowhere a visitor would meet it.
+ //
+ // The cost was silent and exactly the shape this file warns about. LUMOS/USDT via the configured
+ // issuer answers actNotFound -- no such AMM, because nobody pools against a token the site does not
+ // list -- which reads as "nobody yet" and pays nothing. Meanwhile the real LUMOS/USDT pool
+ // (rLhpBPgrsvgEj18f9oLEWHqKCVV33pz3k5, 17,260 LUMOS + 0.65 USDT) sat funded and unrewarded. RAZA
+ // added that liquidity himself and reported the pool reading empty, which is how it surfaced.
+ {code:"USDT",  cur:"5553445400000000000000000000000000000000", iss:"rcvxE9PS9YBwxtGg1qNeewV6ZB3wGubZq"},  // GateHub
  {code:"XDawgs",cur:"5844617767730000000000000000000000000000", iss:"raKhUVtNw6B892bKtATUT3frX35oawfsey"},
  {code:"666",   cur:"666",   iss:"rhvf9fe6PP3GC8Bku2Ug7iQPjPDxYZfrxN"},
  {code:"FLR",   cur:"FLR",   iss:"rcxJwVnftZzXqyH9YheB8TgeiZUhNo1Eu"},

@@ -566,6 +566,73 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       holders:null,supply:null,spark:null,img:null,trades:null};
     byCode[key]=a; byId[code+"|"+iss]=a; NATIVE.push(a); return a;
   }
+
+  // ---- movers from the WHOLE network, folded into the roster -------------------------------------
+  //
+  // Market Movers ranked the 50 curated majors, so it meant "the best mover among things we list".
+  // /lxapi/movers ranks every asset on the network with a $500+ XLM pool and 250+ holders — the SAME
+  // two bars worthy() applies below, deliberately, so the two cannot disagree about what qualifies.
+  //
+  // Measured 2026-10-16: of the 11 assets it qualified, NINE were already in the roster. The gap is
+  // small but it is the interesting end of it — LDEX was the network's top gainer at +8.70% and the
+  // page could not show it, because the page had never heard of LDEX.
+  //
+  // THEY GO THROUGH THE ROSTER, NOT STRAIGHT ONTO THE CARDS, and that is the whole point of doing it
+  // this way. A mover card reads brand colour, issuer domain, Trades 24h and a 7d sparkline off the
+  // asset object; the endpoint carries none of those. Handing its rows to the grid directly would put
+  // a hollow card at the top of Gainers — the one position where a card that looks like it means
+  // nothing does the most damage. Entering through nativeMake's shape instead means batchPx and
+  // deferExtras fill them exactly as they fill everything else, and the card renders complete.
+  var NETMV=[], netmvState=0;                               // 0 idle | 1 loading | 2 done
+  function loadNetMovers(){
+    if(netmvState)return;
+    netmvState=1;
+    return fetch("/lxapi/movers").then(function(r){ return r.ok?r.json():null; }).then(function(d){
+      netmvState=2;
+      if(!d||d.error)return;
+      var seen={}, fresh=[];
+      ["gainers","losers","volume"].forEach(function(cat){
+        (d[cat]||[]).forEach(function(m){
+          if(!m||!m.code||!m.issuer)return;
+          var id=m.code+"|"+m.issuer;
+          if(seen[id])return; seen[id]=1;
+          if(byId[id])return;                               // already in the roster: nothing to add
+          // nativeMake owns the shape AND the ticker-collision rule, so a network asset sharing a
+          // code with a curated one gets the same CODE~abcd suffix instead of overwriting it.
+          // (No backticks in this file's comments: it is built inside a template literal, and one
+          // stray backtick ends the literal and takes the rest of the script with it.)
+          var a=nativeMake(m.code,m.issuer,"","",0);
+          if(!a)return;
+          // cat marks where it came from. NOT "native": these were not minted here, and the mints
+          // list reads that flag to decide what belongs to LumosCore.
+          a.cat="net";
+          // Seeded from the endpoint so the card has figures before its own fetches land; batchPx
+          // overwrites them with the page's own reading a moment later.
+          if(m.px!=null)a.px=+m.px;
+          if(m.chg!=null)a.chg=+m.chg;
+          if(m.vol!=null)a.vol=+m.vol;
+          if(m.holders!=null)a.holders=+m.holders;
+          if(m.tvlUsd!=null)a.tvlUsd=+m.tvlUsd;
+          NETMV.push(a); fresh.push(a);
+        });
+      });
+      if(!fresh.length)return;
+      // The same two calls the curated roster gets at boot, on just the new ones.
+      return batchPx(fresh).then(function(){
+        try{ deferExtras(fresh); }catch(_){}
+        // DELIBERATELY NOT CLEARING _moverFrozen. An earlier version did, so a late arrival could be
+        // ranked in — and it destabilised the board instead: the re-rank lands while deferExtras is
+        // still refining values, so it re-freezes on a half-loaded set. Measured both ways it got
+        // worse, not better — first GOLD sitting in Gainers at -5.33%, then Gainers collapsing to two
+        // cards because most changes were still null at the moment of the second freeze.
+        //
+        // So the movers load EARLY instead (see the call site) and are simply present before the
+        // first freeze. If the endpoint is slow enough to miss it, this session's board is the
+        // curated one — which is what it was before this feature existed, and is no worse.
+        touch();
+      }, function(){ touch(); });
+    }).catch(function(){ netmvState=2; });
+  }
   // One request per 16 assets, served from the edge cache. Falls back to Horizon per asset if the
   // endpoint is unreachable, so this can never be the reason a price is missing.
   var BATCH=16;
@@ -965,7 +1032,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var st=document.createElement("style"); st.id="lx-modemenu-css";
     st.textContent=".lx-modewrap{position:relative;display:inline-flex}"
       +".lx-modecaret{margin-left:6px;opacity:.75;font-size:10px;line-height:1}"
-      +".lx-modemenu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:196px;"
+      +".lx-modemenu{position:fixed;z-index:1000;min-width:196px;"
       +"padding:6px;border:1px solid var(--border,#26262c);border-radius:12px;"
       +"background:var(--surface,#131317);box-shadow:0 18px 40px -22px rgba(0,0,0,.8)}"
       +".lx-modemenu button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;"
@@ -978,6 +1045,40 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     (document.head||document.documentElement).appendChild(st);
   }
   function closeModeMenu(){ var m=q(".lx-modemenu"); if(m&&m.parentNode)m.parentNode.removeChild(m); }
+  // THE MENU LIVES ON BODY, NOT INSIDE THE CHIP. NO BACKTICKS IN THIS COMMENT.
+  //
+  // RAZA 2026-10-20, phones on BOTH chains: "when tapping on curated all, it's not opening the
+  // dropdown". It was opening. Measured on the XRPL twin of this control in a 375px viewport right
+  // after the tap, the menu existed, was display:block, visibility:visible, 196x122 at a sensible
+  // position -- and was invisible, because the phone filter row scrolls sideways:
+  //     clipping ancestor .mdx-mk-filters overflow:auto; wrap bottom 178.3, menu top 184.3
+  // An absolutely positioned child cannot escape a scrolling ancestor, and that row is 33px tall. The
+  // desktop row does not scroll, which is why it only failed on a phone. The window-capture listener
+  // is fine and was not the cause.
+  //
+  // Fixed positioning against the chip's own rect, appended to body, clamped to the viewport and
+  // flipped above when there is no room below.
+  function placeModeMenu(menu,chip){
+    var r=chip.getBoundingClientRect();
+    var vw=window.innerWidth||document.documentElement.clientWidth;
+    var vh=window.innerHeight||document.documentElement.clientHeight;
+    var mw=menu.offsetWidth||196, mh=menu.offsetHeight||0;
+    var left=Math.min(r.left,vw-mw-8); if(left<8)left=8;
+    var top=r.bottom+6;
+    if(mh&&top+mh>vh-8){ var above=r.top-6-mh; top=above>=8?above:Math.max(8,vh-mh-8); }
+    menu.style.left=left+"px"; menu.style.top=top+"px";
+  }
+  // Fixed means it no longer travels with the chip, so a scroll or resize puts it away. Capture
+  // catches scrolls on the filter row itself, which do not bubble.
+  function watchModeMenu(){
+    var off=function(){
+      closeModeMenu();
+      window.removeEventListener("scroll",off,true);
+      window.removeEventListener("resize",off,true);
+    };
+    window.addEventListener("scroll",off,true);
+    window.addEventListener("resize",off,true);
+  }
   // Only the chip's own TEXT NODE is rewritten -- the design put an icon in there and replacing the
   // whole chip would throw it away.
   function paintModeLabel(){
@@ -1058,7 +1159,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       if(!chip){ closeModeMenu(); return; }                   // a tap anywhere else puts the menu away
       e.preventDefault(); e.stopImmediatePropagation();
       if(q(".lx-modemenu")){ closeModeMenu(); return; }
-      var w=chip.closest(".lx-modewrap")||wrap; if(!w)return;
+      if(!(chip.closest(".lx-modewrap")||wrap))return;
       var menu=document.createElement("div"); menu.className="lx-modemenu"; menu.setAttribute("role","listbox");
       MODES.forEach(function(p){
         var b=document.createElement("button"); b.type="button"; b.setAttribute("role","option");
@@ -1070,7 +1171,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         b.appendChild(tick); b.appendChild(txt);
         menu.appendChild(b);
       });
-      w.appendChild(menu);
+      document.body.appendChild(menu);
+      placeModeMenu(menu,chip);
+      watchModeMenu();
     },true);
   }
   // MODE is the mode. The active chip's data-filter is only consulted when our dropdown never
@@ -1606,8 +1709,18 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function moverData(forceCat){
     if(!window.__lxDEXloaded)return ASSETS.slice(0,MOVER_N);     // stable placeholder order during load
     var cat=forceCat||moverCat();
+    // LEFT EXACTLY AS IT WAS. I added a direction re-filter here and it was wrong twice over: the
+    // frozen list is deliberately stable while its cards fill in, so testing current values at every
+    // render drops rows that are merely not loaded YET — the board collapsed from ten cards to one.
+    // And the problem it was meant to solve (a loser sitting under Gainers) only existed because I
+    // was clearing the freeze elsewhere. Remove the cause, not the symptom.
     if(_moverFrozen[cat])return _moverFrozen[cat].map(function(c){return byCode[c];}).filter(Boolean);
-    var d=ASSETS.slice();
+    // The curated majors PLUS whatever the network turned up. Deduped by identity, because a network
+    // mover that is already curated is the same asset and must not appear twice — nativeMake refuses
+    // the duplicate at creation, so this is belt and braces rather than the only guard.
+    var d=ASSETS.slice(), _seen={};
+    d.forEach(function(a){ _seen[a.code+"|"+a.issuer]=1; });
+    NETMV.forEach(function(a){ var id=a.code+"|"+a.issuer; if(!_seen[id]){ _seen[id]=1; d.push(a); } });
     // GAINERS AND LOSERS ARE QUALITY-GATED. A percentage move is trivially manufactured on an asset
     // nobody holds: one trade against a few dollars of liquidity is a 900% "gainer", and a board of those
     // is worthless and looks like an endorsement. So a mover has to clear both bars:
@@ -1951,7 +2064,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       j(H+"/assets?asset_code="+a.code+"&asset_issuer="+a.issuer).then(function(d){
         var rec=recs(d)[0]; if(!rec)return;
         if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);
-        if(rec.balances)a.supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||a.supply;
+        // issued supply = all four Horizon buckets (see _dexassetdata.js): pool and claimable-balance
+        // holdings are supply too, and a launchpad token keeps ~90% of itself in the pool.
+        if(rec.balances)a.supply=((+rec.balances.authorized||0)+(+rec.liquidity_pools_amount||0)+(+rec.claimable_balances_amount||0)+(+rec.contracts_amount||0))||a.supply;
         else if(rec.amount!=null)a.supply=+rec.amount;
         // same free home_domain as the edge endpoint, so the degraded path labels rows too
         var tl=rec._links&&rec._links.toml&&rec._links.toml.href;
@@ -1980,7 +2095,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // holders (trustlines) + supply
     calls.push(j(H+"/assets?asset_code="+a.code+"&asset_issuer="+a.issuer).then(function(d){ var rec=recs(d)[0]; if(!rec)return;
       if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);
-      if(rec.balances)a.supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||a.supply;
+      // issued supply = all four Horizon buckets, as above
+      if(rec.balances)a.supply=((+rec.balances.authorized||0)+(+rec.liquidity_pools_amount||0)+(+rec.claimable_balances_amount||0)+(+rec.contracts_amount||0))||a.supply;
       else if(rec.amount!=null)a.supply=+rec.amount; touch(); }).catch(function(){}));
     // issuer home_domain (-> mint/mover sub + stellar.toml logo)
     // home_domain is stable and the cached roster already carries it -- only ask when we do not know
@@ -2008,6 +2124,12 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // list does that itself. The mobile list had no way to ask, so 26 of 32 launchpad tokens sat at
     // "0 XLM / —" -- and they had not simply never traded: LIBERATOR, BLA and TDT had all traded within
     // the hour. It was a missing request, not a missing market.
+    // STARTED ALONGSIDE the curated batch, not after it, and never awaited. /lxapi/movers is cached
+    // and answers in about 0.09s while batchPx takes seconds, so in practice the network movers are
+    // in the roster well before the board freezes — which is the only way they can be ranked without
+    // disturbing a board someone is already reading. Nothing waits on it: if it is slow or missing,
+    // the page is exactly the page it was before this existed.
+    try{ loadNetMovers(); }catch(_){}
     batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{ markSortReady(); }catch(_){} try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;window.__lxDEXmints=mintList;}catch(_){} touch(); deferExtras(ASSETS); },
       function(){ window.__lxDEXloaded=1; try{ markSortReady(); }catch(_){} touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)

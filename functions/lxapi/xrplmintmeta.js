@@ -66,6 +66,54 @@ const json = (body, status) => new Response(JSON.stringify(body), {
 
 const clip = (s, max) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
 
+// A HANDLE, NOT A URL — the same normaliser mintmeta.js grew on 2026-11-05, for the same reason.
+//
+// RAZA 2026-11-05: a Stellar minter entered his X and Telegram URLs and the token page linked to
+// "https://x.com/https://x.com/username". The launchpad placeholder reads "x.com/yourproject" on BOTH
+// chains, so the host-bearing form is what people type — and XRPL fails differently rather than not
+// failing: cleanLinks() runs every value through safeUrl(), which needs an absolute https url, so
+// "x.com/handle" cannot be parsed and the link is dropped without a trace. A vanished link looks like
+// "the minter left it blank", which is why this side was never reported.
+//
+// Normalising on write makes the stored value the bare handle the field is named for, on both chains.
+const X_HOSTS = ['x.com/', 'www.x.com/', 'twitter.com/', 'www.twitter.com/', 'mobile.twitter.com/'];
+const TG_HOSTS = ['t.me/', 'www.t.me/', 'telegram.me/', 'www.telegram.me/', 'telegram.dog/'];
+
+// keepPath because a Telegram invite is "t.me/joinchat/<id>" or "t.me/+<id>" — cutting at the first
+// slash would turn a working invite into a dead profile link. An X handle is one segment, so a status
+// url or a ?s=20 tracker after it is not part of the name.
+function handleOf(v, hosts, keepPath) {
+  let s = String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  if (!s) return '';
+  // A scheme we did not name ("javascript:", "data:" — no "//", so the test below misses them) is not
+  // a handle and not a link.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^https?:\/\//i.test(s)) return '';
+  // An absolute url to another host is somebody's real link, not a handle — see mintmeta.js. http(s)
+  // only, because these strings end up in an href.
+  const abs = s.match(/^[a-z][a-z0-9+.-]*:\/\/(.*)$/i);
+  if (abs) {
+    const rest = abs[1].toLowerCase();
+    if (!hosts.some((h) => rest.indexOf(h) === 0 || rest === h.slice(0, -1))) {
+      return /^https?:\/\//i.test(s) ? s : '';
+    }
+  }
+  // Peel scheme, leading @ or / and host as many times as they appear, not once — see mintmeta.js.
+  for (let g = 0; g < 4; g += 1) {
+    const before = s;
+    s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^[@/]+/, '');
+    const lc = s.toLowerCase();
+    for (const h of hosts) {
+      if (lc.indexOf(h) === 0) { s = s.slice(h.length); break; }
+    }
+    if (s === before) break;
+  }
+  s = s.replace(/^[@/]+/, '').split('?')[0].split('#')[0];
+  if (!keepPath) s = s.split('/')[0];
+  s = s.replace(/\/+$/, '').trim();
+  if (hosts.indexOf(s.toLowerCase() + '/') >= 0) return '';
+  return s;
+}
+
 // A website the minter supplies is a link we would publish, so it gets the same treatment every
 // other stranger-supplied url on this build gets: https, a real hostname, no credentials.
 function safeSite(s, max) {
@@ -222,8 +270,8 @@ export async function onRequestPost({ request, env }) {
     name: clip(b.name, LIMITS.name),
     description: clip(b.description != null ? b.description : b.desc, LIMITS.description),
     website: safeSite(b.website, LIMITS.website),
-    twitter: clip(b.twitter, LIMITS.handle),
-    telegram: clip(b.telegram, LIMITS.handle),
+    twitter: clip(handleOf(b.twitter, X_HOSTS, false), LIMITS.handle),
+    telegram: clip(handleOf(b.telegram, TG_HOSTS, true), LIMITS.handle),
     logoId: logoId || null,
     at: (prev && prev.at) || Date.now(),
     updated: Date.now(),

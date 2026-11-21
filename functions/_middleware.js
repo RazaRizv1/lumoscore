@@ -319,7 +319,10 @@ const DDOM = {"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"
 // Paths that existed once, are indexed, and have no successor to redirect to. Answered 410 so Google
 // retires them instead of re-asking — see the note at the use site. Keep this short: anything with a
 // real successor belongs in a 301, not here.
-const GONE_PATHS = ["/activity"];
+const GONE_PATHS = ["/activity","/nft"];
+// Whole families that are gone: the previous platform's /user/profile/<id> pages and its Next.js
+// image optimizer. Checked as prefixes because the ids were minted per account and cannot be listed.
+const GONE_PREFIXES = ["/user/profile/","/_next/"];
 // Retired post slug -> the live page that replaced it. 301, so the authority survives the rename.
 const LEGACY_POSTS = {"/blog/ecosystem-lp-rewards-faqs":"/blog/lumoscore-ecosystem-liquidity-rewards","/blog/introducing-ecosystem-lp-rewards-for-lumos":"/blog/lumoscore-ecosystem-liquidity-rewards","/blog/introducing-whale-holder-rewards-for-lumos":"/blog/lumos-whale-holder-rewards-programme","/blog/introducing-native-lp-rewards-for-lumos":"/blog/earn-lumos-every-15-days-how-lumoscore-lp-rewards-work","/blog/how-the-lumoscore-cross-chain-bridge-works-xrpl-stellar":"/blog/cross-chain-swaps-on-lumoscore-connect-stellar-across-52-networks","/blog/lumoscore-cuts-trading-fees-to-05-0-fee-option-for-holders":"/blog/lumoscore-trading-fees-trade-at-0-2-or-unlock-0-1-with-250k-lumos","/blog/the-biggest-problem-in-blockchain-fragmentation-and-how-lumoscore-plans-to-solve-it":"/whitepaper"};
 // CHAIN-AWARE PAGES: a Stellar page file -> the same page in another chain's build.
@@ -774,15 +777,30 @@ async function blogPost(env, slug){
 //   decided:true  the read came back and there is genuinely no record at this slug -> safe to refuse
 //   decided:false we could not tell (no binding, or the read threw) -> serve the page, as before
 //
-// Only the no-record case is decided. An UNPUBLISHED or scheduled record is left alone deliberately:
-// it exists, it is somebody's draft, and refusing it could break an admin preview -- a narrower
-// question than the one being fixed here.
+// Only the no-record case is decided. A record that exists but is not yet live is NOT decided: it is
+// early, not dead, and 410 GONE would be a lie about a post that is going to appear.
+//
+// LIVENESS IS published AND publishAt, the same test blogIndex() below and the public endpoint in
+// lxapi/blog.js both apply. It used to be published alone here, and that asymmetry was the bug: a
+// post scheduled for next week was correctly withheld from the index and from the API, and then had
+// its title, description and cover injected into the page at its own direct url the moment somebody
+// guessed or was told the slug. An embargoed announcement is usually embargoed because of its
+// HEADLINE, which is exactly the part this leaked. The body was never injected server-side, so that
+// much was never exposed.
+//
+// The old comment justified leaving scheduled posts open by saying refusing them "could break an
+// admin preview". There is no admin preview: the editor loads posts through /lxapi/blog?all=1 on the
+// admin origin and never visits the public url. The justification was hypothetical and the hole was
+// real. If a preview is ever built, it belongs on an authenticated path, not on the public page.
 async function blogLookup(env, slug){
   const kv = env && env.CONTENT_KV;
   if (!kv || !slug) return { post: null, decided: false };
   try {
     const p = await kv.get('blog:post:' + slug, 'json');
-    if (p) return { post: p.published === false ? null : p, decided: false };
+    if (p) {
+      const live = p.published && (!p.publishAt || p.publishAt <= Date.now());
+      return { post: live ? p : null, decided: false };
+    }
     return { post: null, decided: true };
   } catch (e) { return { post: null, decided: false }; }
 }
@@ -866,13 +884,21 @@ function blogSeo(p, origin){
 // how /pools/xrpl ended up telling readers about "Stellar's on-chain AMM pools".
 const HUB_SEO = {
   '/trade': {
-    title: 'Trade on Stellar and XRP Ledger from 0.1% fees',
-    desc: 'Trade across Stellar and the XRP Ledger for as low as 0.1% per trade. Swap any asset, place limit orders, and discover new markets on both networks.',
+    // NEAR added 2026-11-14. The hub had offered a NEAR card since NEAR trading went live, while its
+    // own title, description and intro still named two networks -- and the description closed by
+    // counting them, which made it a literal miscount of the cards directly beneath it.
+    //
+    // The old phrasing is deliberately NOT quoted here. A verification pass grepping the built
+    // middleware for it found a hit and reported the change unshipped: the generated file inlines
+    // this block, comments included, so a comment that quotes the string it removed is a gate
+    // matching its own text ([[walletdata-is-frozen-on-46-pages]]).
+    title: 'Trade Crypto from 0.1% Fees — Swap and Limit Orders',
+    desc: 'Swap any asset and place limit orders for as low as 0.1% per trade on a non-custodial, multi-network DEX. Choose a network to see its markets.',
     h1: 'Trade on LumosCore',
     intro: 'Swap assets and place limit orders for as low as 0.1% per trade. Choose a network to see its markets.',
   },
   '/pools': {
-    title: 'Liquidity Pools on Stellar and XRP Ledger',
+    title: 'Liquidity Pools — Manage Your Liquidity',
     desc: 'Add, remove and manage your liquidity positions. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
     h1: 'Liquidity Pools',
     intro: 'Add, remove and manage your liquidity. Choose a network to see its pools.',
@@ -891,7 +917,7 @@ const HUB_SEO = {
   },
   '/lumos': {
     title: 'LUMOS token — Price, Pools and Holders',
-    desc: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
+    desc: 'LumosCore’s native token. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
     h1: 'LUMOS',
     intro: 'LumosCore’s native token. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
   },
@@ -905,8 +931,11 @@ const HUB_SEO = {
   // duplicate, and that is the copy that counts. Found by auditing titles with Googlebot's user agent
   // rather than by looking at the tab.
   '/launchpad': {
-    title: 'Launch a Token for $25 — Stellar or XRP Ledger',
-    desc: 'Launch a token for a flat $25, first liquidity pool included. Supported on Stellar and the XRP Ledger — set the name, supply and logo, then mint from your wallet.',
+    // NEAR added 2026-11-14. The flat $25 is the same on NEAR — RAZA, asked directly: "its $25 on
+    // NEAR too". Worth having asked rather than extended by symmetry: a price in a <title> that the
+    // checkout does not honour is the one copy error a reader can act on.
+    title: 'Launch a Token for $25 — No Code, Pool Included',
+    desc: 'Launch a token for a flat $25, first liquidity pool included. Set the name, supply and logo, then mint from your own wallet. Choose a network to start.',
     h1: 'Launch a Token',
     intro: 'Issue your own token and open its first liquidity pool for a flat $25. No code, and no contract to deploy.',
   },
@@ -960,14 +989,23 @@ const NET_SEO = {
     title: 'Launch a Token on Stellar for $25',
     desc: 'Launch a token on Stellar for a flat $25 in XLM, first liquidity pool included. Set the name, ticker, supply and logo, then mint straight from your wallet.',
     h1: 'Launch a Token on <span class="hl">Stellar</span>',
-    // Keeps the How it works link: it is the only way into that dialog from this header.
-    intro: 'Issue a Stellar asset for a flat $25 in XLM, with its first liquidity pool included. <a class="ui-link" href="#">How it works</a>.',
+    // Keeps the How it works link: it is the only way into that dialog from this header. The dialog
+    // it refers to did not exist until 2026-11-01 (_launchhiw.js) -- the link shipped as href="#" and
+    // did nothing on either chain, which is what RAZA reported. data-lxlhiw is what that layer binds
+    // to; the layer also falls back to matching the link's text, so a stale edge cannot kill it again.
+    intro: 'Issue a Stellar asset for a flat $25 in XLM, with its first liquidity pool included. <a class="ui-link" href="#" data-lxlhiw>How it works</a>.',
   },
   '/launchpad/xrpl': {
     title: 'Launch a Token on the XRP Ledger for $25',
     desc: 'Launch a token on the XRP Ledger for a flat $25 in XRP, first liquidity pool included. Set the name, supply and metadata, then mint straight from your wallet.',
     h1: 'Launch a Token on <span class="hl">XRP Ledger</span>',
-    intro: 'Issue a token on the XRP Ledger for a flat $25 in XRP, with its first liquidity pool included. <a class="ui-link" href="#">How it works</a>.',
+    // Same hook as the Stellar line above. BOTH launchpad urls are served by THIS middleware on the
+    // combined deploy, so this one table is the only place either link is injected -- but the DIALOG
+    // behind it is per-chain: the fork's _xrplaunchhiw.js puts its own lx-lhiw on its own launch-token
+    // pages (injected, not inherited -- its frozen Stellar base predates _launchhiw.js), so an XRP
+    // Ledger launcher is told about twelve transactions and two blackholed accounts rather than about
+    // XLM, trustlines and Stellar's protocol-fixed 0.30%.
+    intro: 'Issue a token on the XRP Ledger for a flat $25 in XRP, with its first liquidity pool included. <a class="ui-link" href="#" data-lxlhiw>How it works</a>.',
   },
   '/bridge/stellar': {
     title: 'Bridge Assets to 52 Chains from Stellar',
@@ -1269,6 +1307,45 @@ class OgTextFill {
 // Done HERE rather than in _redirects on purpose: a 301 there can collide with the 200-rewrite for
 // the same page and loop. Here the order is explicit and the rewrite path uses env.ASSETS/next(),
 // which never re-enters this check.
+
+// The fork half of legacyClean: a raw build filename reached under a chain directory resolves to
+// THAT chain's clean url. Mirrors the Stellar branches exactly -- an id in the query is promoted
+// into the path, and a dynamic route with no id falls back to the chain's hub -- so the two halves
+// cannot answer differently for the same shape.
+//
+// Returns null rather than guessing when the only route for the page is dynamic and we hold no id
+// (/account/<chain>/:address). Inventing /account/xrpl would 301 into a 404, and an address is not
+// ours to make up. The Stellar half declines the same case by skipping dynamic routes in its loops.
+function forkClean(chain, base, params){
+  // The front door is chain-neutral -- it IS the chooser -- and the combine drops "/" from every
+  // fork's route table, so no fork row can answer this. Without the guard the chain branch returned
+  // null here and a url that used to reach the landing page started 404ing.
+  if (base === 'lumoscore-landing') return '/';
+  const want = chain + '/' + base;
+  const asset = params && params.get('asset');
+  const pool = params && params.get('pool');
+  for (const r of ROUTES){
+    if ((r[1] || '').replace(/-(dark|light|mobile)$/, '') !== want) continue;
+    const p = r[0];
+    const ai = p.indexOf('/:asset');
+    if (ai >= 0) return asset ? (p.slice(0, ai) + '/' + asset) : p.slice(0, ai);
+    const pi = p.indexOf('/:pool');
+    if (pi >= 0) return pool ? (p.slice(0, pi) + '/' + pool) : chainHub(p, chain);
+    if (p.indexOf('/:') >= 0) continue;
+    return p;
+  }
+  return null;
+}
+
+// The chain-qualified hub a dynamic fork route hangs off: /pools/xrpl/id/:pool -> /pools/xrpl.
+// Cutting after the chain segment, not before the first ":", because /pools/<chain>/id/:pool would
+// otherwise answer /pools/xrpl/id, which is not a route.
+function chainHub(p, chain){
+  const s = p.split('/');
+  const i = s.indexOf(chain);
+  return i > 0 ? s.slice(0, i + 1).join('/') : p;
+}
+
 function legacyClean(pathname, params){
   // Take the LAST path segment, not the whole path. The app navigates with RELATIVE urls
   // (location.href="lumoscore-dex-asset.html?asset=…"), which used to resolve at the site root but
@@ -1282,6 +1359,29 @@ function legacyClean(pathname, params){
   if (base.slice(-5) === '.html') base = base.slice(0, -5);
   if (!base.startsWith('lumoscore-')) return null;
   base = base.replace(/-(dark|light|mobile)$/, '');
+
+  // A CHAIN NAMED IN THE PATH IS PART OF THE ANSWER (RAZA 2026-11-04).
+  //
+  // Taking only the last segment also threw away the chain, and every branch below names
+  // /stellar outright — so /xrpl/lumoscore-dex-asset.html 301'd to /trade/stellar. A url that
+  // says xrpl and lands on the Stellar hub is the failure the pathChain note further down calls
+  // worse than either answer on its own; it is the same class as serving one chain's file under
+  // the other chain's route.
+  //
+  // Resolved from ROUTES rather than from a list of chains, because the forks' rows are appended
+  // there by the combine and a hardcoded list would go stale the moment a fork is added. A fork
+  // row is recognisable on its own: its FILE carries the chain as a directory ("xrpl/lumoscore-dex"),
+  // which no Stellar row does.
+  let chain = '';
+  for (let i = 1; i < segs.length - 1 && !chain; i++){
+    if (!segs[i]) continue;
+    for (const r of ROUTES){
+      const f = r[1] || '';
+      const c = f.indexOf('/');
+      if (c > 0 && f.slice(0, c) === segs[i]){ chain = segs[i]; break; }
+    }
+  }
+  if (chain) return forkClean(chain, base, params);
 
   // the two dynamic routes carry their identifier in the query — promote it into the path
   const asset = params && params.get('asset');
@@ -1475,8 +1575,19 @@ export async function onRequest(context){
     // "Remove" button on an LP position, which links to ...?pool=<id>&act=withdraw so the pool page
     // opens on the Withdraw tab: the redirect promoted the pool into the path and threw act= away, so
     // the user always landed on Deposit. Drop only the key that was promoted.
-    const promoted = legacy.indexOf('/trade/stellar/') === 0
-      || legacy.indexOf('/pools/stellar/id/') === 0;
+    // Named the chain, so XRPL kept the id in BOTH places: /xrpl/lumoscore-dex-asset.html?asset=SOLO-…
+    // 301'd to /trade/xrpl/SOLO-…?asset=SOLO-…, two urls for one page, which is the duplication this
+    // strip exists to stop (RAZA 2026-11-04, alongside forkClean above).
+    //
+    // Matched on the SHAPE of the destination plus the value, not on a chain name: the only two
+    // routes anything can be promoted into are /<hub>/<chain>/<asset> and /pools/<chain>/id/<pool>.
+    // Requiring the last segment to equal the query value keeps it off paths that merely happen to
+    // end in the same word, so ?asset=bridge on /lumoscore-bridge.html still carries its query.
+    const _ls = legacy.split('/');
+    const _qa = url.searchParams.get('asset');
+    const _qp = url.searchParams.get('pool');
+    const promoted = (_ls.length === 4 && _ls[1] === 'trade' && _qa && _ls[3] === _qa)
+      || (_ls.length === 5 && _ls[1] === 'pools' && _ls[3] === 'id' && _qp && _ls[4] === _qp);
     if (promoted){
       const keep = new URLSearchParams(url.search);
       keep.delete('asset'); keep.delete('pool');
@@ -1562,7 +1673,11 @@ export async function onRequest(context){
     return Response.redirect(to.toString(), 301);
   }
 
-  if (GONE_PATHS.indexOf(gonePath) >= 0){
+  let gonePrefixed = false;
+  for (let gi = 0; gi < GONE_PREFIXES.length; gi++){
+    if (gonePath.indexOf(GONE_PREFIXES[gi]) === 0){ gonePrefixed = true; break; }
+  }
+  if (GONE_PATHS.indexOf(gonePath) >= 0 || gonePrefixed){
     const branded = await context.env.ASSETS.fetch(new URL('/404.html', request.url).toString());
     const hdrs = {
       'content-type': 'text/html; charset=utf-8',
