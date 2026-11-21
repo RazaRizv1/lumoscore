@@ -1361,7 +1361,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'    mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }catch(e){}'
 +'  var sub=q(".admin-page-sub");'
 +'  if(sub&&/refreshed every/i.test(sub.textContent||""))'
-+'    setT(sub,"Read from Stellar mainnet when this page loads \\u2014 press Refresh for current figures.");'
++'    setT(sub,"Read from Stellar, XRPL and NEAR on load \\u2014 press Refresh for current figures.");'
 +'}'
 +'function paintNoBackend(){'
 +'  var t=pageTitle();'
@@ -1628,7 +1628,7 @@ function paintUsers(){
     +"<button class='seg-chip' type='button' data-seg='ext'><span class='seg-label'>External only</span><span class='seg-count' id='lxuExt'>\u2014</span></button>";
   var head=q(".admin-page-head");
   if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";
-    nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record of someone having used the app. Everything on this page is Stellar mainnet; there is no second network to split by.";
+    nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record of someone having used the app. Wallets on Stellar, the XRP Ledger and NEAR are all listed; the network shows under each address.";
     head.parentNode.insertBefore(nt, head.nextSibling); }
   qa(".admin-page-actions .adm-btn").forEach(function(b){ if(/invite/i.test(b.textContent)){ b.disabled=true; b.style.opacity="0.5"; b.style.cursor="not-allowed"; b.title="Needs a backend \u2014 there is nowhere to store an admin account or send an invite."; } });
   var ROWS=[], SORT=0, TIERSET=null, XTIERSET=null, SEG="all", GEO=null;
