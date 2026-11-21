@@ -77,6 +77,11 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
   var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
   var _seaRetried={};   // one retry per query, so a dead index still reports itself
+  // #2b: pools matching the QUERY, not just a pasted pool id. undefined = never asked, null = in
+  // flight, array = the answer (possibly empty). Keyed by the lowercased query so a repeat costs
+  // nothing and so the result can be folded into the SAME paint() call as the assets -- appending it
+  // separately is what produced the "pool appears, then vanishes" flap documented in render().
+  var SEA_POOLQ={};
   // Tokens minted on OUR launchpad. This used to read localStorage "lumos.launches" -- a key nothing in
   // the codebase has ever written, so it was always [] and a minted token was unfindable by name or code.
   // Even had it been written it was per-browser, so it could never have shown another person a mint.
@@ -111,6 +116,35 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
     return "data:image/svg+xml,"+encodeURIComponent(svg); }
   function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
+  // A THIRD-PARTY IMAGE URL IS A CLAIM, NOT A PICTURE. When the search upstream hands us a tomlInfo.image
+  // the row used to render it and stop there -- no fallback -- so a dead URL left a permanently blank
+  // circle while /lxapi/assetlogo held the real logo all along. RAZA 2026-11-12: "why JOY token logo is
+  // not showing on search but when we open its trade page, it shows". XLMJOY's upstream image is
+  // meta.stellar.expert/QmYcVYR5... , an IPFS CID that now answers 404; the issuer's OWN toml publishes
+  // a working stellarmint.io/...Joy.png , which is what assetlogo returns and what the trade page drew.
+  // Their plain-hash urls still serve, so this is not every asset -- it is every asset whose upstream
+  // image happens to be dead, which is not a set we can enumerate and must not have to.
+  //
+  // Two steps, each tried once: dead upstream image -> /lxapi/assetlogo -> letter avatar. onerror is
+  // cleared before each new src so a second failure can never loop, and the result is shared with
+  // lxSeaLogos through the same __lxSeaLogo map so a repaint does not re-request it.
+  window.__lxSeaImgFail=function(im){
+    try{
+      im.onerror=null;
+      var id=im.getAttribute("data-lxfb")||""; im.removeAttribute("data-lxfb");
+      var code=id.indexOf("-")>0?id.slice(0,id.indexOf("-")):"";
+      var ava=avatarUri(code);
+      if(!id){ im.src=ava; return; }
+      var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{});
+      if(seen[id]){ im.onerror=function(){ this.onerror=null; this.src=ava; }; im.src=seen[id]; return; }
+      if(seen[id]===null){ im.src=ava; return; }
+      fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))
+        .then(function(r){ return r.ok?r.json():null; })
+        .then(function(j){ var u=j&&j.image; seen[id]=u||null;
+          if(u){ im.onerror=function(){ this.onerror=null; this.src=ava; }; im.src=u; } else im.src=ava; })
+        .catch(function(){ seen[id]=null; im.src=ava; });
+    }catch(_){ }
+  };
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
   var VFD=${JSON.stringify(VERIFIED)};
@@ -166,7 +200,14 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
     // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
     // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img'+(t.img?"":' data-lxneedlogo="'+esc(t.code)+'-'+esc(t.issuer)+'"')+' src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    // With an upstream image: render it, but carry the id and an onerror so a dead url falls through to
+    // assetlogo instead of leaving a blank circle. Without one: ask assetlogo up front, as before. The
+    // id is NOT emitted as data-lxneedlogo in the first case -- lxSeaLogos would then fetch for every
+    // row on every repaint, turning a fallback into a request per asset.
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img'
+      +(t.img?' data-lxfb="'+esc(t.code)+'-'+esc(t.issuer)+'" onerror="__lxSeaImgFail(this)"'
+             :' data-lxneedlogo="'+esc(t.code)+'-'+esc(t.issuer)+'"')
+      +' src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
     // >0, not !=null: a count of zero on a real asset means the field was missing, and printing it states something
     // the data never said. A row with no number is left for lxSeaHolders to fill from its own request.
     var sub = t.hl>0 ? (nfmt(t.hl)+" holders") : (t.tl>0 ? (nfmt(t.tl)+" holders") : "Launchpad token");
@@ -204,17 +245,43 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     "BTC|GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF":"https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
     "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"/assets/tokens/lumos.png"
   };
+  // A POOL LEG RESOLVES ITS LOGO THE SAME WAY AN ASSET ROW DOES (RAZA 2026-11-10: "searching for any
+  // pool through its pool id, the asset logos are not showing up").
+  //
+  // This branch was written beside the asset rows and never picked up lxSeaLogos' resolver, so it asked
+  // stellar.expert's index and nothing else. That index carries a tomlInfo image for the assets it has
+  // indexed and none for the rest -- which is most small ones -- so a pool of two un-indexed tokens drew
+  // two generated initials discs even when the logos were published and reachable.
+  //
+  // Measured on the pool in the report, POTATO/XLMFISH: the index returns no image for EITHER leg, while
+  // /lxapi/assetlogo resolves POTATO's straight out of our own toml, because POTATO is a LumosCore mint.
+  // XLMFISH stays a disc and should: its issuer's domain (lu.meme) answers 404 for its toml, so there is
+  // no logo to show. The index stays as the fallback -- it still answers for an asset whose issuer
+  // publishes no toml but which stellar.expert has a mark for.
   function poolIcoLoad(id,which,code,issuer){
     if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
     var bd=LXBRAND[code+"|"+issuer]; if(bd){ poolIcoSet(id,which,bd); return; }   // known mark, no lookup needed
     poolIcoSet(id,which,avatarUri(code));
-    seaIdx(issuer,50)
-      .then(function(d){
-        var recs=(d&&d._embedded&&d._embedded.records)||[];
-        var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
-        var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
-        if(img)poolIcoSet(id,which,img);
-      }).catch(function(){});
+    function viaIndex(){
+      seaIdx(issuer,50)
+        .then(function(d){
+          var recs=(d&&d._embedded&&d._embedded.records)||[];
+          var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
+          var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
+          if(img)poolIcoSet(id,which,img);
+        }).catch(function(){});
+    }
+    // Positive hits are shared with the asset rows' own map, so a token already resolved for a row costs
+    // nothing here. Only hits are written to it: a miss here means "the toml had none", which is not the
+    // "give up on this asset" that map's null means to lxSeaLogos.
+    var key=code+"-"+issuer, seen=(window.__lxSeaLogo=window.__lxSeaLogo||{});
+    if(seen[key]){ poolIcoSet(id,which,seen[key]); return; }
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(key))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ var u=j&&j.image;
+        if(u){ seen[key]=u; poolIcoSet(id,which,u); return; }
+        viaIndex(); })
+      .catch(viaIndex);
   }
   function poolFill(id){
     var d=POOLI[id]; if(!d)return;
@@ -263,6 +330,60 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
       '<div class="sp-sub lx-pool-sub" data-pool="'+esc(id)+'">Loading pool…</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
+  }
+  // SEARCHING A TOKEN FINDS ITS POOLS (RAZA 2026-11-07: searching LUMOS "completely omits associated
+  // Stellar liquidity pools from the search dropdown (unlike NEAR, which displays matching pools under
+  // a dedicated POOLS section)").
+  //
+  // A pool id pasted into the box already resolved -- that is poolRow/poolLoad below, reused here
+  // unchanged, so a pool found by name renders and fills exactly like one found by id. What was
+  // missing is the lookup from an ASSET to the pools holding it, which Horizon answers directly:
+  // /liquidity_pools?reserves=CODE:ISSUER.
+  //
+  // ONE request per query, for the best-matching asset only. The asset list can be 20 rows and a
+  // request each would be 20 calls on every keystroke's settle; the row a reader means is the one at
+  // the top, and that is the row whose pools they want. Native XLM is skipped: nearly every pool
+  // holds it, so "XLM" would list an arbitrary three.
+  //
+  // Host fallback for the same reason poolLoad has one (GUARDRAILS E12). A failure stores an empty
+  // array rather than nothing, so a rate-limited Horizon costs one silent miss instead of a retry on
+  // every repaint.
+  function poolsFor(q,assets){
+    if(SEA_POOLQ[q]!==undefined)return;
+    var a=assets&&assets[0];
+    if(!a||!a.code||!a.issuer){ SEA_POOLQ[q]=[]; return; }
+    SEA_POOLQ[q]=null;
+    var qs="?reserves="+encodeURIComponent(a.code+":"+a.issuer)+"&limit=30";
+    var P="https://horizon.stellar.org/liquidity_pools"+qs,
+        P2="https://horizon.stellar.lobstr.co/liquidity_pools"+qs;
+    function once(u){ return fetch(u).then(function(r){ if(r.ok)return r.json();
+      var e=new Error("s"); e.__st=r.status; throw e; }); }
+    once(P).catch(function(e){ var st=(e&&e.__st)||0;
+      if(st>=400&&st<500&&st!==429)return null;
+      return once(P2).catch(function(){ return null; }); })
+    .then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      // BIGGEST FIRST, by the reserve of the asset that was searched for -- Horizon returns these in
+      // ledger order, which puts an empty pool above a deep one. Sorted on the side we know is
+      // present rather than on XLM, because the pair may not hold XLM at all.
+      var want=a.code+":"+a.issuer;
+      function side(p){ var rs=(p&&p.reserves)||[];
+        for(var i=0;i<rs.length;i++)if(rs[i].asset===want)return +rs[i].amount||0;
+        return 0; }
+      recs.sort(function(x,y){ return side(y)-side(x); });
+      var ids=[];
+      for(var i=0;i<recs.length&&ids.length<3;i++){ if(side(recs[i])>0&&recs[i].id)ids.push(recs[i].id); }
+      SEA_POOLQ[q]=ids;
+      if(ids.length){ try{ lxSeaRedraw(); }catch(_){} }
+    }).catch(function(){ SEA_POOLQ[q]=[]; });
+  }
+  // Rendered from the cache only. Returning "" while the lookup is in flight keeps the assets paint
+  // idempotent -- the redraw above is what brings the section in, once.
+  function poolsBlock(q){
+    var ids=SEA_POOLQ[q];
+    if(!ids||!ids.length)return "";
+    setTimeout(function(){ for(var i=0;i<ids.length;i++)poolLoad(ids[i]); },0);
+    return '<div class="lx-recgrp">Pools</div>'+ids.map(poolRow).join("");
   }
   // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
   // one face wherever it appears.
@@ -566,10 +687,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           // LXBRAND first. It already existed but only pool icons consulted it, so an asset result took
           // whatever the issuer's toml published -- and LUMOS still declares home_domain=lumosdao.io,
           // whose toml carries an older mark. Keyed by CODE|ISSUER, never by ticker alone.
-          // B11: our own asset, by identity. See the note in the transform -- the toml at lumosdao.io
-          // says "Lumos Core"; until that is corrected this is what the search shows for it.
+          // B11: our own asset, by identity. The toml at lumosdao.io says "Lumos Core", so this slot has
+          // to be pinned or the stale org name leaks into the name row. It used to be pinned to the
+          // COMPANY ("LumosCore"), which made our own token the one row in the list that advertised the
+          // platform instead of the asset -- NEAR shows the ticker. Pin it to the ticker on both.
           var _nm=ti.name||"";
-          if((p[0]||"")==="LUMOS"&&(p[1]||"")==="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")_nm="LumosCore";
+          if((p[0]||"")==="LUMOS"&&(p[1]||"")==="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")_nm="LUMOS";
           // TRUSTLINES IS AN OBJECT, NOT AN ARRAY (RAZA 2026-09-17: "WHy's all tokens on search showing 0 holders").
           // The upstream sends {total, authorized, funded}; this read [0] and [2], which are undefined on an object, and
           // undefined-or-0 is 0 -- so every result rendered a measured-looking "0 holders". Measured live: ATOM 38,
@@ -650,7 +773,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         var _q=String(raw).trim();
         var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
         if(isPool(_q))setTimeout(function(){ poolLoad(_q); },0);
-        paint(list, (lead + (all.length ? all.map(row).join("") : ""))
+        // #2b: only for a NAME search. A pasted pool id or address already has its own lead row, and
+        // asking Horizon for the pools of an asset nobody searched for would be a request for nothing.
+        if(all.length&&!isPool(_q)&&!isAddr(_q))poolsFor(q,all);
+        paint(list, (lead + (all.length ? all.map(row).join("") : "") + (all.length ? poolsBlock(q) : ""))
           || '<div class="sp-seaempty">Nothing on Stellar matches \u201c'+esc(raw)+'\u201d</div>');
       });
     }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
@@ -750,8 +876,14 @@ for (const file of files) {
     // pointing wherever the old string happened to be -- which spliced our script into the middle of
     // another one and truncated it. Any mutation of h has to happen before the offset is measured.
     h = h.split('placeholder="Search assets"').join('placeholder="Search assets, pools and wallets"');
-    h = h.split('<span>Search assets, users, and networks.</span>')
-         .join('<span>Search assets, pools and wallets on Stellar.</span>');
+    // The footer was helper text for help that does not exist: the first span restated the placeholder
+    // directly above it, and the "Type ? for help" hint pointed at a key nothing listens for. Remove the
+    // container instead of rewriting its copy -- which is what this used to do, and the reason the match
+    // is a shape and not the exact string: an earlier run of this transform already replaced the design's
+    // own wording in the container, so matching that wording would only ever work on a fresh container.
+    // The two .sp-foot CSS rules stay; they now style nothing, and editing the design's stylesheet to
+    // delete a dead rule risks more than it saves.
+    h = h.replace(/\s*<div class="sp-foot">[\s\S]*?<\/div>/g, '');
     const bi = h.lastIndexOf('</body>'); if (bi < 0) continue;
     json[k] = h.slice(0, bi) + SCRIPT + h.slice(bi);
     changed = true; n++;

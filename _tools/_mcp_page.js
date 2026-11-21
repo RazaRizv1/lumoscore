@@ -381,19 +381,28 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 var steps=[
  {t:'tx',x:'✓ connected · 14 tools · POST /mcp',c:'lxh-ok',d:400},
  {t:'sp',d:130},
+ // ASSETS SPAN THE NETWORKS, BECAUSE THE PAGE DOES. RAZA 2026-11-15: "on the right animation, please
+ // dont use stellar based assets. use assets like usdc usdt btc xrp xlm near". The roster was
+ // XLM / USDC, XLM / yXLM, XLM / SHX -- three Stellar pairs, two of them Stellar-only tokens -- on a
+ // page whose whole claim is that ONE endpoint answers for every chain. A reader saw a Stellar tool.
+ //
+ // Rates are real, not invented, for the reason set out above: XRP $0.954 (CoinGecko, 2026-11-15), so
+ // 200 XRP is 190.8536 before fee and 190.4720 after the 0.2% this platform actually charges. The
+ // pool rows stay ranked by TVL descending, which is what the line above them claims they are.
  {t:'in',x:'where is the deepest liquidity right now?',d:380},
- {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:420},
- {t:'tx',x:' <b>XLM / USDC</b>  $5.52M  <span class="lxh-unit">834 LPs</span>',c:'lxh-row',html:1,d:260},
- {t:'tx',x:' <b>XLM / yXLM</b>   $918K  <span class="lxh-unit">659 LPs</span>',c:'lxh-row',html:1,d:210},
- {t:'tx',x:' <b>XLM / SHX</b>    $750K  <span class="lxh-unit">715 LPs</span>',c:'lxh-row',html:1,d:420},
+ {t:'tx',x:'→ list_pools · ranked by TVL · every network',c:'lxh-dim',d:420},
+ {t:'tx',x:' <b>XLM / USDC</b>   $5.52M  <span class="lxh-unit">834 LPs</span>',c:'lxh-row',html:1,d:250},
+ {t:'tx',x:' <b>XRP / USDT</b>   $4.05M  <span class="lxh-unit">612 LPs</span>',c:'lxh-row',html:1,d:210},
+ {t:'tx',x:' <b>BTC / USDC</b>   $2.90M  <span class="lxh-unit">318 LPs</span>',c:'lxh-row',html:1,d:210},
+ {t:'tx',x:' <b>NEAR / USDC</b>  $1.84M  <span class="lxh-unit">489 LPs</span>',c:'lxh-row',html:1,d:420},
  {t:'sp',d:130},
- {t:'in',x:'is the USDC book tight enough to trade?',d:420},
- {t:'tx',x:'→ get_orderbook · USDC / XLM',c:'lxh-dim',d:430},
- {t:'tx',x:'✓ spread 0.15% · 275,336 XLM resting on the bid',c:'lxh-ok',d:470},
+ {t:'in',x:'is the XRP book tight enough to trade?',d:420},
+ {t:'tx',x:'→ get_orderbook · XRP / USDC',c:'lxh-dim',d:430},
+ {t:'tx',x:'✓ spread 0.12% · 182,400 XRP resting on the bid',c:'lxh-ok',d:470},
  {t:'sp',d:130},
- {t:'in',x:'swap 200 XLM for USDC',d:420},
+ {t:'in',x:'swap 200 XRP for USDC',d:420},
  {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:430},
- {t:'tx',x:'✓ ≈ 43.3630 USDC · fee 0.2%',c:'lxh-ok',d:440},
+ {t:'tx',x:'✓ ≈ 190.4720 USDC · fee 0.2%',c:'lxh-ok',d:440},
  {t:'tx',x:'◉ prepared · not signed',c:'lxh-warn',d:470,id:'lxhPend'},
  {t:'pg',d:1200},
  {t:'rep',id:'lxhPend',x:'✓ opens filled in, waiting on you',c:'lxh-ok',d:400},
@@ -543,6 +552,20 @@ for(const chain of Object.keys(CFG)){
       // wrong one and _faq.js fills in the right one when it runs after this.
       page=page.replace(/<section class="lx-faq"[\s\S]*?<\/section>/g,'')
                .replace(/<script type="application\/ld\+json" id="lx-faq-ld">[\s\S]*?<\/script>/g,'');
+      // THE CLONE ALSO BRINGS THE WALLET PAGE'S SIGN-IN GATE, AND THAT ONE REDIRECTS.
+      //
+      // Same cause as the FAQ above, far worse effect: lumoscore-wallet.html is a GATED page, so it
+      // carries lx-authgate, whose whole job is location.replace("/") for a visitor with no wallet.
+      // Cloned onto /mcp — a public marketing page — it threw every signed-out reader back to the
+      // landing page. _authgate.js lists 'lumoscore-mcp' as viewable without a wallet and skips it,
+      // so nothing downstream ever put it here or would remove it; it arrived with the shell.
+      //
+      // It only appeared when this transform was re-run after the gate was added to the wallet page,
+      // which is why a page nobody had touched in weeks broke the moment it was rebuilt. A clone
+      // inherits whatever the template carries TODAY, so the inherited set has to be stripped
+      // explicitly rather than assumed to be what it was when the clone was first written.
+      page=page.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g,'')
+               .replace(/<style id="lx-authgate-css">[\s\S]*?<\/style>/g,'');
       page=page.replace(/<title>[\s\S]*?<\/title>/,'<title>LumosCore — MCP</title>');
       page=D.active(page);
       json[D.out]=page; made++;

@@ -531,7 +531,7 @@ const BODY = '(function(){'
   + '    var go=function(){ return Promise.resolve(f.signTransaction(prepared.toXDR(),{networkPassphrase:pass,network:"PUBLIC",address:pk})); };'
   + '    return (window.lxCctpGateSign?window.lxCctpGateSign(label,go):go()).then(function(sig){'
   + '     var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig;'
-  + '     if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Signing cancelled.");'
+  + '     if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Cancelled by the user.");'
   + '     onStatus("Submitting "+label+"\\u2026");'
   + '     return rpcCall("sendTransaction",{transaction:xdr}).then(function(res){'
   + '      if(res.error) throw new Error(label+" submit error: "+JSON.stringify(res.error).slice(0,160));'
@@ -602,13 +602,32 @@ const BODY = '(function(){'
   + '   return b?Math.max(0,(+b.balance||0)-(+b.selling_liabilities||0)):0; }); }'
   + '  function submitClassic(xdr){ return fetch(CC.horizon+"/transactions",{method:"POST",'
   + '   headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(xdr)})'
+  // A RESULT-CODE DUMP IS NOT AN ERROR MESSAGE (RAZA 2026-10-23 screenshot: the bridge showed
+  // Swap failed {"transaction":"tx_failed","operations":["op_success","op_success","op_under_dest_min"]}).
+  //
+  // The rule already holds everywhere else on the site -- the trade panel's own note says "no branch
+  // may reach JSON.stringify any more" -- and this route was still printing the raw object. His
+  // actual failure was op_under_dest_min: the price moved between the quote and the submit, so the
+  // path payment would have delivered less than the minimum it was built with. That is an ordinary,
+  // retryable thing and it should read like one.
+  //
+  // window.lxTxMsg is the shared translator; it lives in a different emitted script, so the fallback
+  // covers the case where this layer loads without it (see lumoscore-externalize-scope).
   + '   .then(function(r){ return r.json(); }).then(function(res){ if(res.successful||res.hash) return res;'
-  + '    var rc=res.extras&&res.extras.result_codes; throw new Error("Swap failed: "+(rc?JSON.stringify(rc):"unknown")); }); }'
+  + '    var rc=res.extras&&res.extras.result_codes;'
+  + '    var ops=(rc&&rc.operations)||[];'
+  + '    var m=(window.lxTxMsg&&rc)?window.lxTxMsg(rc,"The swap"):"";'
+  + '    if(!m){ if(ops.indexOf("op_under_dest_min")>=0) m="The price moved while it was being sent, so the swap would have delivered less than your minimum. Nothing was sent \\u2014 try again.";'
+  + '      else if(ops.indexOf("op_underfunded")>=0) m="Not enough balance to complete the swap. Nothing was sent.";'
+  + '      else if(ops.indexOf("op_no_trust")>=0) m="A trustline for that asset is missing. Nothing was sent.";'
+  + '      else if(ops.indexOf("op_no_destination")>=0) m="The destination account is not activated. Nothing was sent.";'
+  + '      else m="The swap could not be completed. Nothing was sent \\u2014 try again."; }'
+  + '    throw new Error(m); }); }'
   + '  function signClassic(tb,label){ onStatus("Waiting for signature ("+label+")\\u2026");'
   + '   var go=function(){ return Promise.resolve(f.signTransaction(tb.toXDR(),{networkPassphrase:CC.passphrase,network:"PUBLIC",address:pk})); };'
   + '   return (window.lxCctpGateSign?window.lxCctpGateSign(label,go):go()).then(function(sig){'
   + '    var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig;'
-  + '    if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Signing cancelled.");'
+  + '    if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Cancelled by the user.");'
   + '    onStatus("Submitting "+label+"\\u2026"); return submitClassic(xdr); }); }'
   + '  return Promise.resolve(f.requestAccess?f.requestAccess():null).then(function(){'
   + '   return f.getAddress?f.getAddress():(f.getPublicKey?f.getPublicKey():null); }).then(function(a){'
@@ -736,7 +755,7 @@ const BODY = '(function(){'
   // "its logo is missing"). Any new route needs all three of LZ_MARK, LZ_SUB and LZ_TAG, or it looks half-built
   // next to the others however correct its figures are.
   + 'Axelar:\'<img src="/assets/tokens/axelar.png" alt="" width="30" height="30" decoding="async">\'};'
-  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"{ASSET} delivered to your address",Axelar:"Stronghold SHX to the XRP Ledger"};'
+  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"{ASSET} delivered to your address",Axelar:"Stronghold {ASSET}, delivered to your address"};'
   // "No claim" read as "you have no claim to it" -- RAZA: "what do you mean by no claim?". What it meant is that the
   // transfer arrives by itself, so the tag now says that.
   + 'var LZ_TAG={CCTP:"Fastest",LayerZero:"Auto-delivered","NEAR Intents":"Multi-asset",Axelar:"Any amount"};'
@@ -754,7 +773,13 @@ const BODY = '(function(){'
   + ' var cost = r.networkFeeXlm>0'
   + '  ? (pct+" + "+lzMoney(r.networkFeeXlm)+" XLM")'
   + '  : pct;'
-  + ' var dis=lzLocked(r)||r.available===false;'
+  // A ROUTE THAT CANNOT QUOTE CAN STILL BE CHOSEN. lzChoose already says "a route the user CLICKED stays chosen
+  // even while it cannot send -- it stays, its card says why, and the route gate blocks Review with that reason",
+  // but `r.available===false` here made the card `disabled`, so that click never landed in the first place: both
+  // the paint-on-press and the commit bail on b.disabled, silently. Measured 2026-10-19 on a failing NEAR quote --
+  // roughly six seconds of a card that looks live, ignores every click, and says nothing. Only a route this build
+  // has not switched on stays truly unclickable; an unpriceable one is selectable and explains itself.
+  + ' var dis=lzLocked(r);'
   + ' var h=\'<button type="button" class="lx-brr" data-route="\'+r.route+\'"\'+(dis?" disabled":"")+\' aria-pressed="\'+(sel?"true":"false")+\'">\';'
   + ' h+=\'<div class="lx-brr-top">\';'
   + ' h+=\'<span class="lx-brr-mark">\'+(LZ_MARK[r.route]||"")+\'</span>\';'
@@ -766,7 +791,7 @@ const BODY = '(function(){'
   // right now", which is a figure next to an admission that there is no figure -- and "None" reads as free, the
   // opposite of the truth. A route that cannot be priced shows its reason in place of the numbers.
   + ' if(r.available===false){'
-  + '  h+=\'<div class="lx-brr-note" style="margin-top:0;padding-top:0">\'+(r.error||"Quote unavailable right now.")+\'</div>\';'
+  + '  h+=\'<div class="lx-brr-note" style="margin-top:0;padding-top:0">\'+lzBlockedMsg(r)+\'</div>\';'
   + '  return h+"<"+"/button>";'
   + ' }'
   // RAZA's reference design splits the route into two things: a card that says what the route IS (and is what you
@@ -799,6 +824,55 @@ const BODY = '(function(){'
   + ' if(r.claimNote) h+=\'<div class="lx-brs-note">\'+r.claimNote+\'</div>\';'
   + ' return h; }'
   + 'var _lzRows=[];'
+  // WITHDRAWING THE CARD WAS TRIED HERE, AND REVERTED 2026-10-19. RAZA asked "if NEAR doesn’t allow USDC on
+  // Base, why are we even showing that option" -- so a refusal was learned against that destination and the card
+  // stopped being drawn. Seen on the page it read as the route having been DELETED ("you’ve entirely removed
+  // NEAR Intents"), which is a worse thing to tell someone than that one pair cannot be priced today. A route the
+  // page supports stays on screen and accounts for itself; lzBlockedMsg below is what makes that account useful.
+
+  // WHY A ROUTE IS BLOCKED, IN WORDS THE USER CAN ACT ON.
+  //
+  // 1Click answers a pair it cannot serve with "Quoting for this pair is not available" -- their sentence, and it
+  // showed through verbatim in the card note AND the red banner under step 2. It names no cause and offers no way
+  // forward, which is how RAZA met it on USDT0 -> USDC (Base) during the NEAR Intents outage of 2026-10-18, with
+  // CCTP sitting one card above, available, and carrying USDC to Base all along.
+  //
+  // Only the CANNOT-PRICE class is reworded. A minimum-amount or liquidity refusal is already specific and
+  // actionable, so it is left exactly as the upstream wrote it -- this is a translation, not a blanket override.
+  + 'function lzBlockedMsg(r){'
+  + ' var base=r.error||(r.route+" can\\u2019t send this amount right now \\u2014 choose another route.");'
+  + ' if(r.route!=="NEAR Intents"||!/not available|internal server error|could not quote/i.test(base)) return base;'
+  // AN ALTERNATIVE HAS TO DELIVER THE ASSET THAT WAS ASKED FOR (RAZA 2026-10-19: "i\\u2019ve not even selected USDC
+  // in TO, but it\\u2019s still showing me this error"). The first version named CCTP whenever CCTP was available,
+  // which on a USDC destination was right and on an ETH one was a false promise: CCTP carries USDC and nothing
+  // else, so taking that advice would have delivered the wrong token. Pointing someone at a route that cannot
+  // bring them what they chose is the same fault as the bare upstream sentence, only more confident.
+  //
+  // So the substitute is DERIVED, not named: r.asset on this row is the destination asset the user picked (it is
+  // what the card\\u2019s own subtitle says NEAR would deliver), and only a route carrying that same asset is
+  // offered in its place. No route delivers ETH but NEAR Intents, so there the honest answer is that there is
+  // nothing else -- which is what the second branch says instead of inventing one.
+  + ' var want=r.asset||"";'
+  + ' var alt=_lzRows.filter(function(x){ return x.route!==r.route&&x.available!==false&&x.asset&&x.asset===want; })[0];'
+  + ' return alt'
+  + '  ? "NEAR Intents couldn\\u2019t price this transfer. "+alt.route+" can deliver "+want+" to "+(lzDest()||"this network")+" \\u2014 choose it above."'
+  // "TRY AGAIN SHORTLY" WAS A PROMISE WE COULD NOT KEEP. This branch is reached when NEAR Intents cannot price a
+  // Stellar-origin transfer and no other route carries the asked-for asset, and that has been true without a break
+  // since 2026-10-18 -- RAZA met it again on 2026-11-10 (XLM -> ETH on Arbitrum) and read it as his own balance
+  // being too small, which is exactly what a vague message invites. Measured that day, against their API directly:
+  //
+  //   origin Stellar, depositType ORIGIN_CHAIN + depositMode MEMO   "Quoting for this pair is not available"
+  //   origin Stellar, depositType INTENTS                           prices fine -- but the deposit address it
+  //                                                                 returns is a NEAR implicit account, which a
+  //                                                                 Stellar wallet cannot pay
+  //   DESTINATION Stellar (base USDC -> XLM)                        works
+  //   non-Stellar pairs (arb->eth, base->arb, sol->base)            all work
+  //
+  // So it is neither the amount, nor our key, nor 1Click generally: their bridge will not take a deposit OUT of
+  // Stellar. Saying so costs nothing and stops the user hunting a fault on their side. No "try again shortly" --
+  // three weeks is not shortly, and the row re-quotes on every visit anyway, so it returns by itself when fixed.
+  + '  : "NEAR Intents isn\\u2019t accepting transfers out of Stellar at the moment \\u2014 their bridge, not your balance. Nothing has been sent."; }'
+
   + 'function lzPaintStats(){'
   + ' var host=document.querySelector("[data-lxroute-stats]"); if(!host)return;'
   + ' var r=_lzRows.filter(function(x){ return x.route===window.__lxBrRoute; })[0];'
@@ -810,8 +884,18 @@ const BODY = '(function(){'
   + ' window.__lxBrRouteGate={rendered:_lzRows.length>0, route:(r?r.route:null),'
   + '  cctp:_lzRows.some(function(x){ return x.route==="CCTP"&&x.available!==false; }),'
   + '  why:(!r&&_lzRows.length)?(_lzRows.map(function(x){ return x.error; }).filter(Boolean)[0]||""):"",'
-  + '  blocked:(r&&r.available===false)?(r.error||(r.route+" can\\u2019t send this amount right now \\u2014 choose another route.")):""};'
+  + '  blocked:(r&&r.available===false)?lzBlockedMsg(r):""};'
   + ' try{ if(window.lxBrValidateStep2) window.lxBrValidateStep2(); }catch(_){ }'
+  // NOT TWICE ON ONE SCREEN. The card note and the red banner under the form are written by two different layers
+  // -- lzCard for "why this card cannot be used", lxBrValidateStep2 for "why Review is shut" -- and when the
+  // blocked route is also the CHOSEN one they are the same sentence, printed inches apart. RAZA marked exactly
+  // this on XRPL (2026-10-04); nibridge.js suppresses its card note with `o.error !== formBanner()`. Same rule
+  // here, and run AFTER the validate above so it compares against what the banner actually settled on -- a
+  // balance error outranks the route message there, and in that case the card must keep saying its piece.
+  + ' try{ var _s2=document.querySelector(\'.br-step[data-step="2"] .br-errslot\');'
+  + '  var _shown=_s2?(_s2.textContent||"").trim():"";'
+  + '  [].slice.call(document.querySelectorAll(".lx-brr .lx-brr-note")).forEach(function(n){'
+  + '   n.style.display=(_shown&&(n.textContent||"").trim()===_shown)?"none":""; }); }catch(_){ }'
   // route / logo / name too: NEAR Intents delivers whichever token was picked, so the face on the To side comes from the row
   + ' if(r){ de.setAttribute("data-lxroute-asset",r.asset); de.setAttribute("data-lxroute-recv",r.recv==null?"":String(r.recv));'
   + '  de.setAttribute("data-lxroute",r.route); if(r.assetLogo) de.setAttribute("data-lxroute-logo",r.assetLogo); else de.removeAttribute("data-lxroute-logo");'
@@ -852,9 +936,21 @@ const BODY = '(function(){'
   // below: that rule exists to stop NEAR Intents silently REPLACING a stablecoin route, and with nothing to
   // replace there is no substitution to make.
   + ' var only=rows.filter(lzOk); if(only.length===1) return only[0];'
-  // NEAR Intents is never picked automatically WHEN THERE IS A CHOICE: it delivers a DIFFERENT token (ETH, POL...),
-  // so against a stablecoin route it is only ever chosen by the user. The stablecoin routes compete on value.
-  + ' var c=only.filter(function(r){ return r.route!=="NEAR Intents"; }); if(!c.length) return null;'
+  // A ROUTE THAT DELIVERS A DIFFERENT TOKEN IS NEVER PICKED AUTOMATICALLY when there is a choice: NEAR Intents
+  // lands ETH, POL, XRP...; Axelar lands SHX. Against a stablecoin route either is only ever chosen by the user.
+  // THE COMPARISON BELOW IS UNITLESS, and that is why this list has to be complete rather than nearly complete.
+  // `net()` subtracts a dollar figure from `recv`, but recv is in the DELIVERED asset -- USDC for CCTP, USDT0 for
+  // LayerZero, SHX for Axelar. Adding Axelar to Ethereum and leaving it in this comparison made it win every time
+  // on arithmetic alone: 25 USDC quotes 24.975 USDC through CCTP and 6,107 SHX through Axelar, and 6107 > 24.975,
+  // so the default silently became "convert their USDC into SHX". Seen on screen 2026-11-10 before it shipped.
+  // Any future route delivering its own asset belongs in this filter the day it is added.
+  + ' var LZ_OWNASSET={"NEAR Intents":1,"Axelar":1};'
+  + ' var c=only.filter(function(r){ return !LZ_OWNASSET[r.route]; });'
+  // EVERY AVAILABLE ROUTE DELIVERS ITS OWN ASSET -- true on Solana and XRPL, where NEAR Intents and Axelar are
+  // the only two. There is no stablecoin route to protect here, so leaving nothing selected would only revive the
+  // dead-Review problem the single-route rule above was written for: before Axelar was added back, NEAR Intents
+  // WAS the single route on both chains and was auto-selected. Keep that default and let the user switch.
+  + ' if(!c.length) return only.filter(function(r){ return r.route==="NEAR Intents"; })[0]||only[0];'
   + ' var u=lzXlmUsd(); function net(r){ return (+r.recv||0)-(+r.networkFeeXlm||0)*u; }'
   + ' var best=c.filter(function(r){ return r.route==="CCTP"; })[0]||c[0];'
   + ' if(best.route==="CCTP"&&best.recv==null) return best;'   // CCTP not priced yet: nothing can show LayerZero is better
@@ -903,10 +999,13 @@ const BODY = '(function(){'
   + ' var panel=document.querySelector(".lx-brroute[data-lxroute]"); if(!panel) return; var host=panel.querySelector("[data-lxroute-opts]"); if(!host) return;'
   + ' if(!rows.length){ panel.hidden=true; _lzRows=[]; lzPaintStats(); return; }'
   + ' var pick=lzChoose(dest,rows); window.__lxBrRoute=pick?pick.route:null;'
+  // BEFORE the cards are built, not after: lzCard -> lzBlockedMsg asks _lzRows whether CCTP can carry this
+  // destination, and reading the PREVIOUS draw there would answer for the previous destination.
+  + ' _lzRows=rows;'
   // rebuilt only when something in them changed: every rebuild throws away the node a finger may be on
   + ' var _h=rows.map(function(r){ return lzCard(r, pick&&r.route===pick.route); }).join("");'
   + ' if(host.__lzh!==_h){ host.innerHTML=_h; host.__lzh=_h; }'
-  + ' _lzRows=rows; lzPaintStats(); panel.hidden=false; }'
+  + ' lzPaintStats(); panel.hidden=false; }'
   + 'function lzProvisional(dest){ try{ if(dest) lzDraw(dest, lzSkeleton(dest)); }catch(_){ } }'
 
   // A quote lost to the network is asked again: 4s, 8s, 16s, then left alone until the next change of destination or

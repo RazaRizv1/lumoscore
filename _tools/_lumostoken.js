@@ -499,23 +499,55 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // Hero stat cards (.lh-stats .cstat): Market Cap, Fully Diluted Val, Holders, Pools, 24h Volume.
   function applyStats(){
     var priceUsd=lumosXlm*xlmUsd;
+    // THE LAST CARD'S FULL-WIDTH SPAN IS A LEFTOVER FROM FIVE CARDS.
+    //
+    // RAZA 2026-10-20: "Marketcap, holders, pools, 24h vol is breaking. make it like XRPL mobile
+    // lumos token page." Measured on the phone: the grid is two columns and the LAST card carries an
+    // inline style="grid-column: 1 / -1" straight from the design. With five cards that produced
+    // 2 + 2 + 1 and read fine; the fully diluted card was removed above, so four cards now lay out
+    // 2 + 1 + 1 — two tidy boxes, then two stretched rows, which is the raggedness he is pointing at.
+    //
+    // Cleared only when the count is EVEN, so the span still does its job if the row ever ends on an
+    // odd card. Inline, because that is where it lives: no stylesheet rule matches these cards, which
+    // is why a CSS override would have been a fix that changes nothing.
+    // Counted WITHOUT the fully diluted card, because the loop below is what removes it — reading
+    // the DOM here would otherwise count five, see an odd number, and leave the span in place on the
+    // very first paint. Order-independent on purpose: this runs before and after that removal.
+    try{
+      var _cards=qa(".lh-stats .cstat").filter(function(c){
+        return !/DILUTED|FDV/.test((c.textContent||"").toUpperCase());
+      });
+      if(_cards.length%2===0){
+        _cards.forEach(function(c){ try{ c.style.removeProperty("grid-column"); }catch(_){} });
+      }
+    }catch(_){}
     qa(".lh-stats .cstat").forEach(function(card){
       var t=(card.textContent||"").toUpperCase();
       var val=card.querySelector(".val"), sub=card.querySelector(".sub")||card.querySelector(".small-sub"); var money=card.querySelector(".lc-money")||val;
       var done=false;
-      // check DILUTED before MARKET CAP: the FDV card's own sub contains the words "market cap"
-      if(/DILUTED|FDV/.test(t)){ if(priceUsd>0&&supply>0){ var ts=chainSupply();
-        setMoney(money,abbrUsd(ts*priceUsd)); if(sub)setText(sub,"on "+abbrNum(ts)+" total supply"); done=true; } }
+      // THE FULLY DILUTED CARD IS GONE, as it is on XRPL (RAZA 2026-10-17: "On Lumos token page,
+      // please remove the fully diluted val box like we did on XRPL"). Dilution forecasts tokens
+      // that might still be minted; this supply is fixed, so the figure was the market cap with a
+      // different divisor printed beside it -- 74.2K against 74.5K on the same row.
+      //
+      // REMOVED FROM THE DOM, not blanked. setText only rewrites text, so leaving the card in place
+      // would have left the design's baked mock figure sitting in it -- the hidden-mock trap this
+      // codebase has hit before. Checked first, because the FDV card's own sub-line contains the
+      // words "market cap" and would otherwise match the branch below.
+      if(/DILUTED|FDV/.test(t)){ if(card.parentNode)card.parentNode.removeChild(card); return; }
       else if(/MARKET CAP/.test(t)){ if(priceUsd>0&&supply>0){ var circ=circSupply(); var mc=(circ!=null?circ:supply)*priceUsd; setMoney(money,abbrUsd(mc)); if(sub){ var wc="on "+abbrNum(circ!=null?circ:supply)+" circulating"; var ns=sub.querySelector(".lx-supnum"); if(!ns){ sub.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=sub.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==wc)ns.textContent=wc; } done=true; } }
       else if(/HOLDERS/.test(t)){ var _hc=holderCount();
         if(_hc!=null){ if(val)setText(val,num(_hc)); if(sub)setText(sub,"holding a balance"); done=true; }
         else if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"trustlines"); done=true; } }
       else if(/POOLS/.test(t)){ if(poolCount!=null){ if(val)setText(val,String(poolCount)); done=true; }
         if(sub&&/both chains/i.test(sub.textContent||""))setText(sub,"on Stellar");
-        // the POOLS card ships with no sub-line → the desktop 5-card row loses its vertical rhythm.
-        // Add one ONLY on the desktop layout (the mobile card already has its own sub text).
-        var wide=!(window.matchMedia)||window.matchMedia("(min-width:760px)").matches;
-        if(wide&&!sub){ var ps=document.createElement("div"); ps.className="sub"; ps.textContent="LUMOS pairs"; card.appendChild(ps); } }
+        // THE SUB-LINE IS NOT WIDTH-DEPENDENT ANY MORE. It used to be added only above 760px, to
+        // keep the desktop FIVE-card row in vertical rhythm -- reasoning that died with the fully
+        // diluted card. What it left behind was a card that read "Pools 65" on a narrow screen and
+        // "Pools 65 / LUMOS pairs" on a wide one, and neither matched XRPL, which always shows it
+        // (RAZA 2026-10-17: "make sure that the design on these boxes (then 4) is similar to that
+        // of XRPL"). One wording, every width, both chains.
+        if(!sub){ var ps=document.createElement("div"); ps.className="sub"; ps.textContent="LUMOS pairs"; card.appendChild(ps); } }
       else if(/VOLUME/.test(t)){ if(vol24Usd!=null){ setMoney(money,abbrUsd(vol24Usd)); if(sub&&volChg!=null){ setText(sub,(volChg>=0?"+":"−")+Math.abs(volChg).toFixed(1)+"% past 24h"); sub.classList.toggle("up",volChg>=0); } done=true; } }
       // Same rule for the cards derived from it. Holders and Pools are NOT price-derived, so they keep
       // rendering their own real values.
@@ -1001,7 +1033,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function ltWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"freighter").toLowerCase(); }catch(_){ return "freighter"; } }
   // sign with the ACTUALLY-connected wallet (was hardcoded to Freighter -> Rabet users got a Freighter popup).
   function ltSign(xdr,addr){ var w=ltWallet();
-    if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s; }); }
+    if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw new Error((r.error&&(r.error.message||r.error.description||r.error.reason))||(typeof r.error==="string"?r.error:"")||"Cancelled by the user."); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s; }); }
     if(w==="xbull"){ var x=window.xBullSDK; if(!x||!x.signXDR)return Promise.reject(new Error("xBull not found. Unlock the extension and retry.")); return Promise.resolve(x.signXDR(xdr,{network:"PUBLIC",networkPassphrase:WPASS_PUB,publicKey:addr})).then(function(r){ var s=r&&(r.signedXDR||r.xdr||r); if(!s||typeof s!=="string")throw new Error("xBull did not return a signed transaction"); return s; }); }
     if(w==="albedo")return import("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){ var al=m.default||m.albedo||m; if(!al||!al.tx)throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr,network:"public",pubkey:addr,submit:false}); }).then(function(r){ var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s)throw new Error("Albedo did not return a signed transaction"); return s; });
     // A phone has no LOBSTR extension — that session signs over WalletConnect instead. Only true when
@@ -1012,7 +1044,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     return (window.freighterApi&&window.freighterApi.signTransaction?Promise.resolve(window.freighterApi):import("https://esm.sh/@stellar/freighter-api@6").then(function(m){return m.default||m;}))
       .then(function(f){ return Promise.resolve(f.requestAccess?f.requestAccess():null).catch(function(){return null;})
         .then(function(){ return f.signTransaction(xdr,{networkPassphrase:WPASS_PUB,network:"PUBLIC",address:addr}); }); })
-      .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string")throw new Error("Signing cancelled."); return s; });
+      .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string")throw new Error("Cancelled by the user."); return s; });
   }  function ltAddTrust(btn,onDone){
     var addr=ltAddr(); if(!addr){ ltToast("Connect a Stellar wallet first."); return; }
     if(btn){ btn.disabled=true; btn.setAttribute("data-lbl",btn.textContent); btn.textContent="Confirm in wallet…"; }
@@ -1094,7 +1126,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var reserve=(2+sub+spon)*0.5, spend=Math.max(0, native-reserve-nsell-0.5);
       window.__lxNative=native; window.__lxMaxXLM=spend;
       if(!holdings.some(function(h){return h.code==="LUMOS";}))holdings.push({code:"LUMOS",iss:ISSUER,native:false,bal:0,logo:LOGO});
-      window.__lxHoldings=holdings; window.__lxAssets=assets; window.__lxWallet=a;
+      window.__lxHoldings=holdings; window.__lxAssets=assets; window.__lxWallet=a; try{if(window.__lxNftPrune)window.__lxNftPrune();}catch(_){}
       guardApply();
     }).catch(function(){ window.__lxWalletLoading=false; });
   }
@@ -1717,6 +1749,16 @@ for (const file of files) {
          .join('<span class="name">Ecosystem LP Rewards</span>');
     p = p.split('<span class="name">Native LP</span>')
          .join('<span class="name">Native LP Rewards</span>');
+    // NO "LIVE" BADGES ON THE UTILITY CARDS (RAZA 2026-10-20: "remove green live tag in 'What you can
+    // do with LUMOS' section", both chains, both layouts). Four per page -- fee waivers, Native LP,
+    // Ecosystem LP, Whale Holder -- and the word earns nothing: every card in that grid is live, so
+    // the badge marks no distinction while reading as a status that could go stale.
+    //
+    // Removed from the MARKUP rather than hidden in CSS, so there is no first paint that shows them.
+    // The sibling `<span class="u-tag">Hold 250K+</span>` / `Hold 5M+` chips are a different tag and
+    // stay. Idempotent: after one pass the string is gone, and `.u-tag.live` is used nowhere else on
+    // these pages -- the only other "Live" is `.lx-lp-meta` on an LP card, which is not this section.
+    p = p.split('<span class="u-tag live">Live</span>').join('');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

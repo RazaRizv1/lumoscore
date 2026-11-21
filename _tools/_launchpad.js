@@ -178,7 +178,7 @@ function lxLpSignXdr(xdr, addr){
   }
   if(w==="rabet"){
     if(!window.rabet||!window.rabet.sign) return Promise.reject(new Error("Rabet not found. Unlock the Rabet extension and retry."));
-    return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error) throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s) throw new Error("Rabet did not return a signed transaction"); return s; });
+    return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error) throw new Error((r.error&&(r.error.message||r.error.description||r.error.reason))||(typeof r.error==="string"?r.error:"")||"Cancelled by the user."); var s=r&&(r.xdr||r.signedXDR); if(!s) throw new Error("Rabet did not return a signed transaction"); return s; });
   }
   if(w==="xbull"){
     var x=window.xBullSDK; if(!x||!x.signXDR) return Promise.reject(new Error("xBull not found. Unlock the xBull extension and retry."));
@@ -194,7 +194,7 @@ function lxLpSignXdr(xdr, addr){
   if(w==="walletconnect") return Promise.reject(new Error("WalletConnect signing isn't enabled yet. Reconnect with Freighter, Albedo, Rabet or LOBSTR."));
   // default / freighter
   return lxLpFreighter().then(function(f){ return Promise.resolve(f.signTransaction(xdr,{networkPassphrase:pass,network:"PUBLIC",address:addr})); })
-    .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string") throw new Error("Signing cancelled."); return s; });
+    .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string") throw new Error("Cancelled by the user."); return s; });
 }
 function lxLpAmt(n){ var x=Number(n); if(!isFinite(x)||x<0) x=0; return x.toFixed(7); }
 function lxLpCode(t){ return String(t||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12); }
@@ -368,11 +368,22 @@ window.lxLaunchToken=function(draft, onStatus, opts){
 // ---- draft persistence + page wiring ----
 function lxLpReadDraft(){ try{ return JSON.parse(localStorage.getItem("lumos.launch.draft")||"{}"); }catch(_){ return {}; } }
 function lxLpVal(sel){ var e=document.querySelector(sel); return e?(e.value||"").trim():""; }
-function lxLpSocial(ph){ var e=[].slice.call(document.querySelectorAll("input")).filter(function(i){return (i.placeholder||"").indexOf(ph)>=0;})[0]; return e?(e.value||"").trim():""; }
+// THE PLACEHOLDER USED TO BE THE SELECTOR. It no longer is: the markup pass stamps data-lxlpsoc on each
+// of the three social inputs, and that is what these read. The placeholder match stays as a FALLBACK,
+// because a container the stamp has not reached would otherwise return "" from every capture -- and a
+// capture that returns "" is indistinguishable from a minter who left the field blank
+// ([[xrpl-cancel-now-matches-stellar]]: a selector matching nothing looks exactly like a feature that
+// works). Never remove the fallback without checking all three containers carry the attribute.
+function lxLpSocEl(key, ph){
+  var e=document.querySelector('input[data-lxlpsoc="'+key+'"]');
+  if(e) return e;
+  return [].slice.call(document.querySelectorAll("input")).filter(function(i){return (i.placeholder||"").indexOf(ph)>=0;})[0]||null;
+}
+function lxLpSocial(key, ph){ var e=lxLpSocEl(key, ph); return e?(e.value||"").trim():""; }
 function lxLpCaptureDraft(){
   var pt=(document.querySelector('input[name="ptype"]:checked')||{}).value||"meme";
   var d={ name:lxLpVal("#tokenName"), ticker:lxLpVal("#tokenTicker"), projectType:pt, desc:lxLpVal("#desc"),
-    telegram:lxLpSocial("t.me"), twitter:lxLpSocial("x.com"), website:lxLpSocial("yourproject.com"),
+    telegram:lxLpSocial("tg","t.me"), twitter:lxLpSocial("x","x.com"), website:lxLpSocial("web","yourproject.com"),
     supply:lxLpVal("#supply"), sharePct:parseFloat(lxLpVal("#shareNum"))||10, extraXlm:lxLpVal("#extraLiquidity"),
     icon:window.__lxLpIcon||"", iconName:window.__lxLpIconName||"" };
   try{ localStorage.setItem("lumos.launch.draft", JSON.stringify(d)); }catch(_){}
@@ -499,12 +510,12 @@ function lxLpErr(msg){ var host=document.querySelector(".summary-cta"); if(!host
 
 // set an input/textarea value and fire input+change so the design's live preview reacts
 function lxLpSetField(sel, val){ var el=document.querySelector(sel); if(!el||val==null||val==="") return; var tag=el.tagName==="TEXTAREA"?window.HTMLTextAreaElement:window.HTMLInputElement; try{ Object.getOwnPropertyDescriptor(tag.prototype,"value").set.call(el, String(val)); }catch(_){ el.value=String(val); } el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); }
-function lxLpSetSocial(ph, val){ if(val==null||val==="") return; var el=[].slice.call(document.querySelectorAll("input")).filter(function(i){return (i.placeholder||"").indexOf(ph)>=0;})[0]; if(!el) return; try{ Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,"value").set.call(el, String(val)); }catch(_){ el.value=String(val); } el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); }
+function lxLpSetSocial(key, ph, val){ if(val==null||val==="") return; var el=lxLpSocEl(key, ph); if(!el) return; try{ Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,"value").set.call(el, String(val)); }catch(_){ el.value=String(val); } el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); }
 // Blank the whole step-1 form (fresh entry). Reset each field to its HTML default (browsers restore typed
 // values on reload independent of our draft, so clearing localStorage isn't enough — clear the inputs too).
 function lxLpClearForm(){
   ["#tokenName","#tokenTicker","#desc","#supply","#extraLiquidity","#shareNum"].forEach(function(sel){ var el=document.querySelector(sel); if(!el) return; var tag=el.tagName==="TEXTAREA"?window.HTMLTextAreaElement:window.HTMLInputElement; var dv=(el.defaultValue!=null?el.defaultValue:""); try{ Object.getOwnPropertyDescriptor(tag.prototype,"value").set.call(el, dv); }catch(_){ el.value=dv; } el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); });
-  ["t.me","x.com","yourproject.com"].forEach(function(ph){ var el=[].slice.call(document.querySelectorAll("input")).filter(function(i){return (i.placeholder||"").indexOf(ph)>=0;})[0]; if(!el) return; el.value=""; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); });
+  [["tg","t.me"],["x","x.com"],["web","yourproject.com"]].forEach(function(p){ var el=lxLpSocEl(p[0],p[1]); if(!el) return; el.value=""; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); });
   [].forEach.call(document.querySelectorAll('input[name="ptype"]'),function(r){ r.checked=false; r.removeAttribute("checked"); });
   [].forEach.call(document.querySelectorAll('.type-card'),function(c){ c.classList.remove("selected"); });
   window.__lxLpIcon=""; window.__lxLpIconName=""; lxLpPreviewIcon(); lxLpPaintUpload();
@@ -514,7 +525,7 @@ function lxLpPopulateForm(){
   lxLpSetField("#tokenName", d.name); lxLpSetField("#tokenTicker", d.ticker);
   lxLpSetField("#desc", d.desc); lxLpSetField("#supply", d.supply);
   lxLpSetField("#shareNum", d.sharePct); lxLpSetField("#extraLiquidity", d.extraXlm);
-  lxLpSetSocial("t.me", d.telegram); lxLpSetSocial("x.com", d.twitter); lxLpSetSocial("yourproject.com", d.website);
+  lxLpSetSocial("tg","t.me", d.telegram); lxLpSetSocial("x","x.com", d.twitter); lxLpSetSocial("web","yourproject.com", d.website);
   if(d.projectType){ var rb=document.querySelector('input[name="ptype"][value="'+d.projectType+'"]'); if(rb && !rb.checked){ rb.checked=true; rb.dispatchEvent(new Event("change",{bubbles:true})); rb.dispatchEvent(new Event("click",{bubbles:true})); } }
   if(d.icon){ window.__lxLpIcon=d.icon; window.__lxLpIconName=d.iconName||""; }
   lxLpPreviewIcon(); lxLpPaintUpload();
@@ -1034,7 +1045,7 @@ window.lxLpTest=function(draft){
 
 const SCRIPT='<script id="lx-lp-js">'+BODY+'<'+'/script>';
 
-let n=0, pages=0;
+let n=0, pages=0, socStamped=0, socPages=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
     const file=`lumoscore-${c}-${dev}.html`;
@@ -1053,6 +1064,46 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       // runs. Cut the markup instead, so there is nothing to flash. Anchored on the open tag and
       // forbidding a nested <div> in the value cell, so it cannot run past the row it means to take.
       h=h.replace(/<div class="(?:detail-row|review-row|rv-row|lp-row)">\s*<div class="k">\s*Project Type\s*<\/div>\s*<div class="v">(?:(?!<div)[\s\S])*?<\/div>\s*<\/div>/g,'');
+      // THE PLACEHOLDER ASKED FOR THE ONE THING THAT BROKE THE LINK.
+      //
+      // The design's Social Links step reads "t.me/yourproject" and "x.com/yourproject", while
+      // mintmeta.js stores the value in a field named LIMITS.handle -- so the form invited exactly the
+      // input that made a token link to a doubled host on 2026-11-05
+      // ([[social-links-stored-a-url-in-a-handle-field]]). The prefix beside each box is only an icon,
+      // so the placeholder is the whole instruction. The listing page already asks correctly:
+      // listyourtoken.html ships "@yourproject" for BOTH, and selects its inputs by id.
+      //
+      // Order matters. STAMP THE KEY, THEN CHANGE THE COPY -- never the other way round. The three
+      // helpers above used to find these inputs by (placeholder||"").indexOf("x.com"), so a copy-only
+      // rewrite would have left every capture matching nothing, and an unmatched capture returns ""
+      // which reads downstream as "the minter left it blank". Silent, and worse than the bug.
+      //
+      // Keyed off the CURRENT placeholder and skipped once data-lxlpsoc is present, so the re-run is a
+      // no-op even though the two social placeholders end up identical and no longer identify
+      // themselves ([[lumoscore-transform-idempotence]]). The Website box keeps its copy -- a website
+      // IS a url -- and is stamped only so all three are found the same way.
+      // `data-lxsoc` was ALREADY TAKEN -- by the asset page's social-row paint guard
+      // (`_dexassetdata.js:1244`, and `browser/dexasset.js:3150` on XRPL). Different page, different
+      // element, so nothing actually clashed, but grepping a fork's containers for `data-lxsoc`
+      // returned 12 hits from that guard and I briefly read them as this stamp already being there.
+      // One migration pass, scoped to `<input` so the asset page's own attribute is never touched.
+      h=h.replace(/<input([^>]*?)data-lxsoc="(x|tg|web)"/g,'<input$1data-lxlpsoc="$2"');
+      for(const [ph,key,next] of [['t.me/yourproject','tg','@yourproject'],
+                                  ['x.com/yourproject','x','@yourproject'],
+                                  ['https://yourproject.com','web','https://yourproject.com']]){
+        const lit=ph.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        h=h.replace(new RegExp('<input([^>]*?)placeholder="'+lit+'"([^>]*?)>','g'), (m,a,b) => {
+          if(/data-lxlpsoc=/.test(m)) return m;
+          socStamped++;
+          return '<input'+a+'data-lxlpsoc="'+key+'" placeholder="'+next+'"'+b+'>';
+        });
+      }
+      // Count the pages that actually carry the INPUTS, not the ones that merely print the words
+      // "Social Links" -- the review and confirm screens show that heading over read-only rows, and
+      // counting those made the first run report 63 stamps across "42 pages", a ratio of 1.5 inputs
+      // per page that is arithmetically impossible for a three-field step. The real figure is 3 each
+      // on the 21 entry forms (7 chains x token/token-light/token-mobile).
+      if(/data-lxlpsoc="x"/.test(h)) socPages++;
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; pages++; }
@@ -1063,3 +1114,18 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
   }
 }
 console.log('Launchpad phase-1 (Stellar issuance engine) injected on '+pages+' launch-page keys across '+n+' containers');
+console.log('  social inputs: '+socStamped+' stamped with data-lxlpsoc, on '+socPages+' page key(s) carrying the Social Links step');
+// Zero stamps is only correct on a RE-RUN, when every input already carries the attribute. Zero
+// stamps AND zero attributes in the containers means the markup moved and the helpers are quietly
+// back on the placeholder fallback.
+if(socPages && !socStamped){
+  // The MARKUP form only, and matched on the three literal KEYS. A container keeps its pages inside
+  // JSON, so everything is escaped on disk -- the stamped attribute reads `data-lxlpsoc=\"x\"` and the
+  // injected script's own selector reads `data-lxlpsoc=\"'+key+'\"]`. A pattern that stops at the
+  // opening quote matches both, which is why 63 stamps first reported as 126 attributes.
+  const already=(()=>{ let c=0; for(const cc of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl'])
+    for(const dv of ['desktop','mobile']){ try{ c+=(read(`lumoscore-${cc}-${dv}.html`).match(/data-lxlpsoc=\\"(?:x|tg|web)\\"/g)||[]).length; }catch(e){} }
+    return c; })();
+  if(!already) console.error('  LAUNCHPAD SOCIAL STAMP MATCHED NOTHING — the placeholder markup changed; the capture helpers are on the fallback path');
+  else console.log('  (already stamped on an earlier run: '+already+' attribute(s) in the containers)');
+}

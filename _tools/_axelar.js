@@ -11,14 +11,39 @@
 //                       destination_address: Bytes, amount: i128, metadata: Option<Bytes>, gas_token: Option<Token>)
 //   Token is a map {address: Address, amount: i128}; gas is paid in the XLM Stellar Asset Contract.
 // Two things that are not guessable and cost hours if assumed:
-//   * destination_address is the ASCII BYTES OF THE ADDRESS STRING -- the r-address for XRPL, the 0x string for EVM.
-//     Raw 20 bytes is refused.
-//   * the chain string is CASE-SENSITIVE. 'xrpl' and 'xrpl-evm' are trusted; 'ethereum' is refused while 'Ethereum'
-//     passes. Do not "tidy" these into title case.
+//   * destination_address IS NOT ONE ENCODING. It is per destination chain, and the Stellar contract does not
+//     check it -- see DEST ENCODING below. An earlier version of this comment said "the ASCII bytes of the address
+//     string ... raw 20 bytes is refused", which is true for XRPL and WRONG for EVM; it was written from XRPL
+//     testing alone and the EVM half was never exercised.
+//   * the chain string is CASE-SENSITIVE, and not in the case axelarscan's registry prints. Read 2026-11-10 from
+//     the contract's own is_trusted_chain: 'Ethereum', 'solana', 'xrpl', 'xrpl-evm' and 'hedera' are TRUE;
+//     'ethereum', 'Solana', 'XRPL' and 'monad' are FALSE. Do not "tidy" these into one case.
+//
+// DEST ENCODING, each taken from a real executed mainnet transfer's own payload, not from docs:
+//   Ethereum  RAW 20 BYTES. A real call carries `...0014ce16f69375520ab01377ce7b88f5ba8c48f8d666` -- length 0x14.
+//   solana    RAW 32 BYTES, i.e. the recipient's base58 wallet address DECODED. A real delivery's mintTo landed in
+//             a token account whose owner base58-encodes back to exactly those 32 bytes.
+//   xrpl      the ASCII BYTES of the r-address. 2,154 executed transfers all carry the plain r-address.
+// THE STELLAR CONTRACT VALIDATES NONE OF THIS. Measured 2026-11-10: raw-20, ASCII-with-0x and ASCII-without-0x all
+// simulate OK for 'Ethereum', and raw-32 and ASCII-base58 both simulate OK for 'solana'. The bytes are passed
+// through to the destination chain verbatim, so a wrong encoding leaves Stellar and fails over there, where we
+// cannot see it. Simulation cannot catch this -- only matching live traffic can.
+//
 // Reading errors from this contract: ITS raises #13 only for an EMPTY destination_address. A #13 with a non-empty
 // one comes from the TOKEN contract underneath, where #13 is TrustlineMissing -- i.e. the caller does not hold the
 // asset. A deliberately bogus token_id returns #17 from ITS itself, which is the probe that proves execution got
-// past the address check.
+// past the address check. #10 IS A BALANCE ERROR, not an amount error: with 68.85 SHX and 6.59 XLM in the account,
+// 'xrpl' passed at 1 unit and failed at 10,000 SHX, and 'Ethereum' failed at EVERY amount including 1 unit --
+// because Ethereum's gas estimate was 26.58 XLM and the account held 6.59. Drop the gas and Ethereum passes at
+// once. An earlier comment read #10 as "that amount is not valid", which sent me looking at the amount for an
+// hour while the shortfall was in the OTHER asset.
+//
+// TOKEN IDS COME FROM THE CONTRACT, NEVER FROM THE REGISTRY. axelarscan lists an "XLM" ITS asset under id
+// 0xf0d7beb2…, and that id is NOT registered on the Stellar ITS contract (registered_token_address traps on it,
+// and interchain_transfer answers #17). The contract's own canonical_interchain_token_id for the XLM SAC is
+// 0x03f70cfc…, which DOES resolve -- but that id appears nowhere in Axelar's registry, so it has no counterpart on
+// any destination chain. Sending to it would lock XLM on Stellar with nothing to mint on the far side. Hence XLM
+// is NOT a transport asset here, however much it looks like one in the registry.
 //
 // WHAT IT CARRIES, and the honest limit. ITS moves a REGISTERED token, not whatever the user is holding:
 //   * SHX -> XRPL works for real. Its Stellar contract is the Stellar Asset Contract for classic SHX (its name() is
@@ -49,36 +74,51 @@ function runtime(AX_SENDABLE) {
   // deployment config Axelar itself publishes -- not from a docs page. ITS version() answers "2.1.1".
   var ITS = 'CBDBMIOFHGWUFRYH3D3STI2DHBOWGDDBCRKQEUB4RGQEBVG74SEED6C6';
   var XLM_SAC = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA';
-  // XRPL ONLY, and XRPL EVM deliberately absent. Both chains are trusted by the ITS contract and both were
-  // verified, but the only asset registered for XRPL EVM is USDC.axl -- and USDC.axl cannot be the SOURCE of a
-  // transfer here, because the bridge's From list is built from CLASSIC Stellar assets (code + issuer) and
-  // USDC.axl is a pure Soroban token with no trustline. The row would therefore have shown a route nobody could
-  // ever satisfy. SHX is registered on XRPL and IS classic (its Stellar contract is the SAC), which is the whole
-  // reason that one works. XRPL EVM returns the day a holdable asset is registered on it.
-  // TURNED OFF 2026-09-24, and this is the reason, because the code below still works and will look
-  // like it should be on.
-  //
-  // SHX ON XRPL IS AN ISSUED TOKEN, not a native one -- the Axelar gateway rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw
-  // has 236,566,386 SHX outstanding as an IOU. XRPL will not let an account receive an IOU without a
-  // trustline to its issuer, so every recipient would first have to sign a TrustSet and lock 0.2 XRP of
-  // reserve for it -- BEFORE the transfer, or the delivery simply fails. The card promised the opposite
-  // ("delivered automatically -- no claim, and no gas needed there"), and nothing checked the recipient,
-  // so a send could have been aimed at an address that cannot receive it.
-  //
-  // RAZA chose XRP instead: native, no trustline, genuinely nothing to claim. XRPL stays in the
-  // destination list -- its dropdown row MOVED to NI_ONLY in _nearintents.js on 2026-09-24 -- and is
-  // served by NEAR Intents.
-  //
-  // THE COST OF THIS: NEAR Intents will not quote below about 1.51 USDC, where Axelar had no minimum.
-  // Small XRPL transfers are gone with it.
-  //
-  // To bring it back: restore { 'XRPL': 'xrpl' } here AND add a recipient-trustline check to the send
-  // path, or the same trap returns.
-  var AX_CHAIN = {};
-  // The asset each destination actually carries, with its ITS token id and decimals. `src` is the bridge's own
-  // source-asset key that a user must be sending for this route to apply.
+  // THREE DESTINATIONS, and the set is not a preference -- it is everything the chain data allows. Measured
+  // 2026-11-10: Axelar's ITS registry holds 152 assets, SIX of them registered on Stellar (USDC.axl, solvBTC,
+  // xSolvBTC, SHX, XLM, DT0), and only SHX is both holdable on Stellar (its Stellar contract is the Stellar Asset
+  // Contract for classic SHX -- name() is "SHX:GDSTRSHX...", the CODE:ISSUER form, so SAC balances ARE classic
+  // balances) and registered on a chain the Stellar ITS contract trusts. SHX reaches Ethereum, solana and xrpl.
+  // Everything else was excluded by measurement, not by taste:
+  //   * USDC.axl is NOT Circle USDC. Its name() is plain "USD Coin" -- a pure Soroban ITS token, not a SAC (Circle
+  //     USDC's real SAC is CCW67TSZ..., a different contract). It has no trustline and no classic DEX market, and
+  //     the bridge's From list is built from CLASSIC assets, so nothing can source it. It is the ONLY asset
+  //     registered from Stellar on hedera and xrpl-evm, which is why both stay off despite being trusted chains.
+  //   * solvBTC and xSolvBTC are the same shape -- stellar.expert lists each as its own contract token, and the
+  //     classic SOLVBTC-GBHZ6UQZ... has no SAC at all, so the two are unrelated.
+  //   * DT0 is named "Test token DT0".
+  //   * XLM looks available in the registry and is not. See the header.
+  //   * monad is in the registry against Stellar, and the contract answers is_trusted_chain('monad') FALSE.
+  // The VALUE of these three is not a new chain -- all three were already reachable (Ethereum by CCTP, LayerZero
+  // and NEAR Intents; solana and xrpl by NEAR Intents). It is a SECOND route on each, carrying SHX itself rather
+  // than a stablecoin, with no route minimum where NEAR Intents will not quote below about 1.51 USDC.
+  var AX_CHAIN = { 'Ethereum': 'Ethereum', 'Solana': 'solana', 'XRPL': 'xrpl' };
+  // The asset each destination actually carries, with its ITS token id and decimals, and the ENCODING its
+  // destination_address takes -- which differs per chain and is not validated by the Stellar contract (header).
+  // `src` is the bridge's own source-asset key the card names when no path to the transport asset exists.
+  // `dp` is the STELLAR side's decimals (7 for any classic asset); ITS rescales on delivery, so SHX landing on
+  // solana as a 6-decimal SPL mint loses only the seventh digit.
+  var SHX_ITS = '91e104d86483f05635e0dbb3a9016677e00a7504572ea1890ca478eb8750bcfe';
   var AX_TOKEN = {
-    'XRPL': { sym: 'SHX', src: 'SHX', dp: 7, id: '91e104d86483f05635e0dbb3a9016677e00a7504572ea1890ca478eb8750bcfe' }
+    'Ethereum': { sym: 'SHX', src: 'SHX', dp: 7, id: SHX_ITS, enc: 'evm20' },
+    'Solana':   { sym: 'SHX', src: 'SHX', dp: 7, id: SHX_ITS, enc: 'b58_32' },
+    'XRPL':     { sym: 'SHX', src: 'SHX', dp: 7, id: SHX_ITS, enc: 'ascii' }
+  };
+  // WHAT THE RECIPIENT MUST ALREADY HAVE, per destination. SHX is a native-ish balance on none of these except
+  // Ethereum, and this is the trap that took the route off the site on 2026-09-24:
+  //   XRPL    SHX is an IOU from the Axelar gateway rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw (234,658,791 SHX
+  //           outstanding, read 2026-11-10). XRPL refuses an IOU to an account with no trustline to its issuer,
+  //           so the recipient must sign a TrustSet and lock 0.2 XRP of reserve BEFORE the transfer.
+  //   Solana  SHX is a Token-2022 SPL mint. A real executed delivery's instruction list is a bare `mintTo` with
+  //           NO create-ATA instruction and no Idempotent log line, so the recipient's token account must exist.
+  //   Ethereum  nothing. An ERC-20 transfer needs no setup from the receiver.
+  // The old card said "delivered automatically -- no claim, and no gas needed there" for XRPL and nothing checked
+  // the recipient, so a send could be aimed at an address that cannot receive it. Now /lxapi/axelar?op=ready
+  // answers for a given address and BOTH the route card and the confirm step read it. A failed read is not a
+  // verdict: it warns and allows, it never blocks.
+  var AX_NEEDS = {
+    'XRPL': 'a trustline for SHX to ' + 'rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw' + ' (costs 0.2 XRP of reserve)',
+    'Solana': 'an SHX token account (for mint EFchnNkBvh4gSY5zqDgqRfuPR7mStBLvKBxPq5JUJcmP)'
   };
   var AX_SCAN = 'https://axelarscan.io/gmp/';
 
@@ -87,6 +127,9 @@ function runtime(AX_SENDABLE) {
   // so a destination missing from it is pickable and then dead with no message -- which is exactly what happened to
   // the NEAR Intents chains before they were published the same way.
   window.__lxAxChains = Object.keys(AX_CHAIN);
+  // No stylesheet reads lx-ax-on any more -- it used to reveal this layer's own injected XRPL row, and the layer
+  // injects no rows now (see "THIS LAYER ADDS NONE" at the bottom of the file). Kept because it is the one thing
+  // on the page that says from the outside whether the route is sendable, which is worth a single class.
   try { if (AX_SENDABLE) document.documentElement.classList.add('lx-ax-on'); } catch (_) {}
 
   // ---- two picker-wide fixes ------------------------------------------------------------------------------------
@@ -147,6 +190,101 @@ function runtime(AX_SENDABLE) {
 
   function chainOf(d) { return AX_CHAIN[d] || null; }
   function tokenOf(d) { return AX_TOKEN[d] || null; }
+
+  // ---- destination_address, per chain -----------------------------------------------------------------------------
+  // Three encodings, each copied from live mainnet traffic (header). The Stellar contract accepts any bytes, so a
+  // mistake here is invisible until the far side drops the delivery -- which is why each branch THROWS rather than
+  // falling back to something plausible. A guessed encoding is worse than a refusal.
+  var B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  function b58decode(s) {
+    var bytes = [0];
+    for (var i = 0; i < s.length; i++) {
+      var v = B58.indexOf(s.charAt(i));
+      if (v < 0) throw new Error('That is not a valid Solana address.');
+      for (var j = 0; j < bytes.length; j++) bytes[j] *= 58;
+      bytes[0] += v;
+      var carry = 0;
+      for (var k = 0; k < bytes.length; k++) { bytes[k] += carry; carry = bytes[k] >> 8; bytes[k] &= 0xff; }
+      while (carry) { bytes.push(carry & 0xff); carry >>= 8; }
+    }
+    for (var z = 0; z < s.length && s.charAt(z) === '1'; z++) bytes.push(0);
+    return new Uint8Array(bytes.reverse());
+  }
+  function destBytesFor(dest, recipient) {
+    var t = tokenOf(dest); if (!t) throw new Error('Unsupported destination.');
+    var a = String(recipient || '').trim();
+    if (t.enc === 'ascii') {
+      var u = new Uint8Array(a.length);
+      for (var i = 0; i < a.length; i++) u[i] = a.charCodeAt(i);
+      return u;
+    }
+    if (t.enc === 'evm20') {
+      var h = a.replace(/^0x/i, '');
+      if (!/^[0-9a-fA-F]{40}$/.test(h)) throw new Error('That is not a valid Ethereum address.');
+      var e = new Uint8Array(20);
+      for (var j = 0; j < 20; j++) e[j] = parseInt(h.substr(j * 2, 2), 16);
+      return e;
+    }
+    if (t.enc === 'b58_32') {
+      var b = b58decode(a);
+      // A Solana wallet address is exactly 32 bytes. Anything else means we decoded something that is not one,
+      // and padding or truncating it would send SHX to an address nobody holds.
+      if (b.length !== 32) throw new Error('That is not a valid Solana address.');
+      return b;
+    }
+    throw new Error('Unsupported destination.');
+  }
+
+  // ---- can the recipient receive it? ------------------------------------------------------------------------------
+  // Answered by /lxapi/axelar?op=ready, which reads the XRPL trustline or the Solana token account (see AX_NEEDS).
+  // Cached per destination AND address, because it changes only when the recipient acts -- not with the amount.
+  // THREE STATES, and the third is the one that matters: 1 ready, 0 definitely not, null could not check. A failed
+  // read must never read as "not ready" or an upstream hiccup blocks a perfectly good send.
+  var READY = {};
+  function readyOf(dest, recipient) {
+    var c = chainOf(dest); if (!c) return Promise.resolve(null);
+    if (!AX_NEEDS[dest]) return Promise.resolve(1);              // Ethereum needs nothing of the receiver
+    var a = String(recipient || '').trim();
+    if (!a || !window.lxBrValidAddr || !window.lxBrValidAddr(dest, a)) return Promise.resolve(null);
+    var key = c + '|' + a;
+    if (READY[key] !== undefined) return Promise.resolve(READY[key]);
+    // Solana's only public RPC rate-limits Cloudflare's shared edge IPs, so ~6% of server-side checks come
+    // back "could not check". The VISITOR's own connection is not subject to that limit, and the endpoint
+    // hands back the derived account address even when its own read failed — so finish the check here
+    // rather than give up. The address comes from our endpoint, but it is still shape-checked before use.
+    function askDirect(ata) {
+      if (!ata || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(ata)) return Promise.resolve(null);
+      return fetch('https://solana-rpc.publicnode.com', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo', params: [ata, { encoding: 'base64' }] })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || j.error || !j.result || !('value' in j.result)) return null;
+        var v = j.result.value;
+        if (v === null) return 0;
+        return v.owner === 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' ? 1 : 0;
+      }).catch(function () { return null; });
+    }
+    function ask() {
+      return fetch('/lxapi/axelar?op=ready&dest=' + encodeURIComponent(c) + '&addr=' + encodeURIComponent(a))
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.ok && (j.ready === 0 || j.ready === 1)) return j.ready;
+          return (c === 'solana' && j && j.ata) ? askDirect(j.ata) : null;
+        })
+        .catch(function () { return null; });
+    }
+    // NEVER CACHE A FAILURE, AND ASK TWICE. Caching the null turned ONE upstream blip into "could not check"
+    // for that address for the rest of the page's life — the card stayed sendable to an address the endpoint
+    // had already answered 0 for. Seen live 2026-11-10: endpoint said ready=0, the card still said available.
+    // Only a definite 0 or 1 is an answer, so only a definite 0 or 1 is remembered.
+    return ask()
+      .then(function (v) { return v === null ? ask() : v; })
+      .then(function (v) { if (v === 0 || v === 1) READY[key] = v; return v; });
+  }
+  function notReadyMsg(dest) {
+    return 'That ' + dest + ' address cannot receive SHX yet — it needs ' + AX_NEEDS[dest]
+      + '. Set that up on ' + dest + ' first, then come back.';
+  }
   function feeRate() { return window.__lxFeeRate || ((window.__lxCCTP || {}).feeRate) || 0.002; }
   function srcKey() { return (window.__lxBr || {}).srcKey || 'USDC'; }
   function amtNow() { return (window.__lxBr || {}).amount || 0; }
@@ -163,16 +301,26 @@ function runtime(AX_SENDABLE) {
       .catch(function () { return null; });
   }
 
+  // What arrives, and what the recipient must already have for it to arrive. Stated per destination rather than
+  // once, because the old single sentence ("no claim, and no gas needed there") was true only on Ethereum and was
+  // the reason this route came off the site.
+  function claimNoteFor(dest, sym) {
+    var need = AX_NEEDS[dest];
+    if (!need) return 'Delivered as ' + sym + ' to your address on ' + dest
+      + ' automatically — no claim, and no gas needed there.';
+    return 'Delivered as ' + sym + ' automatically once it lands — but the receiving ' + dest
+      + ' address must already have ' + need + '. We check that before you send.';
+  }
   function baseRow(dest) {
     var t = tokenOf(dest);
     return {
-      route: 'Axelar', asset: t.sym, assetLogo: '/assets/tokens/shx.png', assetName: t.sym === 'SHX' ? 'Stronghold' : 'USD Coin',
+      route: 'Axelar', asset: t.sym, assetLogo: '/assets/tokens/shx.png', assetName: 'Stronghold',
       // No `tag` here on purpose: the card falls back to LZ_TAG, which holds the SHORT uppercase badge the other
       // three use ("FASTEST", "MULTI-ASSET"). "Interchain Token Service" sat in that badge as a sentence and was
       // the main reason this card did not look like its neighbours.
       available: true, recv: null, networkFeeXlm: 0,
       etaSeconds: 300, etaText: '~5 minutes, delivered automatically', needsClaim: false,
-      claimNote: 'Delivered as ' + t.sym + ' to your address on ' + dest + ' automatically — no claim, and no gas needed there.'
+      claimNote: claimNoteFor(dest, t.sym)
     };
   }
 
@@ -224,7 +372,17 @@ function runtime(AX_SENDABLE) {
     var sk = sourceKey || srcKey();
     var amt = parseFloat(String(amountHuman || 0).replace(/,/g, '')) || 0;
     return gasXlm(dest).then(function (g) {
-      if (g != null) row.networkFeeXlm = g;
+      // NO ESTIMATE MEANS NO ROUTE, and the row has to say so rather than keep baseRow's 0. A message sent with no
+      // gas prepaid is never relayed, so lxAxConfirm refuses outright when this is null -- and a card reading
+      // "Bridge fee 0.1%" with no XLM figure beside it reads as a FREE transfer, which is the opposite of the
+      // truth. This only became reachable when the route grew past one destination: with XRPL alone the estimate
+      // either worked or the whole card was missing, so a 0 here was never on screen.
+      if (g == null) {
+        row.available = false;
+        row.error = 'Axelar could not price the ' + dest + ' delivery just now, so this route is unavailable. Try again shortly.';
+        return row;
+      }
+      row.networkFeeXlm = g;
       if (!(amt > 0)) return row;
       // ITS is lock/mint, so once the transfer is in SHX what leaves is what arrives. The only question is how much
       // SHX the source buys, and that is the Stellar DEX's answer -- the same pathfinder CCTP and NEAR Intents use.
@@ -236,6 +394,15 @@ function runtime(AX_SENDABLE) {
         row.error = (e && e.message) || axWhy(dest, t);
         return row;
       });
+    }).then(function (r) {
+      // THE RECIPIENT CHECK ON THE CARD, not only in the confirm step. Learning at the signature prompt that the
+      // address cannot receive SHX is learning it one step too late, and the comparison is where the user is
+      // choosing between routes. Only a definite 0 withdraws the row -- null (could not check) leaves it alone.
+      if (!r || r.available === false || !AX_NEEDS[dest]) return r;
+      return readyOf(dest, recipient).then(function (ok) {
+        if (ok === 0) { r.available = false; r.error = notReadyMsg(dest); }
+        return r;
+      }, function () { return r; });
     });
   };
 
@@ -272,11 +439,20 @@ function runtime(AX_SENDABLE) {
   window.lxAxConfirm = function (btn, say, net, domain, recipient, amt, k, A) {
     var CC = window.__lxCCTP || {}, t = tokenOf(net), chain = chainOf(net);
     if (!window.__lxAxSendable || !t || !chain) { say('Sending by Axelar isn’t switched on yet — choose another route.'); return; }
-    if (!window.lxBrValidAddr || !window.lxBrValidAddr(net, recipient)) { say('That doesn’t look like a valid ' + net + ' address.'); return; }
+    // Through the shared hint, so Hedera's two address forms are explained here too -- this route
+    // reaches Hedera as well, and it is the route the EVM-address rule was first recorded for.
+    if (!window.lxBrValidAddr || !window.lxBrValidAddr(net, recipient)) { say(window.lxBrAddrHint ? window.lxBrAddrHint(net, recipient) : ('That doesn’t look like a valid ' + net + ' address.')); return; }
     var srcAmt = parseFloat(String(amt).replace(/,/g, '')) || 0;
     if (!(srcAmt > 0)) { say('Enter a valid amount on the previous step.'); return; }
     var feeAmt = +(srcAmt * feeRate()).toFixed(7);
     if (!(srcAmt - feeAmt > 0)) { say('That amount is too small to bridge.'); return; }
+    // ENCODE THE ADDRESS BEFORE ANYTHING IS SIGNED. destBytesFor throws on an address it cannot encode for this
+    // chain, and the Stellar contract would have accepted the wrong bytes without complaint -- so this is the only
+    // place the mistake is still cheap. Done here, outside the promise chain, so a bad address costs no signature
+    // and no swap.
+    var destBytes;
+    try { destBytes = destBytesFor(net, recipient); } catch (e) { say((e && e.message) || 'That address cannot be used for this route.'); return; }
+    if (!destBytes.length) { say('Enter the address the funds should arrive at.'); return; }
 
     if (btn) btn.disabled = true;
     say('');
@@ -284,7 +460,16 @@ function runtime(AX_SENDABLE) {
     var up = function (m) { window.lxBrProgUpdate(m); };
     var S, f, pk;
 
-    window.lxCctpSdk().then(function (s) { S = s; return window.lxCctpSigner(); }).then(function (fx) {
+    // THE RECIPIENT GATE, and it runs FIRST -- before the swap, before the fee, before any signature. A send to an
+    // address with no trustline (XRPL) or no token account (Solana) is the trap that took this route off the site;
+    // reaching it after the swap would mean the user has already paid a fee and converted their asset.
+    // A FAILED CHECK IS NOT A REFUSAL. ready===0 stops; ready===null says so and continues, because an upstream
+    // that cannot be read is not evidence about the recipient.
+    Promise.resolve(AX_NEEDS[net] ? readyOf(net, recipient) : 1).then(function (ok) {
+      if (ok === 0) throw new Error(notReadyMsg(net));
+      if (ok === null) up('Could not check whether that ' + net + ' address can receive SHX — continuing. It needs ' + AX_NEEDS[net] + '.');
+      return window.lxCctpSdk();
+    }).then(function (s) { S = s; return window.lxCctpSigner(); }).then(function (fx) {
       f = fx;
       return Promise.resolve(f.requestAccess ? f.requestAccess() : null).then(function () {
         return f.getAddress ? f.getAddress() : (f.getPublicKey ? f.getPublicKey() : null);
@@ -299,7 +484,7 @@ function runtime(AX_SENDABLE) {
         var goSign = function () { return Promise.resolve(f.signTransaction(tb.toXDR(), { networkPassphrase: CC.passphrase, network: 'PUBLIC', address: pk })); };
         return (window.lxCctpGateSign ? window.lxCctpGateSign(label, goSign) : goSign()).then(function (sig) {
           var xdr = (sig && (sig.signedTxXdr || sig.signedXDR)) || sig;
-          if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Signing cancelled.');
+          if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Cancelled by the user.');
           up('Submitting ' + label + '…');
           return fetch(CC.horizon + '/transactions', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'tx=' + encodeURIComponent(xdr) })
             .then(function (r) { return r.json(); }).then(function (res) {
@@ -319,33 +504,89 @@ function runtime(AX_SENDABLE) {
         var b = (ad.balances || []).filter(function (x) { return x.asset_code === 'SHX' && x.asset_issuer === SHX_SPEC.issuer; })[0];
         return b ? (+b.balance || 0) : 0;
       }
+      // A ZERO BALANCE AND A MISSING TRUSTLINE ARE NOT THE SAME THING, and shxBal() cannot tell them
+      // apart -- it answers 0 for both. Every non-SHX source below is path-paid INTO SHX and delivered
+      // to the sender's OWN account, so a sender with no SHX trustline fails that op with op_no_trust
+      // and rolls the swap back with it.
+      //
+      // RAZA 2026-11-13, bridging LUMOS via Axelar: "Bridge failed" at the fee/swap step with
+      // {"transaction":"tx_failed","operations":["op_no_trust"]}. This file carried NO changeTrust at
+      // all, while the CCTP path has had the equivalent line for USDC since it shipped -- same trap,
+      // fixed on one route and not the other.
+      function hasShxTrust(ad) {
+        return (ad.balances || []).some(function (x) { return x.asset_code === 'SHX' && x.asset_issuer === SHX_SPEC.issuer; });
+      }
+      // A new trustline costs one subentry = 0.5 XLM of base reserve, and it is checked BEFORE the
+      // signature so a wallet that cannot afford it is told so plainly, rather than walked through a
+      // wallet prompt to op_low_reserve. Base reserve is 0.5 XLM: 1 XLM minimum + 0.5 per subentry,
+      // with a little left for the network fee.
+      function xlmFree(ad) {
+        var b = (ad.balances || []).filter(function (x) { return x.asset_type === 'native'; })[0];
+        if (!b) return 0;
+        return (+b.balance || 0) - (1 + 0.5 * (+ad.subentry_count || 0)) - 0.01;
+      }
+      // THE FEE IS TAKEN IN XLM, NOT IN THE ASSET BEING BRIDGED.
+      //
+      // It was a plain payment of the source asset to the fee collector, which requires the COLLECTOR
+      // to hold a trustline for whatever the user happened to bridge. Measured 2026-11-13, it holds
+      // eight (AQUA, BLND, EURC, LUMOS, SHX, sUSD, USDC, yXLM) -- so bridging PYUSD, USDT0, XRP or
+      // anything else outside that set killed the whole transaction with op_no_trust. XLM needs a
+      // trustline from nobody, which is precisely why the CCTP path already routes its fee there.
+      //
+      // A FEE TOO SMALL TO ROUTE IS SKIPPED, NOT FATAL -- same rule and same bookkeeping as CCTP:
+      // `spend` below is already srcAmt - feeAmt, so dropping the op leaves the slice in the user's
+      // own wallet. Nothing is ever deducted and not collected.
+      function feeOpFor(spec, sendAsset, feeAmt) {
+        if (!(feeAmt > 0)) return Promise.resolve(null);
+        if (spec && spec.native)
+          return Promise.resolve(S.Operation.payment({ destination: CC.feeCollector, asset: S.Asset.native(), amount: feeAmt.toFixed(7) }));
+        return window.lxStrictPath(CC, spec, feeAmt.toFixed(7), { native: true }).then(function (pf) {
+          if (!(pf && +pf.out >= 1e-5)) return null;        // unroutable dust -- see above
+          return S.Operation.pathPaymentStrictSend({
+            sendAsset: sendAsset, sendAmount: feeAmt.toFixed(7),
+            destination: CC.feeCollector, destAsset: S.Asset.native(),
+            destMin: (pf.out * 0.97).toFixed(7),
+            path: window.lxToAssets ? window.lxToAssets(S, pf.path) : []
+          });
+        }).catch(function () { return null; });
+      }
       var sendP = acc().then(function (ad) {
         var before = shxBal(ad);
         var spend = +(srcAmt - feeAmt).toFixed(7);
         var takeFee = feeAmt > 0 && CC.feeCollector && CC.feeCollector !== pk;
         if (k === 'SHX') {
           if (!takeFee) return spend;
-          var tbF = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '100000', networkPassphrase: CC.passphrase })
-            .addOperation(S.Operation.payment({ destination: CC.feeCollector, asset: new S.Asset('SHX', SHX_SPEC.issuer), amount: feeAmt.toFixed(7) }))
-            .setTimeout(180).build();
-          return signSubmitClassic(tbF, 'fee').then(function () { return spend; });
+          return feeOpFor(SHX_SPEC, new S.Asset('SHX', SHX_SPEC.issuer), feeAmt).then(function (op) {
+            if (!op) return spend;                         // fee could not be routed -- see feeOpFor
+            var tbF = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '100000', networkPassphrase: CC.passphrase })
+              .addOperation(op).setTimeout(180).build();
+            return signSubmitClassic(tbF, 'fee').then(function () { return spend; });
+          });
         }
         up('Pricing the swap into SHX…');
+        var needTrust = !hasShxTrust(ad);
+        if (needTrust && xlmFree(ad) < 0.5)
+          throw new Error('Your account needs an SHX trustline to receive the swap, and that locks 0.5 XLM of reserve. Add a little XLM and try again — nothing has been sent or charged.');
         return window.lxStrictPath(CC, srcSpecOf(k), spend.toFixed(7), SHX_SPEC).then(function (p) {
           var sendAsset = (k === 'XLM') ? S.Asset.native() : new S.Asset(k, axIssuerOf(ad, k));
-          var tb = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '200000', networkPassphrase: CC.passphrase })
-            .addOperation(S.Operation.pathPaymentStrictSend({
+          return (takeFee ? feeOpFor(srcSpecOf(k), sendAsset, feeAmt) : Promise.resolve(null)).then(function (feeOp) {
+            var tb = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '200000', networkPassphrase: CC.passphrase });
+            // The trustline goes FIRST: the path payment on the next line delivers SHX into it inside
+            // the same transaction, so the order is what makes one signature enough.
+            if (needTrust) tb = tb.addOperation(S.Operation.changeTrust({ asset: new S.Asset('SHX', SHX_SPEC.issuer) }));
+            tb = tb.addOperation(S.Operation.pathPaymentStrictSend({
               sendAsset: sendAsset, sendAmount: spend.toFixed(7),
               destination: pk, destAsset: new S.Asset('SHX', SHX_SPEC.issuer),
               destMin: (p.out * 0.97).toFixed(7),
               path: window.lxToAssets ? window.lxToAssets(S, p.path) : []
             }));
-          if (takeFee) tb = tb.addOperation(S.Operation.payment({ destination: CC.feeCollector, asset: sendAsset, amount: feeAmt.toFixed(7) }));
-          return signSubmitClassic(tb.setTimeout(180).build(), 'swap+fee').then(function () {
-            return acc().then(function (after) {
-              var got = +(shxBal(after) - before).toFixed(7);
-              if (!(got > 0)) throw new Error('The swap into SHX did not deliver — nothing was sent cross-chain.');
-              return got;
+            if (feeOp) tb = tb.addOperation(feeOp);
+            return signSubmitClassic(tb.setTimeout(180).build(), 'swap+fee').then(function () {
+              return acc().then(function (after) {
+                var got = +(shxBal(after) - before).toFixed(7);
+                if (!(got > 0)) throw new Error('The swap into SHX did not deliver — nothing was sent cross-chain.');
+                return got;
+              });
             });
           });
         });
@@ -370,8 +611,7 @@ function runtime(AX_SENDABLE) {
         var gasStroops = String(Math.ceil(g * 1e7));
         up('Building the interchain transfer…');
         var units = BigInt(Math.round(sendAmt * Math.pow(10, t.dp))).toString();
-        var destBytes = new Uint8Array(recipient.length);
-        for (var i = 0; i < recipient.length; i++) destBytes[i] = recipient.charCodeAt(i);
+        // destBytes was encoded at the top of this function, per destination chain -- see destBytesFor.
         var idBytes = new Uint8Array(32);
         for (var j = 0; j < 32; j++) idBytes[j] = parseInt(t.id.substr(j * 2, 2), 16);
         var gasTok = S.nativeToScVal({ address: new S.Address(XLM_SAC), amount: gasStroops },
@@ -398,7 +638,7 @@ function runtime(AX_SENDABLE) {
             var goSign = function () { return Promise.resolve(f.signTransaction(prepared.toXDR(), { networkPassphrase: CC.passphrase, network: 'PUBLIC', address: pk })); };
             return (window.lxCctpGateSign ? window.lxCctpGateSign('transfer', goSign) : goSign()).then(function (sig) {
               var xdr = (sig && (sig.signedTxXdr || sig.signedXDR)) || sig;
-              if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Signing cancelled.');
+              if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Cancelled by the user.');
               up('Submitting the transfer…');
               return server.sendTransaction(S.TransactionBuilder.fromXDR(xdr, CC.passphrase)).then(function (res) {
                 if (res.status === 'ERROR') throw new Error('The network rejected the transfer.');
@@ -436,7 +676,13 @@ function runtime(AX_SENDABLE) {
       if (!m) return 'Could not build the transfer: ' + s.split('\n')[0].slice(0, 120);
       var n = +m[1];
       if (n === 13) return 'Your wallet does not hold ' + tok.sym + ' (or has no trustline for it), so there is nothing to bridge. Nothing was sent.';
-      if (n === 10) return 'That amount is not valid for this transfer.';
+      // #10 IS A SHORTFALL, and it is as often the GAS as the amount. Measured 2026-11-10 on an account with
+      // 68.85 SHX and 6.59 XLM: 'xrpl' passed at 1 unit, failed at 10,000 SHX (not enough SHX), and 'Ethereum'
+      // failed at EVERY amount including 1 unit -- purely because its gas estimate was 26.58 XLM. Naming only the
+      // amount sends the user to adjust the one number that is not the problem.
+      if (n === 10) return 'Not enough balance to cover this transfer. It needs ' + tok.sym
+        + ' for the amount and about ' + (GAS[chain] != null ? (Math.ceil(GAS[chain] * 100) / 100) : '?')
+        + ' XLM for the ' + net + ' gas, on top of the Stellar fee. Nothing was sent.';
       if (n === 17) return tok.sym + ' is not registered with Axelar for this route.';
       if (n === 7) return net + ' is not a trusted destination on Axelar right now.';
       return 'The transfer was refused by the contract (error ' + n + '). Nothing was sent.';
@@ -444,21 +690,16 @@ function runtime(AX_SENDABLE) {
   };
 }
 
-// ---- the destination rows ---------------------------------------------------------------------------------------
-// Neither chain is in the design's dropdown, so both are built here, on the same anchor and the same /g strip
-// contract the CCTP, LayerZero and NEAR Intents rows use. Gated behind lx-ax-on so the route and its destinations
-// switch on together -- a row whose only route is locked is the dead-route problem moved one step earlier.
-const AX_ONLY = [['XRPL', 'XRP', '#23292f']];
-const AX_OPTS = AX_ONLY.map(function (n) {
-  return '<button class="brd-opt lx-axopt" type="button" data-net="' + n[0] + '">'
-    + '<span class="brd-ic lx-netlm" style="background:' + n[2] + '">' + n[1] + '</span>'
-    + '<span class="brd-nm">' + n[0] + '</span></button>';
-}).join('');
-const AX_CSS = '<style id="lx-axpick-css">'
-  // Hidden only while the gate is OFF: a positive display rule would outrank the design's search filter, which
-  // hides a row with an inline display:none.
-  + 'html:not(.lx-ax-on) .brd-opt.lx-axopt{display:none !important}'
-  + '<' + '/style>';
+// ---- the destination rows: THIS LAYER ADDS NONE ------------------------------------------------------------------
+// It used to inject an XRPL row (and a gate stylesheet to hide it while the route was off), because XRPL was in no
+// other route's list. All three of this route's destinations now already have a row in the picker -- Ethereum from
+// the design, Solana and XRPL from _nearintents.js's NI_ONLY set -- so injecting anything here would produce a
+// DUPLICATE row for the same data-net, which the A-Z sort would then place next to its twin.
+//
+// THE TWO STRIPS STAY. The page containers are gitignored and still hold whatever an older run injected, so the
+// only way those stale buttons and that stale stylesheet leave is for this pass to keep removing them. A strip
+// with no matching inject is not dead code here; it is the cleanup half of an idempotent transform.
+const AX_ONLY = [];
 
 const JS = '(' + runtime.toString() + ')(' + (LZ_LIVE ? 'true' : 'false') + ');';
 try { new Function(JS); } catch (e) { console.error('  ! Axelar runtime does not parse: ' + e.message); process.exit(1); }
@@ -474,23 +715,40 @@ for (const dev of ['desktop', 'mobile']) {
     if (!/bridge/.test(k)) continue;
     let h = json[k];
     const before = h;
-    h = h.replace(new RegExp('<script id="lx-axelar">[' + B + 's' + B + 'S]*?<' + B + '/script>', 'g'), '');
     h = h.replace(new RegExp('<style id="lx-axpick-css">[' + B + 's' + B + 'S]*?<' + B + '/style>', 'g'), '');
     h = h.replace(new RegExp('<button class="brd-opt lx-axopt"[' + B + 's' + B + 'S]*?<' + B + '/button>', 'g'), '');
-    // STRIP ONLY -- the three replaces above are now the whole job. Axelar was removed from Stellar on
-    // 2026-09-24: it added no destination we do not already reach (ethereum, solana, sui, monad and hedera are
-    // all served by CCTP, LayerZero or NEAR Intents), and the one it did add -- XRPL -- is now served by NEAR
-    // Intents with native XRP, which needs no trustline. See the header for what it could still carry.
+    // RE-ENABLED 2026-11-10 (RAZA: "i just want you to add axelar for all the networks that we can do ... if that
+    // particular network also has Near intents, its okay to also add axelar on it"). Between 2026-09-24 and now
+    // this pass was a strip only, and the layer was off two ways at once -- AX_CHAIN was {} AND the script was
+    // never injected, so even filling AX_CHAIN in would have shipped nothing. Both halves are back on; the strips
+    // above stay because they are what makes the inject idempotent.
+    // IN PLACE, not strip-and-append. Re-adding the block before </body> lands this layer LAST, so
+    // running this transform on its own silently reorders the bridge page's layers -- the trap that
+    // costs an hour every time it is sprung. Swapping the block where it already sits cannot do that,
+    // and only a container that has never had the layer falls through to the append below.
     //
-    // THIS PASS STAYS IN THE BUILD CHAIN DELIBERATELY. The page containers are gitignored, so they still hold
-    // the injected script; deleting this file instead would leave that markup in them and the next rebuild
-    // would ship Axelar again from a source nobody is reading. Running it removes the layer and keeps removing
-    // it. Re-enabling means restoring the three injections below AND putting AX_CHAIN back.
+    // (The two strips above stay strips: they are cleanup with no matching inject, which is the other
+    // half of being idempotent. See [[a-transform-that-patches-in-place-cannot-reorder]].)
+    const AXO = '<script id="lx-axelar">', AXC = '<' + '/script>';
+    const at = h.indexOf(AXO);
+    if (at >= 0) {
+      const end = h.indexOf(AXC, at);
+      if (end > at) {
+        h = h.slice(0, at) + SCRIPT + h.slice(end + AXC.length);
+        seen++;
+        if (h !== before) { json[k] = h; n++; }
+        continue;
+      }
+    }
+    const bi = h.lastIndexOf('</body>');
+    if (bi < 0) { if (h !== before) { json[k] = h; n++; } continue; }
+    h = h.slice(0, bi) + SCRIPT + h.slice(bi);
     seen++;
     if (h !== before) { json[k] = h; n++; }
   }
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log('Axelar ITS route: ' + seen + ' bridge page key(s), ' + n + ' changed, ' + dd + ' dropdown(s) got the ' + AX_ONLY.length + ' rows' + (LZ_LIVE ? ' (sendable)' : ' (shown, not sendable)'));
+console.log('Axelar ITS route: ' + seen + ' bridge page key(s), ' + n + ' changed, ' + dd + ' dropdown(s) got the ' + AX_ONLY.length + ' rows'
+  + ' | destinations: Ethereum, Solana, XRPL' + (LZ_LIVE ? ' (sendable)' : ' (shown, not sendable)'));
 if (!seen) { console.error('  ! no bridge page matched'); process.exit(1); }

@@ -124,6 +124,53 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    visibility, not display, so the table keeps its height and nothing jumps when the rows arrive. */
 #dxaPanel .dxa-holders table tbody:not([data-lxbuilt]) tr,
 #mdxaPanel .mdxa-holders .mdxa-hl-list:not([data-lxbuilt])>*{visibility:hidden!important}
+/* ...and THE POOLS ROWS, WHICH WERE NEVER GATED AT ALL. The rule above fixed Holders in October and
+   stopped there; Pools has been flashing the template ever since. Measured on production 2026-11-06,
+   clean load, AQUA: row 1 read "USDC / APT $4.85M 24.8% $980K 62.4% Add liquidity" at 3ms, then
+   "USDC / XLM $4.85M 24.8% $980K 62.4%" at 67ms, both computed visibility:visible, for ~220ms.
+   The second frame is the dangerous one -- a copy transform swaps the ticker to XLM but the NUMBERS
+   stay the template's, so it reads as real Stellar liquidity rather than as obvious filler. Same
+   class of defect as the dashboard stat pills: invented figures presented as this chain's.
+   poolsPaint() stamps data-lxrows on the tbody as it writes the rows, and stamps it "none" on the
+   empty/error path too, so "Could not load pools right now" can never be gated shut. That makes it
+   the pools equivalent of data-lxbuilt above -- the writer's own marker, no new flag to drift. */
+#dxaPanel .dxa-pools table tbody:not([data-lxrows]) tr{visibility:hidden!important}
+/* A GATED PANEL LOOKS BROKEN, NOT BUSY (RAZA 2026-11-06, after the XRPL fork's Pools/Holders tabs
+   read as dead to him). Gating alone turns a mock flash into an empty frame, which is the same
+   complaint one step later: on XRPL the Pools pane measured ~1.5s gated with nothing on screen.
+   So every gate above now shows a shimmer in the shape of the content it is withholding.
+   This is pure CSS keyed off the SAME markers the gates use, so the writer that lifts the gate ends
+   the skeleton in the same paint -- no injected nodes for the design's tab-rebuild to wipe, no
+   second writer to put them back, and nothing that can shimmer for ever: the empty/error paths set
+   their marker too. It works because visibility:visible on a descendant overrides a hidden
+   ancestor, so the bars show THROUGH the hidden row while every mock value stays hidden; and
+   because visibility keeps the box, the mock rows go on reserving their exact geometry, so the
+   panel does not jump when the data lands (table height measured identical, gated vs lifted). */
+@keyframes lxdaSh{0%{background-position:120% 0}100%{background-position:-20% 0}}
+#dxaPanel .dxa-pools table tbody:not([data-lxrows]) td,
+#dxaPanel .dxa-holders table tbody:not([data-lxbuilt]) td,
+.dxa-hl-stat .val:not(.lxp){position:relative}
+#dxaPanel .dxa-pools table tbody:not([data-lxrows]) td::after,
+#dxaPanel .dxa-holders table tbody:not([data-lxbuilt]) td::after{content:"";visibility:visible!important;
+  position:absolute;left:0;right:18%;top:50%;transform:translateY(-50%);height:12px;border-radius:6px;
+  background:linear-gradient(90deg,rgba(140,145,165,.10) 0%,rgba(140,145,165,.10) 38%,rgba(234,106,44,.20) 50%,rgba(140,145,165,.10) 62%,rgba(140,145,165,.10) 100%);
+  background-size:220% 100%;animation:lxdaSh 1.3s linear infinite}
+.dxa-hl-stat .val:not(.lxp)::after{content:"";visibility:visible!important;position:absolute;
+  left:0;top:50%;transform:translateY(-50%);width:72px;height:14px;border-radius:7px;
+  background:linear-gradient(90deg,rgba(140,145,165,.10) 0%,rgba(140,145,165,.10) 38%,rgba(234,106,44,.20) 50%,rgba(140,145,165,.10) 62%,rgba(140,145,165,.10) 100%);
+  background-size:220% 100%;animation:lxdaSh 1.3s linear infinite}
+#mdxaPanel .mdxa-holders .mdxa-hl-list:not([data-lxbuilt])>*{position:relative}
+#mdxaPanel .mdxa-holders .mdxa-hl-list:not([data-lxbuilt])>*::after{content:"";visibility:visible!important;
+  position:absolute;left:4%;right:4%;top:50%;transform:translateY(-50%);height:14px;border-radius:7px;
+  background:linear-gradient(90deg,rgba(140,145,165,.10) 0%,rgba(140,145,165,.10) 38%,rgba(234,106,44,.20) 50%,rgba(140,145,165,.10) 62%,rgba(140,145,165,.10) 100%);
+  background-size:220% 100%;animation:lxdaSh 1.3s linear infinite}
+/* A shimmer is a moving gradient, which is the one thing reduced-motion asks us not to ship. The
+   bars stay -- only the sweep stops, so the panel still reads as loading rather than as empty. */
+@media (prefers-reduced-motion:reduce){
+  #dxaPanel .dxa-pools table tbody:not([data-lxrows]) td::after,
+  #dxaPanel .dxa-holders table tbody:not([data-lxbuilt]) td::after,
+  .dxa-hl-stat .val:not(.lxp)::after,
+  #mdxaPanel .mdxa-holders .mdxa-hl-list:not([data-lxbuilt])>*::after{animation:none}}
 /* ...and the line underneath them, for the same reason (RAZA 2026-10-08). The design ships it
    reading "Showing 1-50 of 12,408 holders - Cumulative 47%", and it stayed on screen about a
    tenth of a second before our renderer overwrote it with the real "Showing 1-50 of 84 holders".
@@ -199,6 +246,8 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 #mdxaExList .ex-row[data-lxda] .ex-num .sub{display:block}
 .lxda-exlink{display:inline-flex;align-items:center;justify-content:center;color:var(--text-soft,#8a8fa3)}
 .lxda-exlink:hover{color:var(--accent)}
+/* the zero-count in a compressed price, shifted below the baseline so it cannot be read as a digit */
+.lx-zsub{font-size:.72em;vertical-align:-.32em;line-height:1;padding-left:.5px}
 /* chart x-axis dates as an absolute HTML row (SVG text is squished by preserveAspectRatio=none) */
 .lxda-cdates{position:absolute;left:14px;right:70px;bottom:5px;display:flex;justify-content:space-between;gap:8px;font:600 11.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
 /* The price axis. The plot has always reserved a right gutter (PADR) and never drawn anything in it, so
@@ -465,7 +514,7 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
    logo then replaces in a single step. Paired with the markup edit that drops the "$" glyph itself. */
 .asset-logo:not([data-lxlogo]){background-image:none!important;background-color:rgba(127,127,127,.18)!important;color:transparent!important;font-size:0!important}
 /* trade-widget: inline error + disabled CTA while amount is invalid/over balance */
-.lxda-swaperr{color:var(--red,#ff5b5b);font-size:12.5px;font-weight:600;line-height:1.4;margin:0 0 9px}
+.lxda-swaperr,.lxda-limerr{color:var(--red,#ff5b5b);font-size:12.5px;font-weight:600;line-height:1.4;margin:0 0 9px}
 .dxa-trade-cta[data-lxdis="1"]{opacity:.55;cursor:not-allowed;filter:grayscale(.25)}
 /* trade-widget asset icons: paint via ::before (painter-proof) driven by --lxtic */
 .dxa-pane-swap .dxa-trade-ic[data-lxic]{position:relative}
@@ -821,6 +870,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // XLM's own move in dollars over each grid window, used to convert the XLM-measured cells.
   var xu1h=null, xu7d=null, xu1m=null, xu3m=null, xu6m=null;
   var chg1h=null, chg1m=null, chg3m=null, chg6m=null;        // the rest of the performance grid, computed from real candles
+  // WINDOWS IN WHICH NOTHING TRADED. The 24h cell has always reported a silent window as 0.00% --
+  // "nothing traded inside the window, so nothing moved inside the window", see recomputeChg -- while
+  // the other five had no such rule and dashed instead. A dormant asset therefore showed "+0.00%" for
+  // 24h and "—" for 1h, 7d, 1m, 3m and 6m on one screen, which is the contradiction RAZA reported.
+  // Keyed by the cell's own label. Kept apart from the figures above because the dollar reading is
+  // assembled from two independent fetches, and a silent window must read zero in BOTH denominations
+  // exactly as the chg24/chg24X pair does.
+  var perfSilent={};
   var natMcap=0, natVol=0;                                   // XLM native: real market cap + 24h volume (USD, CoinGecko)
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -950,6 +1007,21 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       .then(function(d){ return (d&&+d.price>0)?+d.price:0; })
       .catch(function(){ return 0; });
   }
+  // A PRICE BELOW 1e-7 READS AS ZERO. trade_aggregations renders every price as a seven-decimal
+  // string, so an asset trading at 4.6566e-10 -- LOVE, at exactly 1/2147483647 XLM -- reports
+  // close "0.0000000" on all 23 of its candles. Every "+close greater than 0" guard in the
+  // performance code then rejected the whole series and all five cells dashed, on an asset whose
+  // price had not changed once in four months. Horizon sends the unrounded value beside it as a
+  // ratio, which is what this falls back to. Tested on the NUMBER, never the string: "0.0000000"
+  // is a truthy string, which is how the offers reader at .lxda price_r still gets this wrong.
+  // NO BACKTICKS IN HERE: this whole script is a template literal in the transform, so one closes
+  // the string and the next token is evaluated as code -- it cost a build.
+  function cNum(rec,k){
+    if(!rec)return 0;
+    var v=+rec[k]; if(v>0)return v;
+    var r=rec[k+"_r"]; if(r&&+r.d>0){ var q=(+r.n)/(+r.d); if(q>0)return q; }
+    return 0;
+  }
   function jAgg(o){
     var ord=o.order||"desc", lim=o.limit||200;
     var qs="a="+encodeURIComponent(CODE+"-"+ISSUER)+"&res="+o.res+"&order="+ord+"&limit="+lim;
@@ -1026,6 +1098,20 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(x>=1e-8)return trimZ(x.toFixed(8));
     if(!(exp>1))return trimZ(x.toFixed(8));
     return "0.0"+zsub(exp-1)+mant; }
+  // THE ZERO COUNT SITS BELOW THE DIGITS, not level with them (RAZA 2026-10-17: "on Stellar,
+  // Trade-asset, recent transactions, make the subscript notation value bit below like you have
+  // done on XRPL"). U+2080..U+2089 are subscripts by name, but JetBrains Mono carries no glyph for
+  // them, so the browser substitutes from a fallback face and the digit lands near mid-height --
+  // where it reads as part of the number rather than a count of the zeros before it.
+  // Returns HTML, so it is only for the places that build markup; everything writing text keeps
+  // calling smallNum directly.
+  function zwrap(t){ t=String(t); var o="",run="";
+    for(var i=0;i<t.length;i++){ var c=t.charCodeAt(i);
+      if(c>=8320&&c<=8329){ run+=String.fromCharCode(48+(c-8320)); continue; }
+      if(run){ o+='<span class="lx-zsub">'+run+'</span>'; run=""; }
+      o+=t.charAt(i); }
+    if(run)o+='<span class="lx-zsub">'+run+'</span>';
+    return o; }
   function usd(x){x=+x||0;if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2});if(x>=0.01)return "$"+x.toFixed(4);if(x>0)return "$"+smallNum(x,4);return "$0";}
   function xlmAmt(x){x=+x||0;if(x>=1000)return Math.round(x).toLocaleString("en-US");if(x>=1)return (+x.toFixed(4)).toString();if(x>0)return smallNum(x,4);return "0";}
   // A spendable amount must never round UP: xlmAmt uses toFixed(4), which does, and MAX then asks
@@ -1354,16 +1440,43 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // dollar move on the $ view. #33: "up" is removed explicitly, not just "down" toggled. The design
     // ships that class on the element and leaving it meant ZBS rendered a GREEN pill with a down arrow
     // reading -64.42%, contradicting itself inside one badge. #11/#21: a stale window is a grey zero.
-    var _cv=(cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24;
-    if(_pill){ if(_cv!=null){ var _u=_cv>=0;
+    applyChangePill();
+  }
+
+  // THE PILL FOLLOWS THE CHART TAB (RAZA 2026-10-17: "if we change the tab to 1W, or 1M, or 1Y, it
+  // should also change the percentage tag color based on the tab... Also do this on Stellar").
+  //
+  // Lifted out of applyStats so the chart can repaint it. It used to be written only when the STATS
+  // changed, which is why a tab switch left yesterday's number under a year-long chart -- the same
+  // mismatch the performance cell already fixed for itself a few hundred lines below, with the same
+  // reasoning and the same source. This now matches that cell exactly rather than inventing a second
+  // way to answer the same question.
+  //
+  // FIRST DRAWN POINT TO LAST. Scale-invariant, so the XLM/$ toggle needs no special case: a ratio
+  // of two points cancels the denomination. 1D keeps chg24 -- it IS the 24h window, it is the figure
+  // the rest of the page shows, and deriving it again would print a second slightly different
+  // opinion of one number.
+  function applyChangePill(){
+    var _pill=q(".price-display .change-pill"); if(!_pill)return;
+    var _cv, _lab="24h", _fresh=chg24Fresh;
+    if(chartTF!=="1D"&&chartPts&&chartPts.length>1){
+      var _a=+chartPts[0].v, _b=+chartPts[chartPts.length-1].v;
+      // The PERIOD, not the tab's name: the pill already reads "(24h)" on 1D, so "(1W)" beside it
+      // would be two different conventions in one control. Same words as the XRPL pill.
+      var _TAG={"1W":"7d","1M":"30d","1Y":"1y"};
+      if(_a>0&&_b>0){ _cv=((_b-_a)/_a)*100; _lab=_TAG[chartTF]||chartTF; _fresh=true; }
+    }
+    // Either the tab is 1D, or its series has not landed yet. Both fall back to the day figure.
+    if(_cv==null)_cv=(cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24;
+    if(_cv!=null){ var _u=_cv>=0;
       _pill.classList.add("change-pill");
       _pill.classList.remove("up","down","lx-flat");
-      if(!chg24Fresh)_pill.classList.add("lx-flat");
+      if(!_fresh)_pill.classList.add("lx-flat");
       else if(_u)_pill.classList.add("up"); else _pill.classList.add("down");
-      _pill.title=chg24Fresh?"":"No trades in the last 24 hours";
-      setText(_pill,(chg24Fresh?(_u?"▲ ":"▼ "):"")+Math.abs(_cv).toFixed(2)+"% (24h)");
+      _pill.title=_fresh?"":"No trades in the last 24 hours";
+      setText(_pill,(_fresh?(_u?"▲ ":"▼ "):"")+Math.abs(_cv).toFixed(2)+"% ("+_lab+")");
       _pill.classList.add("lxp"); if(_pill.style.display==="none")_pill.style.display=""; }
-      else if(_pill.style.display!=="none")_pill.style.display="none"; }
+    else if(_pill.style.display!=="none")_pill.style.display="none";
   }
 
   // ================= PERFORMANCE GRID (.dxa-perf-grid: 1h/24h/7d/1m/3m/6m) =================
@@ -1394,7 +1507,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // the other five cells were all in XLM. On FRED that printed the pill at +1.30% and this cell at
       // -0.38% in red -- one grid contradicting itself, and the reason the graph looked like it told a
       // different story. This is the exact expression the pill uses, so the two cannot disagree again.
-      var v=null; if(key==="1h")v=perfPick(chg1h,xu1h);
+      // A window nothing traded in reads zero in BOTH denominations, exactly as the chg24/chg24X
+      // pair does -- so it is answered before the per-window figures, not after. Without this the
+      // dollar view would convert a flat XLM price into XLM's own move and the 24h cell beside it
+      // would still say 0.00%, which is the contradiction this whole change exists to remove.
+      var v=null;
+      if(perfSilent[key])v=0;
+      else if(key==="1h")v=perfPick(chg1h,xu1h);
       else if(key==="24h")v=((cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24);
       // 7d is the one window with a directly measured dollar figure, so in $ it is preferred over a
       // conversion and the conversion is only the fallback.
@@ -1520,7 +1639,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var a=ok?(mn*sc):mn, b=ok?(mx*sc):mx;
     var pre=(ok&&cDenom()==="xlm")?"":"$";
     var N=5,h="";
-    // A market cap is eight or nine digits, and axisNum spells every one of them:  987946.5463 down
+    // A market cap is eight or nine digits, and axisNum spells every one of them: 987946.5463 down
     // the side of a chart is not a label, it is an obstruction. Abbreviate that scale and leave the price
     // scale alone, where the digits are the whole point.
     function _al(v){ return (chartMetric==="mcap")
@@ -1656,6 +1775,8 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var NL=5,dh=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); dh+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=dh;
     priceAxis(pc,lo,hi, PADT/HT*100, (HT-(PADT+vol.priceH))/HT*100);
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co; window._dxaChartState=null; setupChartHover(pc);
+    // The pill describes the span on screen, so it is repainted by whatever put that span there.
+    try{ applyChangePill(); }catch(_){}
   }
   function drawLine(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
@@ -1691,16 +1812,31 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       function(i){ return i===0 ? true : (cl[i]>=cl[i-1]); },        // line chart: close vs previous close
       function(i){ return PADL+(n>1?(i/(n-1))*iw:iw/2); },            // and point positions, matching the line
       iw, PADT+vol.priceH+vol.gap, vol.volH, n);
+    // THE LINE TAKES THE PERIOD'S DIRECTION (RAZA 2026-10-16: "If the chart is UP in the last 24
+    // hours, then it will be green. If down in the last 24 hours, then it will be red. Same logic
+    // applies on 1W, 1M, 1Y ... Dont change anything on the chart, just add green or red color").
+    //
+    // FIRST CLOSE VERSUS LAST, of the points actually being drawn — not the header's 24h figure.
+    // That is what makes one rule serve every tab: the colour always describes the span on screen,
+    // so switching to 1Y recolours to 1Y's direction without the timeframes needing to know about
+    // each other. On 1D the two agree by construction, because 1D IS the 24h window.
+    //
+    // Only the colour changes. Geometry, padding, the volume bars and the candle view are untouched;
+    // the bars already carry their own per-bar green/red from close-vs-previous-close above, which is
+    // a different question (each bar) from this one (the whole span).
+    var lxUp = (cl.length > 1) ? (cl[cl.length - 1] >= cl[0]) : true;
+    var lxCC = lxUp ? "var(--green,#35c07f)" : "var(--red,#ff5b5b)";
     svg.setAttribute("viewBox","0 0 "+W+" "+HT); svg.setAttribute("preserveAspectRatio","none");
-    svg.innerHTML='<defs><linearGradient id="lxdaGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent,#ea6a2c)" stop-opacity="0.20"></stop><stop offset="100%" stop-color="var(--accent,#ea6a2c)" stop-opacity="0"></stop></linearGradient></defs>'
+    svg.innerHTML='<defs><linearGradient id="lxdaGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="'+lxCC+'" stop-opacity="0.20"></stop><stop offset="100%" stop-color="'+lxCC+'" stop-opacity="0"></stop></linearGradient></defs>'
       +bars
       +'<path class="lxda-area" d="'+ar+'"></path><path class="lxda-line" d="'+ln+'"></path>';
     var a=svg.querySelector(".lxda-area"); if(a)a.setAttribute("fill","url(#lxdaGrad)");
-    var l=svg.querySelector(".lxda-line"); if(l){l.setAttribute("fill","none");l.setAttribute("stroke","var(--accent,#ea6a2c)");l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-linecap","round");l.setAttribute("stroke-linejoin","round");}
+    var l=svg.querySelector(".lxda-line"); if(l){l.setAttribute("fill","none");l.setAttribute("stroke",lxCC);l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-linecap","round");l.setAttribute("stroke-linejoin","round");}
     // x-axis date row (absolute HTML)
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
     var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co;
+    try{ applyChangePill(); }catch(_){}
     priceAxis(pc,mn,mx, PADT/HT*100, (HT-(PADT+vol.priceH))/HT*100);
     window._dxaChartState=null;                                // disable the design's stale hover state
     setupChartHover(pc);
@@ -2274,6 +2410,46 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     // spread
     var sp=q(".dxa-ob-spread")||q(".mdxa-ob-spread"); if(sp&&aList.length&&bList.length){ var spread=aList[0].px-bList[0].px, mid=(aList[0].px+bList[0].px)/2; var mons=sp.querySelectorAll(".mono"); if(mons[0])mons[0].textContent=(spread>0?spread.toFixed(Math.max(4,decs(mid))):"0")+" XLM"; if(mons[1])mons[1].textContent="("+(mid>0?(spread/mid*100).toFixed(2):"0")+"%)"; }
     asksEl.classList.add("lxda"); bidsEl.classList.add("lxda");
+    pinAsks(asksEl);
+  }
+
+  // THE BEST ASK SITS AT THE BOTTOM OF ITS PANEL, so the panel has to OPEN there (RAZA 2026-10-17:
+  // "the red section should be slided to the bottom by default instead of the user having to slide it
+  // down" -- reported on XRPL, measured as the same bug here: 496px of rows in a 323px box, opening
+  // at scrollTop 0). A fresh scroll box starts at the top, so what showed first was the far end of the
+  // book while the prices anyone actually trades at sat off-screen just above the spread.
+  //
+  // Pinned on paint AND whenever the panel gains height, because the Orderbook tab is usually CLOSED
+  // when the rows are written: a hidden element has no scrollHeight to scroll to, so a one-shot pin at
+  // paint time silently does nothing. Measured: clientHeight 0 while the tab is shut, 323 once open.
+  //
+  // A reader who scrolls away keeps their place -- re-pinning under them would fight the wheel.
+  function pinAsks(node){
+    if(!node) return;
+    var go=function(){ if(!node.__lxAway) node.scrollTop=node.scrollHeight; };
+    go();
+    [0,60,250,700].forEach(function(ms){ setTimeout(go,ms); });
+    if(node.__lxPin) return;
+    node.__lxPin=1;
+    node.addEventListener("scroll",function(){
+      node.__lxAway=(node.scrollHeight-node.clientHeight-node.scrollTop)>8;
+    },{passive:true});
+    // ResizeObserver is the tidy trigger and it is NOT enough on its own: it does not fire in the
+    // review pane at all (measured -- observed this very node across the tab opening and got zero
+    // callbacks), so anything relying on it alone cannot be verified before shipping. The tab press
+    // is the event that actually reveals the panel, and a click always fires.
+    try{ new ResizeObserver(go).observe(node); }catch(e){}
+    if(!window.__lxObTabPin){
+      window.__lxObTabPin=1;
+      window.addEventListener("click",function(e){
+        var t=e.target&&e.target.closest&&e.target.closest(".dxa-trade-tab,.mdxa-trade-tab");
+        if(!t) return;
+        // after the pane is shown, not during: the panel has no height until the class lands
+        [0,60,250,700].forEach(function(ms){ setTimeout(function(){
+          pinAsks(document.getElementById("dxaObAsks")||document.getElementById("mdxaObAsks"));
+        },ms); });
+      },true);
+    }
   }
 
   // ================= RECENT EXCHANGES (#dxaExTable) =================
@@ -2592,7 +2768,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
 // thousand (200,000 -> 200K) and switches to subscript below one, which COMPRESSES the leading zeros
 // without dropping a digit -- 0.0000253 becomes 0.0(4)253, still the exact number. The price itself keeps
 // smallNum for the same reason. 'for' becomes an arrow: it is a trade, and the row is narrow.
-+'<div class="ex-num">'+smallNum(r.px,4)+' XLM<span class="sub">'+exFlow(r)+'</span></div>'
++'<div class="ex-num">'+zwrap(smallNum(r.px,4))+' XLM<span class="sub">'+exFlow(r)+'</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
         +'<a class="row-link lxda-exlink" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
@@ -2724,6 +2900,21 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // of _links.next works and the pages stay correctly ranked with no overlap (page 1 ends at balance
   // 529252300087, page 2 opens at 522663300124, zero shared accounts). So the token is carried forward.
   var HPP=50;
+  // ONE RETRY, the shape the ranked fetch below already uses and for the same reasons: a short wait,
+  // because the likely causes (a cold edge cache in front of a slow upstream, a rate-limited one) clear
+  // on their own and an immediate retry would just repeat the failure; a CACHE-BUSTER, or the retry is
+  // theatre and reads the first failure straight back out of whatever intermediary already holds it; and
+  // exactly ONE, so a genuinely dead upstream costs one extra request rather than a storm.
+  //
+  // j() does NOT cover this. Its only recovery is the secondary HORIZON host, so a same-origin
+  // /lxapi/holders failure went straight to the caller's catch, and a Horizon failure that was not a
+  // host-level outage (a single dropped page mid-pagination) did too.
+  function jRetry(url){
+    return j(url).catch(function(){
+      return new Promise(function(go){ setTimeout(go,1200); })
+        .then(function(){ return j(url+(url.indexOf("?")<0?"?":"&")+"_r="+Date.now()); });
+    });
+  }
   function holdCursor(d){
     var h=d&&d._links&&d._links.next&&d._links.next.href; if(!h)return "";
     var m=/[?&]cursor=([^&]+)/.exec(h); return m?m[1]:"";
@@ -2732,9 +2923,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function holdMore(){
     if(window.__lxDXAholdBusy||!window.__lxDXAholdNext)return Promise.resolve(false);
     window.__lxDXAholdBusy=1;
-    return j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200&cursor="+encodeURIComponent(window.__lxDXAholdNext))
+    return jRetry("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200&cursor="+encodeURIComponent(window.__lxDXAholdNext))
       .then(function(d){
         window.__lxDXAholdBusy=0;
+        window.__lxDXAholdPartial=0;                // a later success clears the note below
         var rk=(d&&d._embedded&&d._embedded.records)||[];
         if(!rk.length){ window.__lxDXAholdNext=""; return false; }
         var seen={}; (window.__lxDXAhold||[]).forEach(function(h){ seen[h.addr]=1; });
@@ -2745,7 +2937,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         window.__lxDXAhold=(window.__lxDXAhold||[]).concat(add);
         window.__lxDXAholdNext=holdCursor(d);
         return add.length>0;
-      }).catch(function(){ window.__lxDXAholdBusy=0; return false; });
+      }).catch(function(){
+        window.__lxDXAholdBusy=0;
+        // A FAILED "NEXT" USED TO BE INDISTINGUISHABLE FROM A DEAD BUTTON. Returning false left the page
+        // where it was and repainted the same rows, so the click did nothing visible and nothing said
+        // why. holdGo()'s .then() runs on this false and calls guardApply(), so setting the flag here is
+        // enough to get the note below on screen -- no extra repaint from inside the catch.
+        window.__lxDXAholdPartial=1;
+        return false;
+      });
   }
   // Move the page, then just repaint. NOTHING here clears a built-marker by hand -- that is what failed
   // the first time: the marker was cleared from outside, the pipeline rebuilt with the OLD page, and the
@@ -2774,7 +2974,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     },true);
   }
   function loadHolders(){
-    if(NATIVE||window.__lxDXAhold||window.__lxDXAholdLoading)return;
+    // A RECORDED FAILURE IS A SETTLED STATE, not a reason to start over. applyHolders() calls this on
+    // EVERY repaint, and the only things that used to stop it were "a list is in hand" and "a load is
+    // running" -- so once a load had failed and cleared its own loading flag, the next price tick came
+    // straight back in here and fired another round of fetches. Measured: with both sources rejecting,
+    // the ranked endpoint was asked 3 times in 7 seconds and the count was still climbing. That is an
+    // unbounded retry storm aimed at an upstream that is already failing, and it predates the error
+    // flag -- the flag just makes it visible. jRetry() is where recovery belongs; past that the user
+    // presses Retry.
+    if(NATIVE||window.__lxDXAhold||window.__lxDXAholdLoading||window.__lxDXAholdErr)return;
     window.__lxDXAholdLoading=true;
     // ranked source first (same-origin proxy -> stellar.expert, ordered by balance)
     // 200 is the upstream maximum and it is a single request, so four pages of the table are in hand
@@ -2794,7 +3002,8 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       window.__lxDXAhold=rk.map(function(r){ return {addr:r.address||r.account, bal:(+r.balance||0)/1e7}; })
         .filter(function(h){ return h.bal>0; });      // a zero balance is a trustline, not a holder
       window.__lxDXAholdNext=holdCursor(d);
-      window.__lxDXAranked=1; guardApply();
+      window.__lxDXAranked=1; window.__lxDXAholdErr=0;      // a success clears the failure state
+      guardApply();
     }
     // "STILL SCANNING" IS AN ANSWER, NOT A FAILURE (RAZA 2026-11-18: "holders taking forever to load. also
     // once it loads, it doesnt show top 10 and top 50"). The endpoint builds the ranking itself now and,
@@ -2878,23 +3087,41 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var acc=[], complete=false;
     function finish(){
       window.__lxDXAhold=acc.sort(function(x,y){return y.bal-x.bal;});
+      window.__lxDXAholdErr=0;                              // ditto: the fallback got there in the end
       // Only claim a ranking when the list actually ended. Stopping at the page cap means there are
       // holders we never saw, and the top of an incomplete list is not the top of the asset.
       if(complete)window.__lxDXAcomplete=1;
       guardApply();
     }
     function page(url,depth){
-      j(url).then(function(d){
+      jRetry(url).then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         recs.forEach(function(a){ (a.balances||[]).forEach(function(bl){ if(bl.asset_code===CODE&&bl.asset_issuer===ISSUER)acc.push({addr:a.account_id||a.id,bal:+bl.balance}); }); });
         var next=d&&d._links&&d._links.next&&d._links.next.href;
         // A short page or a missing next link is the end of the asset's accounts.
         if(!next||recs.length<200){ complete=true; finish(); return; }
         if(depth+1<pageBudget()){ page(next,depth+1); } else { finish(); }
-      }).catch(function(){ if(acc.length)finish(); else window.__lxDXAholdLoading=false; });
+      }).catch(function(){
+        if(acc.length){ finish(); return; }                      // partial is still worth showing
+        window.__lxDXAholdLoading=false;
+        // NOTHING WAS READ, SO SAY SO. This used to stop here, which left "Loading holders…" on screen
+        // for good -- and twelve seconds later the slow-asset timeout below replaced it with "Still
+        // reading this asset's holders", a sentence about a fetch that had already failed and would
+        // never return. A failure presented as slowness is the same class of bug as the partial pool
+        // list presented as complete; see [[a-partial-fetch-presented-as-complete]].
+        window.__lxDXAholdErr=1; guardApply();
+      });
     }
     page(H+"/accounts?asset="+CODE+":"+ISSUER+"&limit=200&order=desc",0);
   }
+  // Retry entry point for the message that failure now writes. Clearing the three flags is all it takes:
+  // applyHolders() calls loadHolders() on every repaint and loadHolders() returns early only while a list
+  // or a load is in hand, so dropping both lets it start over, and dropping the error flag flips the
+  // data-lxload state back to "1" so the loading message is written again.
+  window.__lxDXAholdReload=function(){
+    window.__lxDXAholdErr=0; window.__lxDXAhold=null; window.__lxDXAholdLoading=false;
+    try{ guardApply(); }catch(_){}
+  };
   // Both bottom panels live under a different id AND class prefix on mobile (#mdxaPanel > .mdxa-holders),
   // and mobile renders rows as DIVs where desktop uses a <table>. These two helpers pick the panel and say
   // which markup to build; without them both renderers returned on their first line and the design's mock
@@ -2939,11 +3166,36 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(_pgw)_pgw.style.visibility=(hold&&hold.length)?"":"hidden";
     if(!hold||!hold.length){
       var _tb0=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody");
-      if(_tb0&&!_tb0.getAttribute("data-lxbuilt")&&_tb0.getAttribute("data-lxload")!=="1"){
-        _tb0.setAttribute("data-lxload","1");
+      // data-lxload IS A STATE, NOT A LATCH. It only ever held "1", so once the loading message was
+      // written this branch could never be re-entered and nothing that happened afterwards could
+      // replace it -- which is exactly why a dead fetch sat under "Loading holders…" indefinitely.
+      // Carrying the state in the attribute lets the message change exactly once per state.
+      //
+      // THREE STATES, not two. __lxDXAhold is assigned only by takeRanked() and by horizonHolders()'s
+      // finish(), so a non-null array here means the load SETTLED -- and settled with zero rows is a
+      // real answer ("this asset has no funded holders"), not a load still in progress. It was being
+      // shown as "Loading holders…" too, for exactly as long as the tab stayed open.
+      var _hwant=window.__lxDXAholdErr?"err":(hold?"none":"1");
+      if(_tb0&&!_tb0.getAttribute("data-lxbuilt")&&_tb0.getAttribute("data-lxload")!==_hwant){
+        _tb0.setAttribute("data-lxload",_hwant);
         var _wrapMsg=function(t){ return MOB
           ? '<div style="padding:22px 14px;text-align:center;color:var(--text-muted)">'+t+'</div>'
           : '<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">'+t+'</td></tr>'; };
+        if(_hwant==="err"){
+          // SINGLE-QUOTED ATTRIBUTES, and no quoted font name. This layer is emitted from a template
+          // literal, which consumes backslash escapes -- a \" written here arrives in the built page as
+          // a bare " that closes the JS string early. The build does not complain; the layer simply
+          // fails to parse and the whole panel goes dead. See [[template-literal-eats-escapes]].
+          _tb0.innerHTML=_wrapMsg("Couldn’t read this asset’s holders. <button type='button' data-hrt='1' style='margin-left:8px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;font-weight:600;font-size:12px;cursor:pointer'>Retry</button>");
+          // Wired here rather than inline: an onclick attribute is the one thing the page's CSP does
+          // not allow, and it would have failed silently.
+          var _rb=_tb0.querySelector("[data-hrt]");
+          if(_rb)_rb.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+            _rb.disabled=true; _rb.textContent="Retrying…";
+            try{ window.__lxDXAholdReload&&window.__lxDXAholdReload(); }catch(_){} });
+          return;
+        }
+        if(_hwant==="none"){ _tb0.innerHTML=_wrapMsg("No holders to show for this asset."); return; }
         _tb0.innerHTML=_wrapMsg("Loading holders…");
         // SAY SO WHEN IT IS SLOW, rather than showing the same three dots for a minute. When the
         // ranked list is unavailable this falls back to Horizon, whose /accounts?asset= took a
@@ -2953,6 +3205,8 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         setTimeout(function(){ try{
           if(_tb0.getAttribute("data-lxbuilt"))return;                 // rows arrived, nothing to say
           if((window.__lxDXAhold||[]).length)return;
+          if(window.__lxDXAholdErr)return;                             // it FAILED; that message stands
+          if(_tb0.getAttribute("data-lxload")!=="1")return;            // some other state owns the cell
           _tb0.innerHTML=_wrapMsg("Still reading this asset’s holders — it has a lot of them, so this can take a while.");
         }catch(_){} },12000);
       }
@@ -3001,7 +3255,14 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     }
     // Only the ROWS are gated on already having been built -- that guard exists to stop the fifty-row
     // rebuild loop that caused the grey flicker, and it still does exactly that.
-    if(tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
+    //
+    // THE FAILED-NEXT FLAG IS PART OF THE SIGNATURE, because this early return sits ABOVE the pager.
+    // A lost Next leaves the page number alone by definition, so the signature matched, this returned,
+    // and the pager below -- where the note lives -- was never reached. Measured before adding it: the
+    // flag was set correctly on every failed click and the note never once appeared. A guard that
+    // returns before the thing you are trying to show is its own kind of silent failure.
+    var _bsig="p"+_hp+(window.__lxDXAholdPartial?"e":"")+(supply?"s":"");/*SUPPLY IS PART OF THE SIGNATURE (2026-11-18): rows drawn before the asset supply landed used the top-2000 sum as the denominator -- VELO #1 read 12.322% against a true 10.383% -- and were never redrawn, because nothing else in the signature changed.*/
+    if(tbody.getAttribute("data-lxbuilt")===_bsig)return;
     var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=(holdersFunded!=null?holdersFunded:hold.length);/*FUNDED, NOT TRUSTLINES: this feeds BOTH the Holders tab count and the "Showing 1-50 of N holders" line, and it was reading the trustline figure -- which is why the tab flashed 111 before settling to 84 (RAZA 2026-10-08). The rows render as soon as the holder list lands, carrying this number with them; the funded count arrives a moment later and corrected it. Falling back to hold.length rather than to the trustline count keeps the wrong statistic out of a slot labelled holders at every stage.*/
     var EXPL='https://stellar.expert/explorer/public/account/';
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
@@ -3034,7 +3295,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
         +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">'+XPO+'</a></td></tr>'; }).join("");
-    tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","p"+_hp);
+    tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt",_bsig);
     // pagination info line
     var _from=_hp*HPP+1, _to=_hp*HPP+top.length;
     var pg=wrap.querySelector(".dxa-hl-pgn .info,.mdxa-hl-pgn .info");
@@ -3052,11 +3313,17 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       if(!canRankHolders()){ if(_pgn.innerHTML!=="")_pgn.innerHTML=""; }
       else{
         var _more=((_hp+1)*HPP<hold.length)||!!window.__lxDXAholdNext;
-        var _sig="p"+_hp+"|"+(_more?1:0);
+        // The error is PART OF THE SIGNATURE. Without it the failure could never reach the screen: a
+        // lost Next leaves _hp and _more exactly as they were, so the signature matched, the pager was
+        // not rebuilt, and the note had nowhere to appear. Next stays ENABLED -- the page may well load
+        // on the following click, which is what "try again" means here.
+        var _herr=window.__lxDXAholdPartial?1:0;
+        var _sig="p"+_hp+"|"+(_more?1:0)+"|"+_herr;
         if(_pgn.getAttribute("data-lxhsig")!==_sig){
           _pgn.setAttribute("data-lxhsig",_sig);
           _pgn.innerHTML='<button type="button" data-hp="prev"'+(_hp<=0?" disabled":"")+'>\\u2039 Prev</button>'
-            +'<button type="button" data-hp="next"'+(_more?"":" disabled")+'>Next \\u203a</button>';
+            +'<button type="button" data-hp="next"'+(_more?"":" disabled")+'>Next \\u203a</button>'
+            +(_herr?' <span style="color:var(--text-muted);font-size:12px">Couldn\u2019t load the next page \u2014 try again.</span>':'');
         }
       }
     }
@@ -3296,10 +3563,38 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Repaints rows + footer for the current page. Called on build and by the Prev/Next buttons, so paging
   // never re-runs the whole panel build (which would refetch logos and re-mask the stat row).
   var POOLS_NONE="No liquidity pools yet \u2014 this asset is not paired in any AMM pool.";
-  // Horizon allows 100 requests per 5 minutes per IP, so a failed pool fetch is ordinary. Saying "none"
-  // when we simply could not ask would be a false claim about the asset.
+  // A fetch can fail, and saying "none" when we simply could not ask would be a false claim about the
+  // asset. (The old note here blamed "100 requests per 5 minutes per IP" -- that budget belongs to
+  // /trade_aggregations alone; /liquidity_pools sends no rate-limit headers at all. See the measured
+  // note at j(). Blaming the limit sent me looking in the wrong place.)
   var POOLS_ERR="Could not load pools right now \u2014 refresh to try again.";
+  // A PARTIAL LIST IS NOT A COMPLETE ONE. __lxDXApoolsErr means a page failed on both Horizon hosts
+  // AND on its retry -- but the chain aborts there, so every later page is never asked for, while the
+  // pages already absorbed stay on screen. Every figure in this panel is then computed from whatever
+  // arrived: measured on AQUA (7 pages, the deepest on the platform) with one middle page dropped,
+  // the badge read 588 of 1,263 and Combined TVL read $198.4K against $287.6K -- 31% low, with
+  // nothing on screen to say so. The flag was only ever consulted when the list was EMPTY, so the
+  // common case (some pages in, some lost) was presented as the whole truth.
+  // Same banner, wording and self-removal as _ammdata.js txFailNote().
+  function poolsFailNote(wrap,partial){
+    if(!wrap)return;
+    var n=wrap.querySelector(".lx-plfail");
+    if(!partial){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    if(n)return;
+    n=document.createElement("div"); n.className="lx-plfail";
+    n.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid rgba(234,106,44,.38);background:rgba(234,106,44,.10);border-radius:9px;font-size:12.5px;color:var(--text-muted)";
+    n.innerHTML="<span>Some pools couldn\u2019t be loaded \u2014 these figures may be incomplete.</span>";
+    var b=document.createElement("button"); b.type="button"; b.textContent="Retry";
+    b.style.cssText="margin-left:auto;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;font:600 12px/1 'Hanken Grotesk',sans-serif";
+    b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+      b.disabled=true; b.textContent="Retrying\u2026";
+      try{ window.__lxDXApoolsReload&&window.__lxDXApoolsReload(); }catch(_){} });
+    n.appendChild(b);
+    wrap.insertBefore(n,wrap.firstChild);
+  }
   function poolsPaint(){ var v=poolsView; if(!v||!v.wrap||!v.wrap.isConnected)return;
+    // Only when rows ARE on screen: with an empty list the POOLS_ERR message below already says it.
+    poolsFailNote(v.wrap,!!(window.__lxDXApoolsErr&&window.__lxDXApoolsDone&&v.list.length));
     if(!v.list.length){
       var eb=v.wrap.querySelector(v.MOB?".mdxa-pl-list":".ex-table tbody");
       if(eb&&eb.getAttribute("data-lxrows")!=="none"){ eb.setAttribute("data-lxrows","none");
@@ -3401,6 +3696,52 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Trade-Asset Buy/Sell while every other surface honoured their 0.1% tier. Read the live rate.
   function FEE_RATE(){var r=window.__lxFeeRate;return (typeof r==="number"&&r>0&&r<=0.002)?r:0.002;}
   var _dxsdk=null, _dxTmr=null, _dxSeq=0, _dxQuoteOut=0, _dxMinRecv=0, _dxSpot={}, _dxView=null, _dxLastPay=null, _dxQuick=null;
+  // WHAT HORIZON SAID, IN WORDS. This page calls window.lxTxMsg in four places and NOTHING DEFINES
+  // IT HERE -- the note at the top of this section says so outright: "this page has none of
+  // _swapcalc's globals". So every failed swap on the main trading surface fell through to
+  // JSON.stringify and showed the reader a result-code dump.
+  //
+  // RAZA 2026-10-19 got exactly that: {"transaction":"tx_failed","operations":["op_under_dest_min",
+  // "op_success"]} -- which actually means "the price moved past your slippage tolerance and nothing
+  // was sent", a sentence _ammdata.js and _swapcalc.js have both carried for months. The translation
+  // existed; this page just could not reach it.
+  //
+  // A LOCAL MAP, not a dependency on another layer, for the reason _ammdata gives for having its own:
+  // these are the codes THIS page can produce, each stated as the condition it describes.
+  //
+  // tx_failed WITH op_success BESIDE IT IS NOT A PARTIAL CHARGE. A Stellar transaction is atomic, so
+  // the fee operation reporting op_success was rolled back with everything else. Saying so matters:
+  // the reader has just been told their swap failed and can see the word "success" next to it.
+  var DXOPMSG={
+    op_under_dest_min:"The price moved past your slippage tolerance before this went through. Nothing was sent - try again, or raise slippage.",
+    op_underfunded:"Not enough balance to cover this swap.",
+    op_no_trust:"You need a trustline for that asset before it can be received.",
+    op_no_destination:"The destination account does not exist on the network yet.",
+    op_line_full:"That trustline is already at its limit.",
+    op_too_few_offers:"There is not enough liquidity on this route right now.",
+    op_over_source_max:"The route would have cost more than the maximum you authorised.",
+    op_low_reserve:"The account does not hold enough XLM to meet the reserve this needs.",
+    // Limit-order codes: the Place Limit Order path throws through the same translator.
+    op_sell_no_trust:"You need a trustline for the asset you are selling.",
+    op_buy_no_trust:"You need a trustline for the asset you are buying.",
+    op_sell_no_issuer:"The issuer of the asset you are selling no longer exists.",
+    op_buy_no_issuer:"The issuer of the asset you are buying no longer exists.",
+    op_cross_self:"This order would trade against one of your own open orders.",
+    tx_insufficient_balance:"Not enough XLM to cover the network fee.",
+    tx_bad_seq:"This wallet submitted another transaction first. Try again.",
+    tx_too_late:"The transaction sat unsigned for too long and expired. Try again."
+  };
+  // codes is Horizon's extras.result_codes: { transaction, operations:[...] }.
+  function dxTxMsg(codes,what){
+    if(!codes)return"";
+    var ops=codes.operations||[];
+    for(var i=0;i<ops.length;i++){ if(DXOPMSG[ops[i]])return DXOPMSG[ops[i]]; }
+    if(DXOPMSG[codes.transaction])return DXOPMSG[codes.transaction];
+    // Nothing recognised: name the code rather than printing the whole object.
+    var first=ops.filter(function(o){return o&&o!=="op_success";})[0]||codes.transaction;
+    return (what||"It")+" failed - "+(first||"unknown reason");
+  }
+
   // Swap toast, styled exactly like the design's "Copied to clipboard" toast (dark pill + circular icon,
   // bottom-center). isErr -> red ✕ icon; otherwise green ✓. Replaces the old native alert().
   function dxToast(m,isErr){
@@ -3477,9 +3818,43 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function dxLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_dxsdk)return _dxsdk;
     _dxsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="/assets/vendor/stellar-sdk-13.3.0.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("SDK load failed"));}; document.head.appendChild(s); }); return _dxsdk; }
   function dxWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"freighter").toLowerCase(); }catch(_){ return "freighter"; } }
+  // A WALLET'S ERROR IS NOT ALWAYS AN Error (RAZA 2026-11-03, on Rabet, after cancelling the confirmation:
+  // "Swap failed \\u2014 [object Object]"). The Rabet branch below threw
+  // new Error((r.error&&r.error.message)||r.error) -- and when that object carries no .message, the
+  // fallback hands the OBJECT ITSELF to new Error(), whose message is String(obj): "[object Object]".
+  //
+  // Why it is empty is worth knowing, because no amount of digging fixes it: an Error crossing the
+  // extension boundary is structured-cloned, and Error.prototype.message is NON-ENUMERABLE, so what
+  // arrives is {}. The reason was dropped in transit by the browser, not by this code.
+  //
+  // dxWalText therefore only EXTRACTS, and never decides -- it returns "" when a wallet said nothing,
+  // so the caller can tell "no reason given" from "a reason I can show". Used on submit errors too,
+  // where "rejected" means the NETWORK rejected it and must not be reworded as a cancellation.
+  function dxWalText(e,d){
+    if(e==null||(d||0)>4)return "";
+    if(typeof e==="string")return e.trim();
+    var m=String(e.message||e.msg||e.description||e.reason||e.detail||"").trim();
+    if(m)return m;
+    if(e.error)return dxWalText(e.error,(d||0)+1);
+    if(e.data)return dxWalText(e.data,(d||0)+1);
+    return "";
+  }
+  // ...and dxSignErr is the ONE place that decides a signature was refused, because it is the only place
+  // holding the evidence: this runs in the signing step, where the person is looking at their wallet.
+  // An empty error HERE is read as a refusal -- a wallet that fails for a reason of its own supplies it,
+  // and the only other thing that ends a signing step in silence is the person closing it. The raw value
+  // still reaches the console for the day that is wrong.
+  var DX_CANCELLED="Cancelled by the user.";
+  function dxSignErr(raw){
+    var t=dxWalText(raw);
+    if(!t){ try{ console.warn("[lumos] wallet ended signing with no message:",raw); }catch(_){} }
+    var er=new Error(!t||/reject|declin|cancel|denied|abort|closed|dismiss/i.test(t)?DX_CANCELLED:t);
+    if(er.message===DX_CANCELLED)er.__lxCancel=1;
+    return er;
+  }
   // sign with the ACTUALLY-connected wallet (was hardcoded to Freighter -> Rabet users got a Freighter popup).
-  function dxSign(xdr,addr){ var w=dxWallet();
-    if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s; }); }
+  function dxSign0(xdr,addr){ var w=dxWallet();
+    if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw dxSignErr(r.error); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s; }); }
     if(w==="xbull"){ var x=window.xBullSDK; if(!x||!x.signXDR)return Promise.reject(new Error("xBull not found. Unlock the extension and retry.")); return Promise.resolve(x.signXDR(xdr,{network:"PUBLIC",networkPassphrase:WPASS_PUB,publicKey:addr})).then(function(r){ var s=r&&(r.signedXDR||r.xdr||r); if(!s||typeof s!=="string")throw new Error("xBull did not return a signed transaction"); return s; }); }
     if(w==="albedo")return import("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){ var al=m.default||m.albedo||m; if(!al||!al.tx)throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr,network:"public",pubkey:addr,submit:false}); }).then(function(r){ var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s)throw new Error("Albedo did not return a signed transaction"); return s; });
     // A phone has no LOBSTR extension — that session signs over WalletConnect instead. Only true when
@@ -3490,7 +3865,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     return (window.freighterApi&&window.freighterApi.signTransaction?Promise.resolve(window.freighterApi):import("https://esm.sh/@stellar/freighter-api@6").then(function(m){return m.default||m;}))
       .then(function(f){ return Promise.resolve(f.requestAccess?f.requestAccess():null).catch(function(){return null;})
         .then(function(){ return f.signTransaction(xdr,{networkPassphrase:WPASS_PUB,network:"PUBLIC",address:addr}); }); })
-      .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string")throw new Error("Signing cancelled."); return s; });
+      .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string")throw dxSignErr(sig&&sig.error); return s; });
+  }
+  // EVERY wallet's refusal, not just the two branches that happen to check for one. xBull, Albedo and
+  // LOBSTR reject the promise with their own wording ("actionRejected", "User declined"), which reached
+  // the reader verbatim. Wrapping the whole step means one rule covers all six, and a message that is
+  // NOT a refusal ("Rabet not found. Unlock the extension and retry.") still arrives untouched.
+  function dxSign(xdr,addr){
+    return Promise.resolve().then(function(){ return dxSign0(xdr,addr); })
+      .catch(function(e){ throw (e&&e.__lxCancel)?e:dxSignErr(e); });
   }
   function dxTimeout(p,ms,msg){ return Promise.race([Promise.resolve(p), new Promise(function(_,rej){ setTimeout(function(){ rej(new Error(msg||"Timed out")); }, ms||120000); })]); }
   // current side + the (pay,receive) asset descriptors {code,iss,native}
@@ -3714,12 +4097,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function soroBuild(quote,from){ return fetch(LX_SORO+"/quote/build?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({quote:quote,from:from,to:from})}).catch(soroNet("build")).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&jj.xdr)return jj.xdr; var m=(jj&&(jj.message||jj.error))||"Could not build swap"; if(/poolHash/i.test(m))m="Aquarius routing is view-only for now (router build pending) \\u2014 this rate is not yet executable"; throw new Error(m); }); }
   // A failure HERE is different: the transaction is signed, and may or may not have reached the network.
   // The wording must not claim it did not happen.
-  function soroSend(signedXdr){ return fetch(LX_SORO+"/send?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({xdr:signedXdr})}).catch(function(e){ throw new Error("could not reach the swap router while submitting ("+((e&&e.message)||e)+"). Check your wallet history before retrying."); }).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&(jj.success||jj.txHash))return jj; var x=jj&&(jj.message||jj.error||(jj.result&&jj.result.error)); throw new Error(x||"Swap submit failed"); }); }
+  function soroSend(signedXdr){ return fetch(LX_SORO+"/send?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({xdr:signedXdr})}).catch(function(e){ var _er=new Error("could not reach the swap router while submitting ("+((e&&e.message)||e)+"). Check your wallet history before retrying."); _er.__lxMaybe=1; throw _er; }).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&(jj.success||jj.txHash))return jj; var x=jj&&(jj.message||jj.error||(jj.result&&jj.result.error)); throw new Error(x||"Swap submit failed"); }); }
   function protLabel(soro){ var ps=(soro.route||[]).map(function(x){return x.p;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}); var nice={aqua:"Aquarius",soroswap:"Soroswap",phoenix:"Phoenix",sdex:"Stellar DEX"}; return ps.map(function(p){return nice[p]||p;}).join(" + ")||"Aquarius"; }
   // Soroswap's build assumes the destination trustline already exists -> add it (own signature) first if missing
   function dxEnsureTrust(ra){ if(ra.native||window.__lxDXAhasTrust)return Promise.resolve(false); var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
     return dxLoadSdk().then(function(S){ var asset=new S.Asset(ra.code,ra.iss); return j(H+"/accounts/"+addr).then(function(acc){ var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB}).addOperation(S.Operation.changeTrust({asset:asset})).setTimeout(120).build();
-      return dxTimeout(dxSign(tb.toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The trustline"):("Trustline failed: "+JSON.stringify(x))):"Trustline failed"); }); }); }); }); }
+      return dxTimeout(dxSign(tb.toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?((window.lxTxMsg?window.lxTxMsg(x,"The trustline"):"")||dxTxMsg(x,"The trustline")):"The trustline could not be added. Nothing was sent - try again."); }); }); }); }); }
   // build unsigned XDR from the best-rate quote -> sign with the connected wallet -> submit via Soroswap
   function soroExecute(soro){ var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
     return soroBuild(soro.quote,addr).then(function(xdr){ return dxTimeout(dxSign(xdr,addr),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return soroSend(signed); }); }); }
@@ -3733,6 +4116,23 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // honest reference for price impact (the daily-close spot can drift and show a false favorable impact)
   function dxSpotRate(pa,ra,cb){ var key=(pa.native?"X":pa.code)+">"+(ra.native?"X":ra.code); if(_dxSpot[key]>0){ cb(_dxSpot[key]); return; } var probe=pa.native?"5":"1"; j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+probe+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; if(out>0){ _dxSpot[key]=out/parseFloat(probe); cb(_dxSpot[key]); } else cb(0); }).catch(function(){ cb(0); }); }
   function dxErr(m){ var pane=q(".dxa-pane-swap"); if(!pane)return; var cta=q(".dxa-trade-cta"); var e=pane.querySelector(".lxda-swaperr"); if(!e){ if(!m)return; e=document.createElement("div"); e.className="lxda-swaperr"; if(cta&&cta.parentNode)cta.parentNode.insertBefore(e,cta); } if(m){ e.textContent=m; e.style.display="block"; } else { e.style.display="none"; e.textContent=""; } }
+  // WHERE A FAILURE BELONGS (RAZA 2026-11-03: "i want this error message to appear like on Near (above
+  // the swap button) and not like Stellar"). dxToast drops it at the bottom of the window, away from the
+  // button that did not work. .lxda-swaperr is already this panel's error slot, already red, and already
+  // inserted directly before the CTA -- the same position NEAR and XRPL put theirs in.
+  //
+  // BUT A SLOT THAT MATCHES NOTHING LOOKS EXACTLY LIKE ONE THAT WORKED. dxErr needs .dxa-pane-swap and
+  // the phone build also ships .mdxa-pane-swap, so rather than guess which pane is live on each layout,
+  // check the note actually RENDERED -- offsetParent is null for display:none and for anything inside a
+  // hidden parent -- and fall back to the toast when it did not. The reader never loses the message.
+  function dxFail(e){
+    var msg=(e&&e.__lxCancel)?DX_CANCELLED
+      :((e&&e.__lxMaybe?"Swap sent \\u2014 outcome unconfirmed \\u2014 ":"Swap failed \\u2014 ")
+        +(dxWalText(e)||"the wallet did not say what went wrong."));
+    dxErr(msg);
+    var n=document.querySelector(".lxda-swaperr");
+    if(!n||!n.offsetParent||(n.textContent||"").trim()!==msg)dxToast(msg,true);
+  }
   // The design ships the receive-side dollar value as mock text -- a literal "\\u2248 $21.67 USD" in a plain
   // .mono span. This looked for .lc-money, which does not exist in that field, found nothing, and returned
   // without writing. So the mock stood in for every quote ever shown: 1,000 XLM of LUMOS (~$165) read
@@ -3999,11 +4399,14 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
         if(resp&&(resp.success||resp.txHash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \\u2713";
           try{ dxRecordSwap(resp.txHash||resp.hash,pa,ra,amt,soro.out); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
-          dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(soro.out)+" "+(side==="buy"?CODE:"XLM"));
+          dxToast(side==="buy"?("Bought "+xlmAmt(soro.out)+" "+CODE):("Sold "+xlmAmt(amt)+" "+CODE));
           dxPostSwapReset();
           setTimeout(function(){ cta.textContent="Swap"; },1600);
         } else { throw new Error("Submit failed"); }
-      }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxToast("Swap failed \\u2014 "+((e&&e.message)||e),true); });
+    // soroSend already words its own failure honestly -- "check your wallet history before retrying" --
+    // and this toast used to put "Swap failed" in front of it, which contradicts the sentence it is
+    // introducing. The flag it sets decides the heading.
+      }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxFail(e); });
       return;
     }
     dxLoadSdk().then(function(sdk){ S=sdk;
@@ -4045,16 +4448,52 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // longer when it is busy. Keeping "Confirm in wallet…" up through that told the user their tap
       // in LOBSTR had not registered, when it was the only thing that had.
       try{ cta.textContent="Submitting\\u2026"; }catch(_){}
-      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});
+      // THE STATUS IS KEPT. It used to be discarded by going straight to r.json(), and that is how a
+      // Horizon 504 -- "I did not see this confirm in time", NOT "it failed" -- ended up reading the
+      // same as a real rejection. A timed-out submit can still be included in a later ledger, so
+      // telling the reader it failed invites them to send it twice.
+      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){
+        return r.json().then(function(j){ if(j&&typeof j==="object")j.__status=r.status; return j; },function(){ return {__status:r.status}; });
+      // A REJECTED FETCH IS NOT A REJECTED TRANSACTION (RAZA 2026-10-22: "the swap happened
+      // successfully but it showed this error" -- the toast read "Swap failed \\u2014 Failed to fetch").
+      //
+      // Every branch below handles a RESPONSE: result codes, 504, 429, 5xx. None of them ran, because
+      // the fetch itself rejected and went straight to the outer catch, which prints the browser's raw
+      // wording. And the conclusion it printed is the opposite of the truth: the transaction was
+      // already signed and already sent, so a connection that drops before the reply means WE did not
+      // hear back -- not that Stellar did not receive it. His swap settled on-chain.
+      //
+      // Exactly the reasoning the 504 branch below was written for, three lines up: "a timed-out submit
+      // can still be included in a later ledger, so telling the reader it failed invites them to send
+      // it twice". A dropped connection is the same case and was simply never given a branch.
+      },function(e){ return {__neterr:(e&&e.message)||String(e||"")}; });
     }).then(function(resp){
       cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
       if(resp&&(resp.successful||resp.hash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \\u2713";
         try{ dxRecordSwap(resp.hash,pa,ra,amt,_dxQuoteOut); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
-        dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(_dxQuoteOut)+" "+(side==="buy"?CODE:"XLM"));
+        dxToast(side==="buy"?("Bought "+xlmAmt(_dxQuoteOut)+" "+CODE):("Sold "+xlmAmt(amt)+" "+CODE));
         dxPostSwapReset();
         setTimeout(function(){ cta.textContent="Swap"; },1600);
-      } else { var x=resp&&resp.extras&&resp.extras.result_codes; throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The swap"):JSON.stringify(x)):"Submit failed"); }
-    }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxToast("Swap failed \\u2014 "+((e&&e.message)||e),true); });
+      } else { var x=resp&&resp.extras&&resp.extras.result_codes;
+        // dxTxMsg is this page's own translator; window.lxTxMsg is still preferred when some other
+        // layer has defined it, but it is NOT present here and that is the whole bug being fixed.
+        // No branch may reach JSON.stringify any more: a result-code dump is not an error message.
+        var _m,_maybe=0;
+        if(x){ _m=(window.lxTxMsg?window.lxTxMsg(x,"The swap"):"")||dxTxMsg(x,"The swap"); }
+        // FIRST, because it is the one case where "failed" would be a lie. Flagged rather than worded
+        // here alone: the toast prefix has to change too, or the message is contradicted by the two
+        // words in front of it.
+        else if(resp&&resp.__neterr){ _maybe=1; _m="Your wallet signed it and it was sent, but the confirmation did not come back ("+resp.__neterr+"). It MAY have gone through - check your history before trying again."; }
+        else if(resp&&resp.__status===504){ _maybe=1; _m="The network did not confirm in time. Your swap MAY still go through - check your history before trying again."; }
+        else if(resp&&resp.__status===429){ _m="Stellar is rate limiting this connection. Wait a moment and try again."; }
+        else if(resp&&resp.__status>=500){ _m="Stellar could not be reached just now (error "+resp.__status+"). Nothing was sent - try again."; }
+        else { _m="The swap could not be submitted"+(resp&&resp.__status?(" (error "+resp.__status+")"):"")+". Nothing was sent - try again."; }
+        var _er=new Error(_m); if(_maybe)_er.__lxMaybe=1; throw _er; }
+    // "Swap failed" ONLY when it actually failed. An uncertain outcome gets a heading that matches its
+    // own sentence; anything else tells the reader two opposite things at once and the first one wins.
+    // Deliberately NOT widened: a rejected result code, a 400, a declined signature all genuinely did
+    // not happen, and those must keep saying so plainly.
+    }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxFail(e); });
   }
   function resetWidget(){ _dxQuick=null; window.__lxDXASoro=null; var pin=payInput(), rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; dxErr(""); setRecvUsd(0); dxSmartBadge(null); var cta=q(".dxa-trade-cta"); if(cta)cta.removeAttribute("data-lxdis"); }
   // AFTER A COMPLETED SWAP.
@@ -4083,7 +4522,23 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var _ri=recvInput(); if(_ri){ if(_ri.hasAttribute("readonly"))_ri.removeAttribute("readonly"); if(_ri.hasAttribute("disabled"))_ri.removeAttribute("disabled"); }
     var pa=payAsset(), pf=payEl();
     // "You pay" balance label follows the pay asset (or "—" when no wallet connected)
-    if(pf){ var balSpan=pf.querySelector(".dxa-trade-frow .mono"); if(balSpan){ var b=spendOf(pa); var t=(b==null)?"Balance: —":"Balance: "+xlmAmt(b)+" "+(pa.native?"XLM":pa.code); if(balSpan.textContent!==t)balSpan.textContent=t;
+    // THE :not(.lx-payusd) IS THE FIX, and the same selector the USD span's own creator uses.
+    // (No backticks in this comment: the browser code below lives inside a template literal, and a
+    // stray backtick closes it -- which is exactly how the first attempt at this fix failed to parse.)
+    //
+    // RAZA 2026-10-19: "it still keeps showing me XLM balance instead of LUMOS balance when i switch
+    // to sell tab", and earlier "when i refresh, the balance refreshes".
+    //
+    // The "≈ $0.0174 USD" estimate is built with className "mono lxp lx-payusd" and INSERTED BEFORE
+    // the balance span (see dxPayUsd). So the moment an amount is typed, this row holds TWO .mono
+    // spans and a bare .mono lookup returns the USD one — this wrote "Balance: …" into the USD
+    // element, where the USD writer promptly overwrote it, while the REAL balance span kept whatever
+    // it last held: the buy side's XLM figure, frozen there for the life of the page.
+    //
+    // His console proved it rather than my reading it: side was correctly "sell", the span was found,
+    // and its text was "" — an empty USD estimate, not a balance. Refreshing worked because the USD
+    // span does not exist until an amount is entered, so the first write did land on the right node.
+    if(pf){ var balSpan=pf.querySelector(".dxa-trade-frow .mono:not(.lx-payusd)"); if(balSpan){ var b=spendOf(pa); var t=(b==null)?"Balance: —":"Balance: "+xlmAmt(b)+" "+(pa.native?"XLM":pa.code); if(balSpan.textContent!==t)balSpan.textContent=t;
       // spell out WHY it is lower than the wallet total — "Balance: 0.04 XLM" on a 28 XLM account looks broken otherwise
       if(pa.native&&b!=null&&window.__lxDXAxlm!=null){ var _tt=xlmAmt(b)+" XLM spendable \u2014 "+xlmAmt(window.__lxDXAxlm)+" total, "+xlmAmt(Math.max(0,window.__lxDXAxlm-b))+" locked as the Stellar account reserve"; if(balSpan.title!==_tt)balSpan.title=_tt; }
       else if(balSpan.title)balSpan.removeAttribute("title"); } }   // show SPENDABLE (excludes locked reserves) so Balance matches what MAX fills
@@ -4195,6 +4650,17 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         var mxo=frowO.querySelector(".lxlim-max"); if(mxo&&mxo.parentNode)mxo.parentNode.removeChild(mxo); } }
     // prefill the price with the current market once per side (design ships a mock value)
     var pin=limPriceInput(); if(pin&&assetXlm>0&&pane.__lxlprefill!==side){ pin.value=(+assetXlm.toPrecision(6)).toString(); pane.__lxlprefill=side; }
+    // AND THE DESIGN SHIPS A MOCK AMOUNT TOO (RAZA 2026-11-04: Limit > Buy opens with Amount 100 and a
+    // Total of 613.301, "forcing users to manually delete pre-filled values"). The line above replaces
+    // the comp's mock PRICE with the live market; nothing ever replaced its mock AMOUNT, so the
+    // value="100" the Aptos comp ships -- next to "Available: 1,250 APT" -- stood as a real order
+    // size on every fresh Buy. Sell only looked right because reaching it goes through the side button
+    // below, which clears the field on the way.
+    //
+    // ONCE, and before anything can have been typed. A later pass must never clear an amount the user
+    // entered: 100 is a perfectly ordinary thing to type, so this cannot be matched on its value.
+    // limRecalc() at the end of this function then empties Total, which is computed from it.
+    if(!pane.__lxlmock){ pane.__lxlmock=1; var _am0=limAmtInput(); if(_am0)_am0.value=""; }
     var _tie=limTotInput(); if(_tie){ _tie.removeAttribute("readonly"); _tie.removeAttribute("disabled"); }   // Total is editable -> back-computes Amount
     limRecalc();
     if(pane.__lxldel)return; pane.__lxldel=1;
@@ -4208,6 +4674,40 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function limFromTotal(){ var pin=limPriceInput(), ain=limAmtInput(), tin=limTotInput(); if(!pin||!ain||!tin)return;
     var price=dxNum(pin.value), total=dxNum(tin.value);
     var amt=price>0?(total/price):0; ain.value=amt>0?xlmAmt(amt):"";
+    limCheck();
+  }
+  // #1 (RAZA 2026-11-07): an order bigger than the balance was reported only on CLICK, by dxToast, at
+  // the bottom-centre of the window -- the same complaint he made about the swap tab on 11-03, which
+  // dxErr answered by putting the note directly above the button that did not work. The limit tab kept
+  // the toast. Same slot, same red, same place, and now it appears as the amount is typed rather than
+  // after a tap that does nothing. Its own class, because dxFail reads .lxda-swaperr off the whole
+  // document and would otherwise find whichever pane's note came first in the markup.
+  function limErr(m){
+    var pane=q(".dxa-pane-limit"); if(!pane)return;
+    var cta=pane.querySelector(".dxa-trade-cta");
+    var e=pane.querySelector(".lxda-limerr");
+    if(!e){ if(!m)return; e=document.createElement("div"); e.className="lxda-limerr";
+      if(cta&&cta.parentNode)cta.parentNode.insertBefore(e,cta); else pane.appendChild(e); }
+    if(m){ e.textContent=m; e.style.display="block"; } else { e.style.display="none"; e.textContent=""; }
+  }
+  // Which asset the order SPENDS, and what it costs: selling spends the asset (the amount), buying
+  // spends XLM (price x amount). That is what makes the ticker flip with the side.
+  function limSpend(){
+    var price=dxNum(limPriceInput()&&limPriceInput().value), amt=dxNum(limAmtInput()&&limAmtInput().value);
+    if(limSide()==="sell")return {code:CODE,need:amt,bal:window.__lxDXAassetBal};
+    return {code:"XLM",need:price*amt,bal:window.__lxDXAxlm};
+  }
+  // A balance that has not loaded yet is null, not zero. Treating it as zero accuses the reader of
+  // being short before the figure has arrived -- and the wallet load is the slowest thing on this page.
+  function limCheck(){
+    // A TYPED PRICE OF 0 SAYS SO (bug S36, 2026-11-19), in the same slot as "Not enough", as it is typed.
+    var prIn=limPriceInput(), prv=prIn?String(prIn.value||"").trim():"";
+    if(prv!==""&&/^[0-9.,]+$/.test(prv)&&!(dxNum(prv)>0)){ limErr("Enter a limit price greater than 0."); return false; }
+    var s=limSpend();
+    if(!(s.need>0)||s.bal==null){ limErr(""); return false; }
+    var over=s.need>s.bal+1e-9;
+    limErr(over?("Not enough "+s.code):"");
+    return over;
   }
   // MAX button on the Total row: fills the order to use your whole balance. Sell -> all CODE; Buy -> spend all
   // spendable XLM at the current (or market) limit price. Sets the Amount field, then recomputes the total.
@@ -4225,6 +4725,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // (the total field's .mono now shows the asset Balance + MAX, set in applyLimit — no longer the USD estimate)
     // "Filled when" summary row
     qa(".dxa-pane-limit .dxa-tsum-row").forEach(function(r){ var lab=(r.querySelector("span")||{}).textContent||""; if(/filled when/i.test(lab)){ var m=r.querySelector(".mono"); if(m){ var op=limSide()==="buy"?"\\u2264":"\\u2265"; var v=CODE+"/XLM "+op+" "+(price>0?(+price.toPrecision(6)):"\\u2014"); if(m.textContent!==v)m.textContent=v; } } });
+    limCheck();
   }
   function dxExecuteLimit(){
     if(NATIVE)return; var cta=q(".dxa-pane-limit .dxa-trade-cta"); if(!cta)return;
@@ -4234,8 +4735,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var amt=dxNum(limAmtInput()&&limAmtInput().value);
     if(!(price>0)){ dxToast("Enter a limit price"); return; }
     if(!(amt>0)){ dxToast("Enter an amount"); return; }
-    if(side==="sell"){ var cb=window.__lxDXAassetBal; if(cb!=null&&amt>cb+1e-9){ dxToast("Insufficient "+CODE+" balance"); return; } }
-    else { var need=price*amt; if(window.__lxDXAxlm!=null&&need>window.__lxDXAxlm+1e-9){ dxToast("Not enough XLM for this order.",true); return; } }
+    // The note is already up from typing; this is the tap-on-a-full-field case. A slot that matches
+    // nothing looks exactly like one that worked, so fall back to the toast when it did not render --
+    // the same check dxFail makes on the swap tab. offsetParent is null for display:none and for
+    // anything inside a hidden parent.
+    if(limCheck()){ var _le=q(".dxa-pane-limit .lxda-limerr");
+      if(!_le||!_le.offsetParent)dxToast("Not enough "+limSpend().code,true); return; }
     var lbl0=cta.textContent; cta.__lxbusy=1; cta.disabled=true; cta.classList.add("lx-btnload"); cta.textContent="Confirm in wallet\\u2026";
     var S;
     dxLoadSdk().then(function(sdk){ S=sdk; var tok=new S.Asset(CODE,ISSUER), xlm=S.Asset.native();
@@ -4253,7 +4758,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // longer when it is busy. Keeping "Confirm in wallet…" up through that told the user their tap
       // in LOBSTR had not registered, when it was the only thing that had.
       try{ cta.textContent="Submitting\\u2026"; }catch(_){}
-      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});
+      // THE STATUS IS KEPT. It used to be discarded by going straight to r.json(), and that is how a
+      // Horizon 504 -- "I did not see this confirm in time", NOT "it failed" -- ended up reading the
+      // same as a real rejection. A timed-out submit can still be included in a later ledger, so
+      // telling the reader it failed invites them to send it twice.
+      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){
+        return r.json().then(function(j){ if(j&&typeof j==="object")j.__status=r.status; return j; },function(){ return {__status:r.status}; });
+      // Same gap as the swap submit above, same consequence: an order that WAS placed reported as
+      // "Order failed", which invites placing it a second time.
+      },function(e){ return {__neterr:(e&&e.message)||String(e||"")}; });
     }).then(function(resp){
       cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
       if(resp&&(resp.successful||resp.hash)){ cta.textContent="Order placed \\u2713";
@@ -4261,8 +4774,16 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){} try{ loadOpenOffers(); }catch(_){}
         var ai=limAmtInput(); if(ai)ai.value=""; limRecalc();
         setTimeout(function(){ cta.textContent="Place Limit Order"; },1600);
-      } else { var x=resp&&resp.extras&&resp.extras.result_codes; var xs=x?JSON.stringify(x):""; throw new Error(/low_reserve/i.test(xs)?"not enough XLM reserve \\u2014 add a little XLM":/underfunded|insufficient/i.test(xs)?"insufficient balance":(xs||"submit failed")); }
-    }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Place Limit Order"; dxToast("Order failed \\u2014 "+((e&&e.message)||e)); });
+      } else { var x=resp&&resp.extras&&resp.extras.result_codes;
+        // Was the last place on this page that could still print a result-code dump at the reader.
+        var _lm,_lmaybe=0;
+        if(x){ _lm=(window.lxTxMsg?window.lxTxMsg(x,"The order"):"")||dxTxMsg(x,"The order"); }
+        else if(resp&&resp.__neterr){ _lmaybe=1; _lm="Your wallet signed it and it was sent, but the confirmation did not come back ("+resp.__neterr+"). It MAY have been placed - check your open orders before trying again."; }
+        else if(resp&&resp.__status===504){ _lmaybe=1; _lm="The network did not confirm in time. Your order MAY still have been placed - check your open orders before trying again."; }
+        else if(resp&&resp.__status===429){ _lm="Stellar is rate limiting this connection. Wait a moment and try again."; }
+        else { _lm="The order could not be submitted"+(resp&&resp.__status?(" (error "+resp.__status+")"):"")+". Nothing was sent - try again."; }
+        var _ler=new Error(_lm); if(_lmaybe)_ler.__lxMaybe=1; throw _ler; }
+    }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Place Limit Order"; dxToast((e&&e.__lxMaybe?"Order sent \\u2014 outcome unconfirmed \\u2014 ":"Order failed \\u2014 ")+((e&&e.message)||e)); });
   }
   // fetch the connected wallet's resting offers (rendered into an open-orders list if the page has one)
   function loadOpenOffers(){ var addr=lxAddr(); if(!addr)return; j(H+"/accounts/"+addr+"/offers?limit=25&order=desc").then(function(d){ window.__lxDXLoffers=(d&&d._embedded&&d._embedded.records)||[]; try{ renderOpenOffers(); }catch(_){} }).catch(function(){}); }
@@ -4414,21 +4935,33 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // hours and still gets labelled "1h". A cell that quietly measures the wrong window is worse
       // than one that admits it cannot say, so a non-adjacent pair leaves chg1h null and the cell
       // dashes, which applyPerf already renders. 1.5h of slack absorbs bucket-boundary jitter.
+      // NOTHING TRADED IN THE LAST HOUR MEANS NOTHING MOVED IN IT. An hourly bucket is stamped with
+      // the start of its hour, so one older than two hours cannot overlap the last sixty minutes at
+      // all -- the price now is the price an hour ago and the move is exactly zero, not unknown.
+      // Two hours rather than one so that a bucket which merely started before the window, and may
+      // still carry a trade inside it, falls through to the measured path instead of being called flat.
+      if(r[0]&&r[0].timestamp&&(Date.now()-(+r[0].timestamp))>72e5){ perfSilent["1h"]=true; applyAll(); return; }
       var gap1h=(r[0]&&r[1])?(+r[0].timestamp-+r[1].timestamp):0;
-      if(r[0]&&r[1]&&+r[1].close>0&&gap1h<=5400000)chg1h=((+r[0].close-+r[1].close)/+r[1].close)*100; applyAll(); }).catch(function(){});
+      var h0=cNum(r[0],"close"), h1=cNum(r[1],"close");
+      if(h0>0&&h1>0&&gap1h<=5400000)chg1h=((h0-h1)/h1)*100; applyAll(); }).catch(function(){});
     jAgg({res:86400000,order:"desc",limit:200}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
-      if(!r.length)return; var latest=+r[0].close; if(!(latest>0))return;
-      var now=Date.now();
-      function back(days){ var target=now-days*86400000, best=null, bestDt=Infinity;
-        for(var i=0;i<r.length;i++){ var ts=+r[i].timestamp, dt=Math.abs(ts-target);
+      if(!r.length)return; var latest=cNum(r[0],"close"); if(!(latest>0))return;
+      var now=Date.now(), newest=+r[0].timestamp;
+      function back(days,key){ var start=now-days*86400000;
+        // The newest bucket predates the entire window, so the asset did not trade inside it and the
+        // price at its start was this same close: the move is zero, not unknown. The 24h cell has
+        // always said this; having the rule only there is what printed "+0.00%" and "—" side by side.
+        if(newest<start){ perfSilent[key]=true; return null; }
+        var target=start, best=null, bestDt=Infinity;
+        for(var i=0;i<r.length;i++){ var ts=+r[i].timestamp, dt=Math.abs(ts-target), c=cNum(r[i],"close");
           // only trust a candle reasonably near the horizon — otherwise we would be comparing to whenever
           // the asset last happened to trade and calling it a "3 month" change
-          if(dt<bestDt&&dt<=days*86400000*0.25){ bestDt=dt; best=+r[i].close; } }
+          if(c>0&&dt<bestDt&&dt<=days*86400000*0.25){ bestDt=dt; best=c; } }
         return (best>0)?((latest-best)/best)*100:null; }
-      chg1m=back(30); chg3m=back(90); chg6m=back(180);
+      chg1m=back(30,"1m"); chg3m=back(90,"3m"); chg6m=back(180,"6m");
       // 7d came only from stellar.expert's price7d; when that lookup misses, the cell dashed even though
       // Horizon had the candles all along. Same source as the others as a fallback.
-      chg7dX=back(7);
+      chg7dX=back(7,"7d");
       applyAll(); }).catch(function(){});
     // The perf grid is denominated by the same toggle as the chart, but 1h/7d/1m/3m/6m are measured
     // against XLM, so a dollar reading needs XLM's own move over each of those windows. XLM/USD is
@@ -4462,7 +4995,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       applyAll(); }).catch(function(){});
     // supply + holder (trustline) count
     j(H+"/assets?asset_code="+CODE+"&asset_issuer="+ISSUER).then(function(d){ var rec=(d&&d._embedded&&d._embedded.records&&d._embedded.records[0])||null; if(!rec)return;
-      if(rec.balances)supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||supply; else if(rec.amount!=null)supply=+rec.amount;
+      // ISSUED supply is every bucket Horizon splits the asset across, not just ordinary trustlines.
+      // balances.authorized alone undercounts any token holding supply in an AMM pool or a claimable
+      // balance -- which is EVERY launchpad token, because a launch puts ~90% straight into the pool.
+      // LFQP read 333.30M against a true 10B (30x out) and its market cap showed $0.52 for $15.63.
+      // Same four buckets as _assetoverview.js, so the two pages cannot disagree again.
+      if(rec.balances)supply=((+rec.balances.authorized||0)+(+rec.liquidity_pools_amount||0)+(+rec.claimable_balances_amount||0)+(+rec.contracts_amount||0))||supply; else if(rec.amount!=null)supply=+rec.amount;
       if(rec.accounts)holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0); else if(rec.num_accounts!=null)holders=+rec.num_accounts;
       applyAll();
     }).catch(function(){});
@@ -4479,22 +5017,48 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         try{ computeLiquidity(); }catch(_){}
         try{ applyAll(); }catch(_){}
       }
-      function pg(url,n){
+      function pg(url,n,retried){
         return j(url).then(function(d){
           var r=(d&&d._embedded&&d._embedded.records)||[];
           if(r.length)absorb(r);
           var nx=d&&d._links&&d._links.next&&d._links.next.href;
-          if(r.length===200 && nx && n<PMAX) return pg(nx,n+1);
+          if(r.length===200 && nx && n<PMAX) return pg(nx,n+1,0);
+        },function(e){
+          // ONE RETRY PER PAGE. j() has already fallen back to the secondary Horizon host, so getting
+          // here means this page failed on BOTH -- and the whole chain aborted on it, so every page
+          // after it was never requested either. One dropped page in the middle of AQUA's seven cost
+          // ~700 pools and understated Combined TVL by 31%.
+          //
+          // Same shape as the ranked-holders retry above, for the same reasons: a short wait, because
+          // a cold edge cache and a rate-limited upstream both clear on their own; a CACHE-BUSTER, or
+          // the retry reads the first failure straight back out of the browser cache and is theatre
+          // (verified both Horizon and the lobstr mirror accept an unknown _r param and return the
+          // same 200 records); and only ONE, so a genuinely dead upstream costs one extra request per
+          // page rather than a storm.
+          if(retried) throw e;
+          return new Promise(function(go){ setTimeout(go,1200); })
+            .then(function(){ return pg(url+(url.indexOf("?")<0?"?":"&")+"_r="+Date.now(),n,1); });
         });
       }
       // Mark the fetch finished either way. Without this, "no pools" and "not arrived yet" are the same
       // state (raw === undefined), so the panel could only keep waiting -- which is how the comp rows
       // stayed on screen.
       function poolsDone(err){ if(!window.__lxDXApoolsRaw)window.__lxDXApoolsRaw=[];
-        if(err)window.__lxDXApoolsErr=1;
+        // ASSIGNED, not just set: a later success has to CLEAR this, or the incomplete-figures banner
+        // outlives the problem it describes. "Removes itself once a later load succeeds", as the
+        // transactions banner does.
+        window.__lxDXApoolsErr=err?1:0;
         window.__lxDXApoolsDone=1; try{ applyAll(); }catch(_){} }
-      pg(H+"/liquidity_pools?reserves="+CODE+":"+ISSUER+"&limit=200",1)
-        .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
+      function poolsStart(bust){
+        ALLP=[];                                   // a reload replaces the list, it does not append
+        var u=H+"/liquidity_pools?reserves="+CODE+":"+ISSUER+"&limit=200";
+        if(bust)u+="&_r="+Date.now();
+        return pg(u,1,0).then(function(){ poolsDone(0); },function(){ poolsDone(1); });
+      }
+      // The banner's Retry button. Cache-busted for the same reason the per-page retry is: without it
+      // a user pressing Retry can be served the very failure they are trying to clear.
+      window.__lxDXApoolsReload=function(){ poolsStart(1); };
+      poolsStart(0);
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
     if(ISSUER){ loadOwnDesc(); loadTomlEdge(); loadSeLogo(); loadSeChange(); loadMintDomain(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
@@ -4637,18 +5201,62 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     +'<path d="M18.9 2H22l-7.1 8.1L23.2 22h-6.5l-5.1-6.7L5.8 22H2.7l7.6-8.7L1.2 2h6.7l4.6 6.1L18.9 2Zm-1.1 18h1.7L7.4 3.8H5.6L17.8 20Z"/></svg>';
   var TG_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
     +'<path d="M21.9 4.3 18.9 19c-.2 1-.8 1.2-1.7.8l-4.6-3.4-2.2 2.1c-.2.2-.5.5-1 .5l.3-4.7 8.5-7.7c.4-.3-.1-.5-.6-.2L6.2 13.1 1.7 11.7c-1-.3-1-1 .2-1.5l19-7.3c.8-.3 1.5.2 1.2 1.4Z"/></svg>';
-  // A handle, an @handle or a full url -- issuers publish all three. Anything already absolute is left
-  // alone; otherwise the leading @ is dropped and the handle is hung off the right host.
+  // A handle, an @handle, a host-and-handle or a full url -- issuers publish all four, and so do
+  // minters. An absolute url to another site is left exactly as typed; anything that names THIS host
+  // is reduced to the handle and hung off the host once.
   function socialUrl(v,host){
     v=String(v||"").trim(); if(!v)return "";
     // No regex: this region is a template literal, so a backslash is eaten on the way to the browser.
     // Written as / it arrived as a bare / and made /^https?:///i -- a line comment, not a regex --
     // which threw a SyntaxError and took the whole asset layer down with it. indexOf and charAt cannot
     // be mangled by an escape pass.
-    var lc=v.toLowerCase();
-    if(lc.indexOf("http://")===0||lc.indexOf("https://")===0)return v;
+    //
+    // A VALUE THAT ALREADY NAMES THE HOST MUST NOT GET THE HOST AGAIN.
+    //
+    // RAZA 2026-11-05: a minter typed his X and Telegram urls into the launchpad and the token linked
+    // to a doubled host. The old http test below catches the full-url form, but NOT the bare-host form
+    // -- and "x.com/yourproject" is exactly what the launchpad's own placeholder asks for, so it is
+    // the likeliest thing anyone types. "x.com/leafquip" became "https://x.com/x.com/leafquip".
+    //
+    // It is not only the launchpad: issuer tomls list this form routinely (ATOM's reads
+    // "x.com/AtomXRPL"), so every such token linked to a doubled host too.
+    //
+    // Checked against the host we are about to prepend AND its common aliases, because an X link is
+    // written x.com or twitter.com interchangeably and both land here with host "x.com".
+    var ALIAS={"x.com":["x.com/","www.x.com/","twitter.com/","www.twitter.com/","mobile.twitter.com/"],
+               "t.me":["t.me/","www.t.me/","telegram.me/","www.telegram.me/"]};
+    var pre=ALIAS[host]||[host+"/","www."+host+"/"];
+    var lc,i;
+    // Peel "scheme://<our host>/" as many times as it appears, so a value that was ALREADY stored
+    // doubled -- "https://x.com/https://x.com/u", which is what the bug wrote into a record before it
+    // was found -- collapses back to the handle instead of rendering doubled forever. Re-running this
+    // on its own output is then a no-op ([[lumoscore-transform-idempotence]]). An absolute url
+    // pointing somewhere ELSE is still returned exactly as typed: an issuer may legitimately hang its
+    // "x" link off a landing page, and guessing at that is not this function's business.
+    for(var g=0;g<4;g++){
+      lc=v.toLowerCase();
+      var s=lc.indexOf("http://")===0?7:(lc.indexOf("https://")===0?8:0);
+      if(!s)break;
+      var rest=v.slice(s), rl=rest.toLowerCase(), hit="";
+      for(i=0;i<pre.length;i++){ if(rl.indexOf(pre[i])===0){ hit=pre[i]; break; } }
+      if(!hit)return v;
+      v=rest.slice(hit.length);
+    }
     while(v&&(v.charAt(0)==="@"||v.charAt(0)==="/"))v=v.slice(1);
+    // Same loop without a scheme, for the bare-host form the placeholder invites.
+    for(var g2=0;g2<4;g2++){
+      lc=v.toLowerCase();
+      var cut=0;
+      for(i=0;i<pre.length;i++){ if(lc.indexOf(pre[i])===0){ cut=pre[i].length; break; } }
+      if(!cut)break;
+      v=v.slice(cut);
+      while(v&&(v.charAt(0)==="@"||v.charAt(0)==="/"))v=v.slice(1);
+    }
     if(!v)return "";
+    // "x.com" on its own names no account, and the loops above only peel a host that is FOLLOWED by a
+    // slash. Linking it would send a reader to the network's front page as if it were the project's.
+    lc=v.toLowerCase();
+    for(i=0;i<pre.length;i++){ if(lc+"/"===pre[i])return ""; }
     return "https://"+host+"/"+v;
   }
   // stellar.toml (best-effort; many issuers' domains are CORS-OK). Pull [[CURRENCIES]].image + desc.

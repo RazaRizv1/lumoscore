@@ -424,7 +424,7 @@ function lxCctpSignXdr(xdr, addr){
   var C=window.__lxCCTP, w=lxCctpWalletId(), pass=C.passphrase;
   if(w==="albedo"){ return lxCctpMod("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){ var al=m.default||m.albedo||m; if(!al||!al.tx) throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr, network:"public", pubkey:addr, submit:false}); })
     .then(function(r){ var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s) throw new Error("Albedo did not return a signed transaction"); return s; }); }
-  if(w==="rabet"){ if(!window.rabet||!window.rabet.sign) return Promise.reject(new Error("Rabet not found. Unlock the Rabet extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error) throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s) throw new Error("Rabet did not return a signed transaction"); return s; }); }
+  if(w==="rabet"){ if(!window.rabet||!window.rabet.sign) return Promise.reject(new Error("Rabet not found. Unlock the Rabet extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error) throw new Error((r.error&&(r.error.message||r.error.description||r.error.reason))||(typeof r.error==="string"?r.error:"")||"Cancelled by the user."); var s=r&&(r.xdr||r.signedXDR); if(!s) throw new Error("Rabet did not return a signed transaction"); return s; }); }
   // A phone has no LOBSTR extension — that session signs over WalletConnect instead. Only true when
   // the connect step recorded transport=wc, so extension sessions still take the line below.
   if((w==="lobstr"||w==="walletconnect")&&window.__lxWcActive&&window.__lxWcActive()) return window.__lxWcSign(xdr,pass);
@@ -432,7 +432,7 @@ function lxCctpSignXdr(xdr, addr){
   // WalletConnect signing isn't wired yet — don't silently fall through to Freighter (wrong account).
   if(w==="walletconnect") return Promise.reject(new Error("WalletConnect signing isn't enabled yet. Reconnect with Freighter, Albedo, Rabet or LOBSTR."));
   return lxFreighter().then(function(f){ return Promise.resolve(f.signTransaction(xdr,{networkPassphrase:pass,network:"PUBLIC",address:addr})); })
-    .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string") throw new Error("Signing cancelled."); return s; });
+    .then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string") throw new Error("Cancelled by the user."); return s; });
 }
 // Return a Freighter-API-compatible object for the connected wallet. For non-Freighter wallets a shim
 // implements the same methods the engine calls (signTransaction/getAddress/requestAccess/getNetworkDetails),
@@ -524,7 +524,7 @@ function lxCctpBurn(destDomain, amountHuman, recipient, onStatus){
       function signSubmit(prepared,label){
         onStatus("Waiting for signature ("+label+")…");
         return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(prepared.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){
-          var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||!xdr) throw new Error("Signing cancelled.");
+          var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||!xdr) throw new Error("Cancelled by the user.");
           if(typeof xdr!=="string") throw new Error("Unexpected signature format from your wallet.");
           // LOOK AT WHAT THE WALLET ACTUALLY RETURNED, before spending a submit on it. This is evidence about
           // this wallet on this machine -- unlike a published capability list, which told me Rabet could not sign
@@ -655,7 +655,7 @@ window.lxCctpBridge=lxCctpBridge;
 function lxSubmitClassic(C,xdr){
   return fetch(C.horizon+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(xdr)}).then(function(r){return r.json();}).then(function(res){
     if(res.successful||res.hash) return res;
-    var rc=res.extras&&res.extras.result_codes; throw new Error("Swap/fee tx failed: "+(rc?JSON.stringify(rc):JSON.stringify(res).slice(0,150)));
+    var rc=res.extras&&res.extras.result_codes; throw new Error(lxBrTxMsg(rc,"The swap"));
   });
 }
 // The amount a swap+fee transaction delivered to the sender's own account, read from Horizon's result_xdr.
@@ -727,7 +727,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
     var deferredFee=null, deferredFeeAmt=0, deferredFeeHash="";   // AUDIT #2 (FUNDS): USDC-path fee runs AFTER a successful burn, never before
     function acc(){ return fetch(C.horizon+"/accounts/"+pk).then(function(r){return r.json();}); }
     function usdcBal(){ return acc().then(function(a){ var b=(a.balances||[]).filter(function(x){return x.asset_code==="USDC"&&x.asset_issuer===UI;})[0]; return b?parseFloat(b.balance):0; }); }
-    function signSubmit(txB,label){ onStatus("Waiting for signature ("+label+")…"); return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(txB.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){ var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Signing cancelled."); onStatus("Submitting "+label+"…"); return lxSubmitClassic(C,xdr); }); }
+    function signSubmit(txB,label){ onStatus("Waiting for signature ("+label+")…"); return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(txB.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){ var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Cancelled by the user."); onStatus("Submitting "+label+"…"); return lxSubmitClassic(C,xdr); }); }
     return Promise.resolve(f.requestAccess?f.requestAccess():null).then(function(){ return f.getAddress?f.getAddress():f.getPublicKey(); }).then(function(a){
       pk=(a&&a.address)||a; if(!pk) throw new Error("Could not read your wallet address.");
       if(isUSDC){
@@ -1157,6 +1157,45 @@ function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false;
 // regex that refuses every r-address: 'That doesn't look like a valid XRPL address' on a perfectly
 // good one (RAZA 2026-09-24). Same trap as lxBrCompare; see lumoscore-externalize-scope.
 try{ window.lxBrValidAddr = lxBrValidAddr; }catch(_){ }
+// SAY WHAT IS WRONG, NOT JUST THAT SOMETHING IS (RAZA 2026-10-23: "This is indeed an actal hedera
+// address. You gotta mention that the user must enter hedera evm address").
+//
+// He is right that 0.0.10229748 is a real Hedera account, and the refusal is also right: a Hedera
+// account has TWO forms and the bridge can only use one. Every route into Hedera is EVM -- the
+// messaging layer hands tokens to a 0x contract address -- so the 0.0.x ID has nowhere to go. That is
+// the same fact already recorded for Axelar, which wants the EVM address for this chain too.
+//
+// So the generic "that doesn't look like a valid Hedera address" is true and useless: it reads as "we
+// do not recognise your address" to someone holding an address they just copied from their wallet.
+// Naming the other form, and where to get it, turns a dead end into one more copy-paste.
+function lxBrAddrHint(net,a){ a=(a||'').trim();
+  if(net==='Hedera'&&/^\d+\.\d+\.\d+$/.test(a))
+    return "Hedera needs its EVM address (0x…), not the 0.0.x account ID. Your wallet or HashScan shows it next to the account.";
+  return "That doesn’t look like a valid "+(net||'destination')+" address."; }
+try{ window.lxBrAddrHint = lxBrAddrHint; }catch(_){ }
+// ONE TRANSLATOR FOR THE BRIDGE'S TRANSACTION FAILURES, exported because the route layers are separate
+// emitted scripts (lumoscore-externalize-scope). Three of them were each throwing a raw
+// JSON.stringify of Horizon's result_codes at the reader -- which is how RAZA's screenshot came to say
+// Swap failed {"transaction":"tx_failed","operations":["op_success","op_success","op_under_dest_min"]}.
+//
+// The trade panel settled this rule for itself months ago ("a result-code dump is not an error
+// message"); the bridge simply never got the same treatment. Codes are listed in the order they
+// actually turn up on this path, and anything unrecognised still says what to do rather than what
+// the ledger called it.
+function lxBrTxMsg(rc,what){
+  var w=what||"The transaction", ops=(rc&&rc.operations)||[], t=(rc&&rc.transaction)||"";
+  function has(c){ return ops.indexOf(c)>=0; }
+  if(has("op_under_dest_min")) return "The price moved while it was being sent, so it would have delivered less than the minimum. Nothing was sent — try again.";
+  if(has("op_underfunded"))    return "Not enough balance to cover that. Nothing was sent.";
+  if(has("op_no_trust"))       return "A trustline for that asset is missing. Nothing was sent.";
+  if(has("op_no_destination")) return "The destination account is not activated yet. Nothing was sent.";
+  if(has("op_line_full"))      return "The destination cannot hold any more of that asset. Nothing was sent.";
+  if(has("op_too_few_offers")) return "There was not enough liquidity to complete it at that price. Nothing was sent — try a smaller amount.";
+  if(t==="tx_insufficient_balance") return "Not enough XLM to cover the network fee. Nothing was sent.";
+  if(t==="tx_bad_seq")              return w+" was built against an out-of-date account state. Nothing was sent — try again.";
+  if(t==="tx_too_late")             return w+" expired before it reached the network. Nothing was sent — try again.";
+  return w+" did not go through. Nothing was sent — try again."; }
+try{ window.lxBrTxMsg = lxBrTxMsg; }catch(_){ }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
 // address, this route. Change any of them and it stops being true, but it used to stay on screen: RAZA hit the
@@ -1247,7 +1286,7 @@ function lxBrValidateStep2(){
   if(zero) lxBrStep2Err("Enter an amount greater than 0.");
   else if(overBal) lxBrStep2Err("Amount exceeds your balance ("+lxBrFmt(lxBrFloor(bal,bal>=1000?2:4),bal>=1000?2:4)+" "+k+").");
   else if(routeMsg) lxBrStep2Err(routeMsg);
-  else if(addr && !addrOk) lxBrStep2Err("That doesn't look like a valid "+(net||'destination')+" address.");
+  else if(addr && !addrOk) lxBrStep2Err(lxBrAddrHint(net,addr));
   else lxBrStep2Err("");
   var rev=s2.querySelector('[data-go="3"]');
   if(rev){ rev.disabled=!ok; if(ok) rev.classList.remove('lx-disabled'); else rev.classList.add('lx-disabled'); rev.setAttribute('aria-disabled',ok?'false':'true'); }
@@ -1722,6 +1761,23 @@ function lxBrReview(){
     var nf=[].slice.call(document.querySelectorAll('.lx-brs-row')).filter(function(x){ return /Bridge fee/.test(x.textContent||""); })[0];
     var nm2=nf?/([0-9.]+)%\\s*NEAR/.exec(nf.textContent||""):null;
     if(cf) cf.innerHTML='<span class="k">NEAR Intents fee</span><span class="v">'+(nm2?nm2[1]+'%':'Included in the quote')+' <span class="lx-cchip">Delivered in ~30 s, no claim</span></span>';
+  } else if(window.__lxBrRoute==="Axelar"){
+    // SAME OMISSION, THIRD TIME. Axelar was restored to Stellar on 2026-11-10 with a branch in the confirm
+    // dispatcher and none here, so Review kept the CCTP defaults painted above: "0.1474 USDC" with the USDC
+    // logo and "Circle CCTP fee: Free", in front of a Confirm button that would send SHX to Ethereum by
+    // Axelar (RAZA 2026-11-12). The amount was the CCTP calc's, not this route's. Every route that reaches
+    // Review needs a branch here, exactly as it needs one in lxBrValidateStep2 and in the dispatcher.
+    var de3=document.documentElement, sym3=de3.getAttribute('data-lxroute-asset')||"SHX";
+    var rv3=de3.getAttribute('data-lxroute-recv')||"", n3=parseFloat(rv3);
+    if(recvAm) recvAm.textContent=(rv3===""||!isFinite(n3))?("~ — "+sym3):("~ "+(n3<1?n3.toPrecision(4):n3.toLocaleString("en-US",{maximumFractionDigits:4}))+" "+sym3);
+    var lg3=de3.getAttribute('data-lxroute-logo'); if(rIc&&lg3) rIc.innerHTML='<img src="'+lg3+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
+    // Axelar's gas is quoted per destination in XLM and the route panel already prints it beside our own cut
+    // ("0.1% + 2.52 XLM"); pull that figure rather than re-estimating, so the two can never disagree.
+    var af=[].slice.call(document.querySelectorAll('.lx-brs-row')).filter(function(x){ return /Bridge fee/.test(x.textContent||""); })[0];
+    var am3=af?/([0-9.]+)\\s*XLM/.exec(af.textContent||""):null;
+    // The chip says the TIME only. "No claim" is true on Ethereum and false on Solana and XRPL, where the
+    // recipient needs a token account or a trustline first — the route card prints that caveat in full.
+    if(cf) cf.innerHTML='<span class="k">Axelar gas fee</span><span class="v">'+(am3?am3[1]+' XLM':'Quoted at signing')+' <span class="lx-cchip">Delivered in ~5 min</span></span>';
   } else if(cf){
     cf.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>';
   }
@@ -2197,10 +2253,35 @@ function lxBrResetWizard(){ try{
 }catch(_){} }
 // route: "LayerZero" swaps the header and hides the CCTP step list (approve / burn / attestation are not its steps;
 // its own progress arrives as the status line instead). Anything else is the CCTP flow exactly as before.
-function lxBrProgShow(route){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; el.__route=route||"CCTP"; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent=(route&&route!=="CCTP")?("Bridging via "+route):"Bridging via Circle CCTP"; var pl=el.querySelector(".lx-prog-list"); el.__steps=lxBrStepsFor(route||"CCTP"); if(pl){ pl.innerHTML=lxBrStepsHtml(el.__steps); pl.style.display=""; } var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
+// __released is per TRANSFER, not per page: without clearing it a second bridge in the same session
+// would start already "released", with the first transfer's wording under its first step.
+function lxBrProgShow(route){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; el.__released=0; el.__route=route||"CCTP"; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent=(route&&route!=="CCTP")?("Bridging via "+route):"Bridging via Circle CCTP"; var pl=el.querySelector(".lx-prog-list"); el.__steps=lxBrStepsFor(route||"CCTP"); if(pl){ pl.innerHTML=lxBrStepsHtml(el.__steps); pl.style.display=""; } var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
   // pre-load the web-wallet SDK so its sign popup can open synchronously from the gate click
   if(lxCctpIsWebWallet()){ try{ lxCctpMod("https://esm.sh/@albedo-link/intent@0.12.0"); }catch(_){} } }
-function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg").textContent=msg; var idx=-1,i; var PS=el.__steps||LX_PSTEPS; for(i=0;i<PS.length;i++){ if(PS[i].re.test(msg)) idx=i; } if(idx<0||idx<(el.__idx||0))return; el.__idx=idx; var lis=el.querySelectorAll(".lx-prog-list li"); for(i=0;i<lis.length;i++){ lis[i].className = i<idx?"done":(i===idx?"active":""); } }
+function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg").textContent=msg; var idx=-1,i; var PS=el.__steps||LX_PSTEPS; for(i=0;i<PS.length;i++){ if(PS[i].re.test(msg)) idx=i; } if(idx<0||idx<(el.__idx||0))return; el.__idx=idx; var lis=el.querySelectorAll(".lx-prog-list li"); for(i=0;i<lis.length;i++){ lis[i].className = i<idx?"done":(i===idx?"active":""); }
+  // OUR PART ENDS AT THE DEPOSIT; THE READER SHOULD NOT BE HELD FOR THE REST (RAZA 2026-10-23: "The
+  // last step is taking too much time ... I think its all done from our end so we dont really need to
+  // show this step ... users wont be waiting on here for 5-10 mins").
+  //
+  // He is right about where the work ends and I did NOT delete the step, because the two are different
+  // things. Once the deposit lands on Stellar the solver network delivers on its own: nothing we do,
+  // and nothing the reader can do, changes the outcome. But that last screen is also the only place
+  // they are told what actually arrived -- "14.72 MON arrived at your Monad address, there is nothing
+  // to claim", with the explorer link -- so throwing it away costs the confirmation along with the
+  // wait.
+  //
+  // So the dialog stops BLOCKING instead: the moment delivery begins, the close button appears and the
+  // wording says it carries on without them. Stay and the row still ticks over to Delivered; leave and
+  // nothing is lost. lxBrProgDone is untouched and still writes the full result for anyone watching.
+  try{
+    if((el.__route==="NEAR Intents"||el.__route==="LayerZero") && PS[idx] && PS[idx].k==="deliver" && !el.__released){
+      el.__released=1;
+      var x=el.querySelector(".lx-prog-x"); if(x) x.hidden=false;
+      var h=el.querySelector(".lx-prog-h"); if(h) h.textContent="Sent — delivery is automatic";
+      var m2=el.querySelector(".lx-prog-msg");
+      if(m2) m2.textContent="Your deposit is on Stellar and the rest happens without you. You can close this — it will still arrive.";
+    }
+  }catch(_){ } }
 // AUDIT #1 (FUNDS): this used to claim "Bridge complete ✓ — your USDC is on its way" as soon as Circle
 // attested. But CCTP only delivers once someone submits receiveMessage() on the DESTINATION chain, which this
 // app does not do — so the transfer is NOT complete here. Report exactly what happened and keep the redeem
@@ -2339,8 +2420,23 @@ function lxBrDestFunded(domain,addr){
       // A WARNING, NOT A BLOCK (RAZA 2026-09-22: "remove this limitation ... However, its important to show a message at
       // this step that the wallet is empty ... Just dont disallow the swap entirely"). ok stays true; warn is shown on the
       // Review step (lxBrWarnWatch) and the reader decides.
-      return {ok:true,warn:"This "+nm+" address holds "+(bal>0?(bal.toFixed(4)+" "+sym):("no "+sym))+". Double-check it \u2014 transfers can\u2019t be undone."
-        +((window.__lxBrRoute||"CCTP")==="CCTP"?" You\u2019ll need "+sym+" there to claim.":"")};
+      // SHORTER, AND IT STOPS RECITING THE BALANCE (RAZA 2026-10-23: "This message 'This Avalanche
+      // address.... Claim.' we dont need to mention this ... The message should be 'Double check the
+      // address and you will need AVAX to claim'").
+      //
+      // The balance figure was the bulk of the sentence and it earned nothing: the reader cannot act
+      // on "holds 0.0036 AVAX", only on "check it, and fund it". It is still what TRIGGERS the warning
+      // -- the caller only gets here when the destination is below LX_MINUSD -- it is simply no longer
+      // read out.
+      //
+      // THE CLAIM CLAUSE STAYS CONDITIONAL, and that is deliberate rather than an oversight of his
+      // wording. He was looking at a CCTP transfer, where a claim really is the reader's job. On
+      // LayerZero and NEAR Intents delivery is automatic and the messaging fee pays for it -- the
+      // bridge page says so on the same screen -- so promising they will "need AVAX to claim" there
+      // would be a new wrong statement in place of a verbose true one.
+      return {ok:true,warn:(window.__lxBrRoute||"CCTP")==="CCTP"
+        ? ("Double check the address and you will need "+sym+" to claim.")
+        : ("Double check the address \u2014 transfers can\u2019t be undone.")};
     });
   }).catch(function(){ return {ok:true}; }); }
 window.lxBrDestFunded=lxBrDestFunded;
@@ -2374,7 +2470,11 @@ function lxBrWarnWatch(){ try{
   var slot=s3.querySelector('.lx-br-warn');
   if(!slot){ var err=s3.querySelector('.br-errslot'); if(!err||!err.parentNode) return;
     slot=document.createElement('div'); slot.className='lx-br-warn';
-    slot.style.cssText='color:#e3a008;font-size:inherit;line-height:1.45;text-align:center;margin:18px 0 10px';
+    // SMALLER AND GREY (RAZA, same message: "why is the font soo big. Make it smaller and in grey
+    // color"). It was amber at font-size:inherit, so it took the step container's size -- which is
+    // large -- and read as an alarm. It is a check-this-over note, not a failure, and the amber was
+    // competing with the real error slot it sits directly above.
+    slot.style.cssText='color:var(--text-muted,#8a8fa3);font-size:12.5px;line-height:1.5;text-align:center;margin:14px 0 10px';
     err.parentNode.insertBefore(slot,err); }
   slot.textContent=""; slot.style.display="none";
   if(domain==null||!addr) return;
@@ -2465,7 +2565,7 @@ function lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A){
   var C=window.__lxCCTP||{};
   if(!window.__lxLzSendable||!window.lxLzBridgeFull){ say("Sending by LayerZero isn't switched on yet — choose CCTP to continue."); return; }
   if(!recipient){ say("Paste the destination address on the previous step."); return; }
-  if(!lxBrValidAddr(net,recipient)){ say("That doesn't look like a valid "+net+" address."); return; }
+  if(!lxBrValidAddr(net,recipient)){ say(lxBrAddrHint(net,recipient)); return; }
   // the source asset as {code,issuer} -- USDC's entry is the string "USDC", which the LayerZero engine cannot use
   var spec=(A.spec==="USDC")?{code:"USDC",issuer:C.usdcIssuer}:A.spec;
   if(btn) btn.disabled=true;
@@ -2544,7 +2644,13 @@ function lxBrPeekAttest(hash){ var C=window.__lxCCTP; if(!C||!hash) return Promi
   return fetch(C.iris+"/v2/messages/"+C.sourceDomain+"?transactionHash="+hash).then(function(r){return r.json();}).then(function(d){
     var m=(d&&d.messages&&d.messages[0])||null;
     if(m&&m.status==="complete"&&m.attestation&&m.attestation!=="PENDING") return {message:m.message,attestation:m.attestation,decodedMessage:m.decodedMessage};
-    return null; }).catch(function(){ return null; }); }
+    // FALSE means CIRCLE ANSWERED AND HAS NOTHING; NULL MEANS WE COULD NOT ASK. Both used to be null, and
+    // lxBrResumePending read that as "not attested, so it cannot have been claimed" and marked the row fit
+    // to show. Measured 2026-10-19: of RAZA's ten burns, Circle answered two and reset the connection on
+    // eight -- so eight already-claimed transfers were stamped as real claims by a network error, and sat
+    // there reading "Awaiting Circle attestation" for ever. Both are falsy, so every other caller is
+    // unaffected; only the one that draws a conclusion from the negative has to tell them apart.
+    return false; }).catch(function(){ return null; }); }
 // ---- EVM destination mint: the half of CCTP that actually delivers the USDC ---------------------------
 // A CCTP transfer BURNS on the source and mints nothing until receiveMessage() runs on the destination.
 // Circle operates no relayer (their technical guide: "An API consumer must query this attestation and
@@ -2586,7 +2692,34 @@ function lxBytesArg(hex){ hex=String(hex||"").replace(/^0x/,""); if(hex.length%2
 function lxAbiReceive(msg,att){ var a=lxBytesArg(msg), b=lxBytesArg(att);
   var off1=64, off2=64+32+Math.ceil(a.len/32)*32;
   return "0x57ecfd28"+lxHex32(off1)+lxHex32(off2)+lxHex32(a.len)+a.body+lxHex32(b.len)+b.body; }
-function lxEvmProv(){ return (window.ethereum||null); }
+// WHICH EVM WALLET, WHEN MORE THAN ONE IS INSTALLED (RAZA 2026-10-23: "Im trying to claim from my
+// Metamask wallet. But it keeps opening hot wallet. There should be options for both wallets").
+//
+// NO BACKTICKS IN THIS COMMENT: it sits inside the emitted template literal and one ends the string.
+// window.ethereum is ONE slot and every injected wallet races to own it, so with MetaMask and HOT
+// Wallet side by side the winner is whichever script ran last -- not a choice anyone made, and not
+// stable between page loads. Claiming is the worst place for that: the USDC mints to whichever
+// account the wallet that answered happens to hold.
+//
+// EIP-6963 exists for exactly this. Each wallet announces itself with its own provider object, name
+// and icon, so they stop fighting over the slot and the page can list them. Wallets that do not
+// implement it are not lost -- window.ethereum remains the fallback, and a browser with a single
+// wallet never sees a picker at all.
+var LX_EVM_PROVS=[], LX_EVM_PICK=null;
+try{
+  window.addEventListener("eip6963:announceProvider",function(ev){
+    var d=ev&&ev.detail; if(!d||!d.provider||!d.info)return;
+    for(var i=0;i<LX_EVM_PROVS.length;i++){ if(LX_EVM_PROVS[i].info.uuid===d.info.uuid) return; }
+    LX_EVM_PROVS.push(d);
+  });
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}catch(_){ }
+// The chosen one if the reader has chosen, otherwise the single announced wallet, otherwise the
+// legacy slot. Never silently picks between several -- lxEvmPick() does the asking.
+function lxEvmProv(){
+  if(LX_EVM_PICK&&LX_EVM_PICK.provider) return LX_EVM_PICK.provider;
+  if(LX_EVM_PROVS.length===1) return LX_EVM_PROVS[0].provider;
+  return (window.ethereum||null); }
 // "Install MetaMask or Rabby" is advice a phone cannot take: there are no browser extensions on mobile,
 // so this message sent every mobile claimer to a dead end while their USDC sat burned. On a phone the
 // real route is the wallet app's OWN browser -- and the non-obvious part is that this transfer lives in
@@ -2613,7 +2746,73 @@ function lxNoProvMsg(){ return lxIsPhoneUA()
 function lxEvmReq(m,p){ var e=lxEvmProv();
   if(!e)return Promise.reject(new Error(lxNoProvMsg()));
   return e.request({method:m,params:p||[]}); }
-function lxEvmConnect(){ return lxEvmReq("eth_requestAccounts").then(function(a){ if(!a||!a.length)throw new Error("No account authorised in your EVM wallet."); return a[0]; }); }
+// ASKED ONCE, BEFORE THE FIRST REQUEST. Putting the question here rather than in lxEvmProv keeps the
+// picker out of every subsequent call: connect is the one moment the reader is already expecting
+// their wallet to react, and the choice then holds for the rest of the claim.
+// Deliberately not persisted across page loads -- a stored wallet choice that no longer matches what
+// is installed is a worse failure than one extra click, and this is a path that moves money.
+// A WALLET THAT ANNOUNCES EIP-6963 IS NOT A WALLET THAT CAN REACH YOUR DESTINATION (RAZA 2026-10-23:
+// "Why is hashpack here. its a hedera wallet, not evm. Im trying to claim CCTP swap on Avalanche").
+//
+// He is right, and the reason it appeared is worth writing down: HashPack DOES speak EIP-1193 and DOES
+// announce itself, because Hedera runs a JSON-RPC relay. It is a legitimate EVM provider -- for Hedera
+// and nothing else. Listing every announcer therefore offers a wallet that can only fail, and it fails
+// late: the pick succeeds, eth_requestAccounts succeeds, and the dead end is wallet_switchEthereumChain
+// to a chain it has never heard of.
+//
+// Matched on the announced name AND rdns rather than an exact rdns string, so a change to either still
+// catches it. Chain-locked wallets are listed explicitly and everything else is assumed general --
+// hiding a usable wallet is worse than showing one extra, which is why the filter never empties the
+// list (see the fallback in lxEvmPick).
+var LX_EVM_LOCKED=[
+  // Hedera mainnet 295 / testnet 296 / previewnet 297
+  {m:/hashpack|kabila|blade/i, ids:["0x127","0x128","0x129"]}
+];
+function lxEvmServes(d,chainId){
+  var s=(((d&&d.info&&d.info.name)||"")+" "+((d&&d.info&&d.info.rdns)||""));
+  for(var i=0;i<LX_EVM_LOCKED.length;i++){
+    if(LX_EVM_LOCKED[i].m.test(s))
+      return !chainId || LX_EVM_LOCKED[i].ids.indexOf(String(chainId).toLowerCase())>=0;
+  }
+  return true; }
+function lxEvmPick(cfg){
+  var want=cfg&&cfg.id;
+  // Only the wallets that can actually serve this destination. If that leaves none -- an unknown
+  // chain, or a reader whose only wallet is chain-locked -- fall back to the full list rather than
+  // showing an empty dialog they cannot get past.
+  var list=LX_EVM_PROVS.filter(function(d){ return lxEvmServes(d,want); });
+  if(!list.length) list=LX_EVM_PROVS;
+  // Exactly one that fits is not a choice; take it and say nothing.
+  if(!LX_EVM_PICK&&list.length===1){ LX_EVM_PICK=list[0]; return Promise.resolve(); }
+  if(LX_EVM_PICK||list.length<2) return Promise.resolve();
+  return new Promise(function(resolve){
+    var ov=document.createElement("div");
+    ov.className="lx-evmpick";
+    ov.style.cssText="position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)";
+    var rows=list.map(function(p,i){
+      return '<button type="button" data-i="'+i+'" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;margin:6px 0;'
+        +'background:var(--surface-2,rgba(127,127,140,.10));border:1px solid var(--border,#2a2a35);border-radius:10px;color:inherit;font:inherit;cursor:pointer;text-align:left">'
+        +(p.info.icon?'<img src="'+lxBrEsc(p.info.icon)+'" alt="" style="width:22px;height:22px;border-radius:6px">':'')
+        +'<span style="font-weight:700">'+lxBrEsc(p.info.name||"Wallet")+'</span></button>';
+    }).join("");
+    ov.innerHTML='<div style="max-width:330px;width:calc(100% - 40px);background:var(--surface,#14141b);border:1px solid var(--border,#2a2a35);'
+      +'border-radius:14px;padding:18px 16px"><div style="font-weight:800;margin-bottom:4px">Choose a wallet</div>'
+      // Names the destination, because the list has been narrowed to wallets that can reach it and a
+      // reader who expected to see a fourth wallet should be able to work out why it is missing.
+      +'<div style="font-size:12.5px;color:var(--text-muted,#8a8fa3);margin-bottom:10px">Claim on '+lxBrEsc((cfg&&cfg.n)||'the destination chain')+' with:</div>'+rows+'</div>';
+    ov.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest("button[data-i]"):null;
+      // Indexes are into the FILTERED list the rows were drawn from -- reading them back out of
+      // LX_EVM_PROVS would hand over whichever wallet happened to sit at that position.
+      if(b){ LX_EVM_PICK=list[+b.getAttribute("data-i")]||null; try{ov.remove();}catch(_){} resolve(); return; }
+      if(e.target===ov){ try{ov.remove();}catch(_){} resolve(); }       // dismissed: fall back to window.ethereum
+    });
+    document.body.appendChild(ov);
+  }); }
+try{ window.lxEvmPick = lxEvmPick; }catch(_){ }
+// cfg is the DESTINATION chain config, threaded through so the picker can drop wallets that cannot
+// serve it. Optional: a caller without one still gets the full list.
+function lxEvmConnect(cfg){ return lxEvmPick(cfg).then(function(){ return lxEvmReq("eth_requestAccounts"); }).then(function(a){ if(!a||!a.length)throw new Error("No account authorised in your EVM wallet."); return a[0]; }); }
 function lxEvmSwitch(cfg){ return lxEvmReq("wallet_switchEthereumChain",[{chainId:cfg.id}]).catch(function(e){
   if(e&&(e.code===4902||/unrecogni|not added|add this network/i.test(e.message||"")))
     return lxEvmReq("wallet_addEthereumChain",[{chainId:cfg.id,chainName:cfg.n,nativeCurrency:{name:cfg.cur,symbol:cfg.cur,decimals:18},rpcUrls:[cfg.rpc],blockExplorerUrls:[cfg.exp]}]);
@@ -2630,7 +2829,7 @@ function lxEvmMint(rec,onStatus){
   if(!rec.message||!rec.attestation)return Promise.reject(new Error("This transfer has no attestation yet \\u2014 press Check status first."));
   var data=lxAbiReceive(rec.message,rec.attestation), from=null;
   onStatus("Connecting your EVM wallet\\u2026");
-  return lxEvmConnect().then(function(a){ from=a; onStatus("Switching to "+cfg.n+"\\u2026"); return lxEvmSwitch(cfg); })
+  return lxEvmConnect(cfg).then(function(a){ from=a; onStatus("Switching to "+cfg.n+"\\u2026"); return lxEvmSwitch(cfg); })
     .then(function(){ onStatus("Checking the claim will succeed\\u2026");
       // SIMULATE FIRST: a malformed or already-spent message fails here, free, before the wallet ever opens
       return lxEvmReq("eth_call",[{from:from,to:LX_MT,data:data},"latest"]); })
@@ -2686,25 +2885,78 @@ function lxBrClaimedOnChain(rec){
 // afterwards. So the claim count flashed up and then corrected itself, with a toast announcing an hour-old claim as if
 // it had just landed. Rows that COULD already be claimed (attested, with a message to check) are held back until the
 // first sweep answers; a row still waiting for its attestation cannot have been claimed, so it shows at once.
-var _lxPendOk={}, _lxPendFailsafe=false;
-// visible when: it cannot be claimed yet (no attestation), or the chain has said it is NOT claimed, or the check itself
-// never answered (failsafe) -- never hidden indefinitely because an RPC is down.
+var _lxPendOk={}, _lxPendFailsafe=false, _lxPendFsT=null;
+// "NO ATTESTATION YET" IS ONLY EVIDENCE OF ANYTHING WHILE THE BURN IS FRESH (RAZA 2026-10-19: "I noticed pending
+// claims which is just not possible. I refreshed the page and they disappeared").
+//
+// The rule above -- unattested, therefore unclaimable, therefore safe to draw at once -- was written when every
+// pending row had been burned in THIS browser seconds earlier. lxBrSeedFromServer then started adopting the
+// connected wallet's burns from the shared record, and every one of those rows arrives with status "burned" and no
+// attestation: not because Circle has not attested it, but because this browser has not asked yet. Those burns can
+// be days old and claimed long ago on another device. So all seven were drawn as claimable the moment the feed
+// answered; lxBrResumePending then fetched their attestations, the chain sweep found every nonce already spent, and
+// the rows vanished. They never returned because a cleared claim is remembered in lumos.cctp.done -- which is what
+// made the refresh look like a fix rather than the one-shot flash it was.
+//
+// Circle attests in a minute or two, so a burn made moments ago genuinely cannot have been claimed; anything older,
+// and anything adopted from the shared record, waits for a real answer exactly like an attested row does.
+var LX_PEND_FRESH=20*60*1000;
+// visible when: it was burned here moments ago and cannot be claimed yet, or the chain has said it is NOT claimed, or
+// the check itself never answered (failsafe) -- never hidden indefinitely because an RPC is down.
+// WHAT IS LISTED IS WHAT IS PENDING. Nothing else (RAZA 2026-10-19: "why does it even say pending claims 0 ...
+// why are there so many transactions shown inside pending claims").
+//
+// Drawing an unreconciled row as "Checking whether this was already claimed…" was still the wrong answer: nine
+// such rows under a tab reading 0 is a panel arguing with itself. A row earns its place here by being a claim,
+// and until something says so it is not listed at all -- the next render adds it the moment the chain answers.
+//
+// THE FAILSAFE NEVER VOUCHES FOR A ROW. It exists so a chain check that cannot answer can never hide a real
+// claim for good, and that risk only exists for an ATTESTED row, which is the only kind that could be claimed.
+// An unattested one is not claimable by anybody, so it waits for the next visit rather than padding the list.
 function lxBrPendVisible(list){ return list.filter(function(r){
-  if(!(r&&r.attestation&&r.message)) return true;
-  return _lxPendFailsafe||!!_lxPendOk[r.burnHash]; }); }
+  if(!r) return false;
+  // burned here minutes ago: nothing could have claimed it yet
+  if(!r.fromServer&&(Date.now()-(+r.ts||0))<LX_PEND_FRESH) return true;
+  // the chain says this message is unspent, or Circle says there is no attestation yet
+  if(_lxPendOk[r.burnHash]) return true;
+  return _lxPendFailsafe&&!!(r.attestation&&r.message); }); }
+// Nothing stays hidden for good: whatever has not answered by the deadline is shown anyway. Seeding restarts the
+// clock, because the seed's own round trip -- feed, then Circle, then the destination chain -- is what the deadline
+// has to outlast. It only ever extends, so a row already on screen is never taken back.
+function lxBrPendFailsafeIn(ms){ if(_lxPendFailsafe) return;
+  clearTimeout(_lxPendFsT);
+  _lxPendFsT=setTimeout(function(){ _lxPendFailsafe=true; lxBrRenderPending(); },ms); }
 var _lxSweepT=null;
 // ONE SWEEP AT A TIME, ONE TOAST PER CLAIM (RAZA 2026-09-22: one claim, then "tonnes of 'Claimed on Base' msgs"). The
 // 4s watch kept firing while Chrome sat in the background; on return the queued ticks ran together, every sweep read the
 // row as still pending before any had cleared it, and each announced the same claim.
-var _lxSweepBusy=false, _lxToasted={};
+// A SWEEP ASKED FOR WHILE ONE IS RUNNING IS REMEMBERED, NOT DROPPED (RAZA 2026-10-19, after the attestation fix:
+// eight rows still sitting on "Checking whether this was already claimed…" on production).
+//
+// lxBrResumePending fires its Circle lookups in parallel and each one calls this on success. The first to land
+// starts a sweep and sets the flag; the other eleven resolve DURING that sweep and were thrown away. So the sweep
+// checked whatever handful of rows happened to be attested the instant it began -- usually one -- and nothing ever
+// looked at the rest. They stayed attested-but-unchecked, which is exactly the state the failsafe reveals.
+//
+// The guard was right about the problem it was written for (one claim, "tonnes of Claimed on Base" toasts) and
+// wrong to solve it by discarding work. Coalescing keeps the single-flight property and loses nothing: any number
+// of requests during a sweep collapse into exactly one more run after it.
+var _lxSweepBusy=false, _lxSweepAgain=false, _lxToasted={};
 function lxBrSweepClaimed(quiet){ try{
-  if(_lxSweepBusy) return;
-  var list=lxBrListPending().filter(function(x){ return x&&x.attestation&&x.message; }).slice(0,8); if(!list.length) return;
+  if(_lxSweepBusy){ _lxSweepAgain=true; return; }
+  // Twelve, matching lxBrResumePending's cap for the same reason: with ten adopted rows an eight-row sweep leaves
+  // two unanswered on the first pass, and an unanswered row is one the reader is shown without a verdict.
+  var list=lxBrListPending().filter(function(x){ return x&&x.attestation&&x.message; }).slice(0,12); if(!list.length) return;
   _lxSweepBusy=true;
   Promise.all(list.map(function(rec){ return lxBrClaimedOnChain(rec).then(function(c){ return {rec:rec,c:c}; }); })).then(function(res){
     _lxSweepBusy=false;
     var cleared=0;
-    res.forEach(function(x){ if(x.c!==true&&x.rec&&x.rec.burnHash) _lxPendOk[x.rec.burnHash]=1;   // asked, and not claimed
+    // STRICTLY FALSE, not "anything but true". lxBrClaimedOnChain answers false for "the chain says this message
+    // is unspent" and NULL for "the call failed or the domain is unknown" -- and the old not-equal-true test
+    // promoted both to a verified claim. The same fault as lxBrPeekAttest returning one null for two different
+    // answers, in the function beside it: a dead RPC would have published a claimed transfer as claimable.
+    // (No backticks in this comment: the whole block is inside a template literal and one would end it.)
+    res.forEach(function(x){ if(x.c===false&&x.rec&&x.rec.burnHash) _lxPendOk[x.rec.burnHash]=1;   // asked, and not claimed
       if(x.c===true){ lxBrClearPending(x.rec.burnHash); cleared++;
       if(_lxToasted[x.rec.burnHash]) return; _lxToasted[x.rec.burnHash]=1;
       // only for a claim that completes while the page is open: on load this sweep is reconciliation, not news
@@ -2712,13 +2964,15 @@ function lxBrSweepClaimed(quiet){ try{
     lxBrRenderPending();
     var inFlight=lxBrListPending().some(function(x){ return x&&x.claimTx; });
     clearTimeout(_lxSweepT); if(inFlight) _lxSweepT=setTimeout(lxBrSweepClaimed,10000);
-  },function(){ _lxSweepBusy=false; });
+    // the rows that attested while this sweep was running
+    if(_lxSweepAgain){ _lxSweepAgain=false; lxBrSweepClaimed(quiet); }
+  },function(){ _lxSweepBusy=false; if(_lxSweepAgain){ _lxSweepAgain=false; lxBrSweepClaimed(quiet); } });
 }catch(_){ _lxSweepBusy=false; } }
 window.lxBrSweepClaimed=lxBrSweepClaimed;
 // At once, and QUIETLY: this first pass is reconciliation with the chain, not news. Nothing waits on it except the rows
 // it might clear -- and if the RPC never answers they are shown anyway, rather than hidden for good.
 lxBrSweepClaimed(true);
-setTimeout(function(){ _lxPendFailsafe=true; lxBrRenderPending(); },6000);
+lxBrPendFailsafeIn(6000);
 
 
 // Bottom-centre dark pill with a green circled check — the same toast the wallet and issuer copy buttons
@@ -2807,7 +3061,11 @@ var LX_FOX='<svg class="lx-wico" viewBox="0 0 32 32" aria-hidden="true">'
 +'<polygon fill="#f5841f" points="29.2,16.4 22.7,14.5 24.6,17.4 21.7,23.4 25.6,23.3 31.4,23.3"/><polygon fill="#f5841f" points="9.3,14.5 2.8,16.4 0.6,23.3 6.4,23.3 10.3,23.4 7.4,17.4"/>'
 +'<polygon fill="#f5841f" points="17.6,17.7 18.1,10.4 19.9,5.3 12.1,5.3 14.2,10.4 14.4,17.7 14.6,19 14.6,25.1 17.4,25.1 17.4,19"/></svg>';
 var LX_GENWALLET='<svg class="lx-wico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>';
-function lxEvmWalletName(){ var e=window.ethereum; if(!e) return "MetaMask";
+// Names the wallet that will actually answer, not whatever won the window.ethereum race. EIP-6963
+// carries a real name, so a chosen wallet is named by its own label rather than sniffed from flags.
+function lxEvmWalletName(){ if(LX_EVM_PICK&&LX_EVM_PICK.info&&LX_EVM_PICK.info.name) return LX_EVM_PICK.info.name;
+  if(LX_EVM_PROVS.length===1&&LX_EVM_PROVS[0].info&&LX_EVM_PROVS[0].info.name) return LX_EVM_PROVS[0].info.name;
+  var e=lxEvmProv(); if(!e) return "MetaMask";
   if(e.isRabby) return "Rabby"; if(e.isCoinbaseWallet) return "Coinbase Wallet"; if(e.isBraveWallet) return "Brave Wallet";
   if(e.isTrust||e.isTrustWallet) return "Trust Wallet"; if(e.isOkxWallet||e.isOKExWallet) return "OKX Wallet";
   if(e.isPhantom) return "Phantom"; if(e.isMetaMask) return "MetaMask"; return "your wallet"; }
@@ -3145,6 +3403,9 @@ function lxBrRenderPending(){ try{
   if(host.tabbed){
     var tabBtn=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
     if(tabBtn){
+      // ONE NUMBER, AND IT IS THE LIST'S LENGTH. A separate count was how the tab came to read 0 above a
+      // list of nine: two rules answering the same question. lxBrPendVisible is now the only rule, so the
+      // badge, the tab's existence and the rows cannot disagree.
       var nEl=tabBtn.querySelector(".lx-brtab-n"); if(nEl) nEl.textContent=list.length;
       tabBtn.hidden=!list.length;
       // nothing left to claim while sitting on that tab — fall back to the transactions view
@@ -3157,7 +3418,32 @@ function lxBrRenderPending(){ try{
   }
   if(!list.length){ if(!host.tabbed) p.style.display="none"; p.innerHTML=""; return true; }
   var rows=list.map(function(r){
-    var ready=!!(r.status==="attested"&&r.message&&r.attestation);
+    // A ROW THE CHAIN HAS NOT ANSWERED FOR IS NOT A CLAIM (RAZA 2026-10-19: "why does it keep showing me
+    // pending claims where there aren't any. when i refresh the page it disappears").
+    //
+    // The hold-back rule works: an unreconciled row is kept out of lxBrPendVisible until lxBrSweepClaimed
+    // has asked usedNonces. What let these through is the FAILSAFE -- it exists so a dead RPC can never
+    // hide a real claim for good, and it did that by flipping every unanswered row to fully visible,
+    // Claim button and all. Transfers he claimed weeks ago were offered for claiming again, and only
+    // vanished once the sweep caught up.
+    //
+    // The failsafe's job is to stop a row DISAPPEARING, not to vouch for it. So an unverified row now
+    // appears saying exactly what is true -- that we are still checking -- and offers nothing to press.
+    // It becomes a real claim the moment the chain says it is unclaimed, or it is cleared.
+    // NOT "attested but unchecked" -- "not reconciled", whatever state it is in. The first version of
+    // this tested r.attestation, which only catches a row whose attestation THIS BROWSER has already
+    // fetched. A row adopted from the shared record arrives with none, so seven of RAZA's ten slipped
+    // past wearing "Awaiting Circle attestation" and a Check status button -- transfers he claimed a
+    // month ago, described as waiting on Circle.
+    //
+    // The honest question is not what we know about the row, it is whether anything has confirmed it:
+    // _lxPendOk is set only when the chain says a message is unspent, or when Circle says there is no
+    // attestation yet (which makes a claim impossible and the row therefore real). A burn made here
+    // minutes ago needs no confirming -- nothing could have claimed it yet -- and that is the one case
+    // that stays immediate.
+    var fresh=!r.fromServer&&(Date.now()-(+r.ts||0))<LX_PEND_FRESH;
+    var unverified=!fresh&&!_lxPendOk[r.burnHash];
+    var ready=!!(r.status==="attested"&&r.message&&r.attestation)&&!unverified;
     var evm=!!LX_EVM[r.destDomain];
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     // amount left, provenance in the middle, actions hard right — the row reads across the full width the
@@ -3175,7 +3461,9 @@ function lxBrRenderPending(){ try{
     +'</div></div>'
     // no "Ready to claim" chip — the Claim button next to it already says exactly that. The waiting state
     // is the one worth a chip, because then there is nothing else on the row explaining the delay.
-    +(ready?'':'<span class="lx-brp-chip wait">Awaiting Circle attestation</span>')
+    // "Awaiting Circle attestation" is a claim about Circle and would be false here: Circle HAS attested,
+    // it is us who have not finished asking the destination chain whether the mint already happened.
+    +(ready?'':'<span class="lx-brp-chip wait">'+(unverified?'Checking whether this was already claimed…':'Awaiting Circle attestation')+'</span>')
     // ON A PHONE WITH NO WALLET IN THE PAGE (RAZA 2026-09-19): the claim happens inside a wallet app, so the row says
     // where -- "Claim on <network>" as its heading -- and offers the three ways to do it as one even row:
     // MetaMask | Coinbase Wallet | Copy redeem data. Each app button opens this page in that app with ?claim=<hash>,
@@ -3193,7 +3481,10 @@ function lxBrRenderPending(){ try{
         +'<button type="button" class="lx-brp-b lx-brp-hb3" data-act="copy"><span class="lx-brp-hi">'+LX_BR_COPY_SVG+'</span><span>Copy redeem data</span></button>'
         +'</div></div>'; })():(
     '<div class="lx-brp-btns">'
-    +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
+    // "Check status" asks Circle for the attestation, which an unverified row already has -- pressing it
+    // would answer a question nobody asked while the one being waited on is the chain's. Copy redeem
+    // data stays: it is read-only and useful whatever the outcome turns out to be.
+    +((ready||unverified)?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
     +((ready&&evm)?'<button type="button" class="lx-brp-b primary lx-hasico" data-act="mint" title="Opens '+lxBrEsc(lxEvmWalletName())+' on '+lxBrEsc(LX_EVM[r.destDomain].n)+'"><span class="lx-wbadge">'+lxEvmWalletIcon()+'</span>Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
     +'</div>'))))   // closes: non-phone branch, phone ?: expr, the claimTx ":(" branch, the claimTx "+(" wrapper
@@ -3335,6 +3626,9 @@ function lxBrSeedFromServer(){
         added++;
       });
       if(!added)return;
+      // These rows have been checked against nothing yet. Give the attestation fetch and the chain read below time
+      // to answer before the failsafe would draw them anyway.
+      try{ lxBrPendFailsafeIn(9000); }catch(_){}
       try{ lxBrRenderPending(); }catch(_){}
       try{ lxBrResumePending(); }catch(_){}
       try{ lxBrAutoClear(); }catch(_){}
@@ -3345,8 +3639,19 @@ window.lxBrSeedFromServer=lxBrSeedFromServer;
 
 // a burn whose attestation timed out (or whose tab was closed mid-poll) resolves itself on the next visit
 function lxBrResumePending(){ try{
-  lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,6).forEach(function(r){
-    lxBrPeekAttest(r.burnHash).then(function(att){ if(!att)return;
+  // Twelve. Eight matched the sweep's cap and was still short: RAZA's account carries TEN adopted rows, so two of
+  // them were never asked about on the first pass and could only be settled by a later one -- long after the
+  // failsafe had given up waiting. The cap exists to bound a burst of calls to Circle, and twelve bounds it just
+  // as well while covering the backlog that actually exists.
+  lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,12).forEach(function(r){
+    lxBrPeekAttest(r.burnHash).then(function(att){
+      // Circle ANSWERED and has nothing for this burn: it is genuinely unattested, so it cannot have been claimed
+      // and the row is a real pending transfer. That answer is what releases a row lxBrPendVisible holds back.
+      if(att===false){ if(r.burnHash&&!_lxPendOk[r.burnHash]){ _lxPendOk[r.burnHash]=1; lxBrRenderPending(); } return; }
+      // null: the lookup FAILED -- a reset connection, an SSL error, a 5xx. Nothing is known, so nothing is
+      // concluded: the row stays hidden and the next visit asks again. A failed look is not a finding, and
+      // stamping one as an answer is what put eight claimed transfers on his screen.
+      if(!att) return;
       r.message=att.message; r.attestation=att.attestation; r.decodedMessage=att.decodedMessage; r.status="attested";
       // Persist the domain too, not just the decoded message it sits inside. The fallback in
       // lxBrDestDom covers records already saved without it, but a row backfilled from here should

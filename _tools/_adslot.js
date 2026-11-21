@@ -61,7 +61,9 @@ const HOUSE = [
     // of the places that has to move with it.
     copy: 'The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.2% to 0.1% ' +
           '&mdash; and eligible pools pay their rewards in it.',
-    cta: 'View LUMOS',
+    // "Buy", not "View" (RAZA 2026-10-17). The link already lands on the Trade-asset page, where the
+    // swap panel is the first thing in reach -- the old verb undersold where the button actually goes.
+    cta: 'Buy LUMOS',
     // The clean-URL form, not lumoscore-dex-asset.html?asset=. The site redirects the query form to
     // this one anyway, so writing it directly saves every click a second navigation.
     href: '/trade/stellar/LUMOS-' + LUMOS_ISS,
