@@ -66,9 +66,33 @@ const HEAD_HTML = 'The Core of<br/><span class="grad">Multi-chain Web3</span>';
 // The mobile header's Launch App button. Same handler as the desktop header's, so the network chooser
 // behaves identically; data-lxnonav keeps it clear of the landing page's text-matching interceptor,
 // which would otherwise see "Launch App" and swallow the click.
+// Put a stylesheet back EXACTLY WHERE IT WAS, or place it for the first time if it has never been
+// here. Replacing the block in situ is what makes this transform safe to run on its own: a strip
+// followed by an append to the end of the document silently reorders this layer against every other
+// one, and the layers on these pages read and override each other.
+//
+// `headFirst` decides only where a layer that is not yet present goes.
+function putLayer(p, openTag, block, headFirst) {
+  const at = p.indexOf(openTag);
+  if (at >= 0) {
+    const end = p.indexOf('</style>', at);
+    if (end > at) return p.slice(0, at) + block + p.slice(end + '</style>'.length);
+  }
+  if (headFirst) {
+    const he = p.indexOf('</head>');
+    if (he >= 0) return p.slice(0, he) + block + p.slice(he);
+  }
+  const bo = p.lastIndexOf('</body>');
+  return bo >= 0 ? p.slice(0, bo) + block + p.slice(bo) : p + block;
+}
+
 const NAV_LAUNCH = '<button class="btn primary lx-navlaunch" data-lxnonav="1" '
   + 'onclick="try{window.lxChooseNetwork&&window.lxChooseNetwork(\'lumoscore-home.html\')}catch(e){}">'
   + 'Launch App</button>';
+
+// The .lx-navlaunch sizing rules used to live in this file's CSS, appended before </body>. They now
+// have their own transform, _navlaunchcss.js, which puts them in the HEAD — read that file for why.
+// This one still owns the button itself; only its stylesheet moved.
 
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
@@ -95,19 +119,9 @@ const CSS = '<style id="lx-herotext">'
   + '.scroll-hint:focus-visible .arrow{outline:2px solid var(--accent);outline-offset:3px}'
   + '@keyframes lxcuebob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}'
   + '@media (prefers-reduced-motion:reduce){.scroll-hint .arrow{animation:none}}'
-  // ---- mobile header Launch App.
-  // Sized to sit level with the 36px icon button beside it rather than at the .btn default of 48px,
-  // and the label is allowed to shrink before the nav starts wrapping on a 320px screen.
-  + '.lx-navlaunch{display:none}'
-  + '@media (max-width:900px){.lx-navlaunch{display:inline-flex;height:36px;padding:0 14px;'
-  + 'font-size:13.5px;border-radius:9px;width:auto;flex:0 0 auto;margin-left:auto}'
-  + '.nav .logo{flex:0 1 auto;min-width:0}}'
-  // At 320px the row is 10px over: flex shrinks the logo's box, but its wordmark is overflow:visible
-  // and simply runs on, ending 2px under the button. Measured -- the boxes do not intersect, so a
-  // left/right comparison says it fits while the ink says otherwise. The wordmark gives up 2.5pt,
-  // which is enough for the row to stop shrinking at all.
-  + '@media (max-width:360px){.lx-navlaunch{padding:0 10px;font-size:12.5px}'
-  + '.nav .logo-text{font-size:14px}}'
+  // The mobile header's Launch App rules used to live here. They are now emitted into the HEAD as
+  // lx-navlaunch-css — see NAV_CSS below for why.
+  //
   // Keep the accent phrase whole so it wraps as a unit. It was splitting as "... — all" / "in one
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
@@ -274,8 +288,10 @@ for (const p of PAGES) {
   let html = json[p.key];
   if (html == null) { problems.push(p.key + ': missing'); continue; }
 
-  html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '')
-    ;
+  // The two stylesheets this file owns are NOT stripped here. They are swapped where they already sit,
+  // at the bottom of the loop — see putLayer. Stripping them and re-appending moved them to the end of
+  // the document, which re-cut the cascade against every layer that had been sitting after them, so a
+  // lone re-run of this transform changed pages it was not asked to change.
   // ---- the hero networks block is gone.
   // It was tried as a loose inline list, then as three equal pills, then as one divided capsule, and
   // it never earned its place between the tagline and the buttons. What it said is said properly by
@@ -343,15 +359,17 @@ for (const p of PAGES) {
     // the landing page's text-matching nav interceptor. Inserted before the menu button so the order
     // reads logo, action, menu.
     const MENU = '<button class="nav-icon-btn" id="menuBtn"';
-    if (html.indexOf('lx-navlaunch') < 0) {
+    // Test for the BUTTON, not the class. The stylesheets above also contain ".lx-navlaunch", so a
+    // bare class search is a gate reading its own output: once this file had run once, it would report
+    // the button present on a page that never got one.
+    if (html.indexOf('lx-navlaunch" data-lxnonav') < 0) {
       const at = html.indexOf(MENU);
       if (at < 0) { problems.push(p.key + ': mobile menu button not found'); continue; }
       html = html.slice(0, at) + NAV_LAUNCH + html.slice(at);
     }
   }
 
-  const bo = html.lastIndexOf('</body>');
-  html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
+  html = putLayer(html, '<style id="lx-herotext">', CSS, false);
 
   json[p.key] = html;
   staged.push({ file: p.file, data, s, e, json, key: p.key });

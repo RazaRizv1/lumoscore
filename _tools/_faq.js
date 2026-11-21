@@ -20,27 +20,43 @@
 //   * pool fee = 0.30%, fixed by the Stellar protocol
 // No timing claims for the bridge (attestation time varies and is Circle's, not ours), and no FAQ on
 // Rewards at all — parts of that page are still placeholder, so there is nothing honest to assert.
+//
+// 2026-11-13: the LOOK of this section no longer lives here. Markup, stylesheet and behaviour moved
+// to _faqview.js, which the XRPL fork renders through too -- the fork holds its own answers but must
+// not hold its own design. This file is now the Stellar question table and nothing else.
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
+const view = require(__dirname + '/_faqview.js');
 const B = String.fromCharCode(92);
 
 const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
 
 // The bridge FAQ once the LayerZero route is live. Kept as a whole replacement set rather than as edits to the
-// CCTP-only answers, because the two differ in substance and not in wording: with two routes the claim step, the
-// fee and the chain list all stop having a single answer. Selected by LZ_LIVE so the prose can never promise a
-// route the product is not carrying yet. Answers below are measured, not estimated -- the ~30 minutes (median of 53 real sends, 2026-09-19) is a real
-// Stellar->Polygon delivery and the 320-confirmation wait that explains it.
-const BRIDGE_TWO_ROUTES = [
-  ["How do I bridge to or from Stellar?", "Pick the destination chain and an amount, then choose a route: CCTP delivers USDC, LayerZero delivers USDT0. Each shows what it costs and how long it takes before you commit. Whatever you are sending is swapped into the stablecoin that route carries, then burned on Stellar and minted on the destination — never wrapped and never held by us."],
-  ["Do I have to claim it on the other side?", "That depends on the route. With CCTP you do: LumosCore burns the USDC here, and the destination chain mints once the redeem is submitted there. That redeem is your own transaction, so keep a little of that chain’s gas token. With LayerZero you do not — its executor delivers for you, paid for by the messaging fee you already covered on Stellar."],
-  ["What if I close the tab before claiming?", "Nothing is stranded. For a CCTP transfer the burn hash, Circle’s message and the attestation are all saved the moment they exist and listed under Awaiting redemption, so you can come back and finish whenever you like. A LayerZero transfer needs no claim at all — it arrives on its own."],
+// CCTP-only answers, because the two differ in substance and not in wording: with more than one route the claim
+// step, the fee and the chain list all stop having a single answer. Selected by LZ_LIVE so the prose can never
+// promise a route the product is not carrying yet. Answers below are measured, not estimated -- the ~30 minutes
+// (median of 53 real sends, 2026-09-19) is a real Stellar->Polygon delivery and the 320-confirmation wait that
+// explains it.
+//
+// FOUR ROUTES NOW, not two: CCTP, LayerZero, NEAR Intents and Axelar. Two of them were missing from this copy.
+// NEAR Intents has been live since before this set was written and appeared in exactly ONE answer ("Which chains
+// are supported?"), so a reader asking about the claim step, the timing or the fees was told there were two
+// routes and given two answers. Axelar shipped 2026-11-12 and appeared in none. EVERY answer that enumerates
+// routes must enumerate all four -- the enumerations are the thing that goes stale, so grep this array for route
+// names whenever a route is added or removed. The per-route explainers below ("What is Circle CCTP?" and its
+// siblings) are one per route for the same reason.
+const BRIDGE_ALL_ROUTES = [
+  ["How do I bridge to or from Stellar?", "Pick the destination chain and an amount, then choose a route. CCTP delivers USDC and LayerZero delivers USDT0, both by burning on Stellar and minting on the destination — real dollars, never a wrapped copy. NEAR Intents delivers the token you pick instead of a stablecoin, and Axelar carries SHX itself to Ethereum, Solana and the XRP Ledger. Each route shows what it costs and how long it takes before you commit, and none of them holds your funds along the way."],
+  ["Do I have to claim it on the other side?", "Only with CCTP. There LumosCore burns the USDC here and the destination chain mints once the redeem is submitted there — that redeem is your own transaction, so keep a little of that chain’s gas token. LayerZero, NEAR Intents and Axelar all deliver for you, with no claim and no gas needed on arrival. Axelar is the one to prepare for in advance: on the XRP Ledger the receiving address needs an SHX trustline first, which costs 0.2 XRP of reserve, and on Solana an SHX token account. Ethereum needs nothing."],
+  ["What if I close the tab before claiming?", "Nothing is stranded. For a CCTP transfer the burn hash, Circle’s message and the attestation are all saved the moment they exist and listed under Awaiting redemption, so you can come back and finish whenever you like. LayerZero, NEAR Intents and Axelar need no claim at all — they arrive on their own, whether or not the tab is open."],
   ["What is Circle CCTP?", "Circle’s Cross-Chain Transfer Protocol, run by the company that issues USDC. Rather than locking your USDC and handing you a wrapped copy, it destroys it on one chain and issues real USDC on the other."],
   ["What are LayerZero and USDT0?", "LayerZero is a cross-chain messaging protocol, and USDT0 is Tether’s omnichain dollar built on it, live on Stellar since September 2026. The route burns USDT0 here and mints it on the destination, so what lands is real USDT0 rather than a wrapped copy — and it reaches fourteen chains CCTP cannot."],
-  ["Which chains are supported?", "Fifty-two destinations. CCTP carries USDC to Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, World Chain, Sonic, Cronos, XDC, Plume, Codex, Pharos, Unichain, Morph and X Layer. LayerZero carries USDT0 to Ethereum, Arbitrum, Optimism, Polygon, Berachain, Ink, Hyperliquid, Monad, Flare, Sei, MegaETH, Plasma, Unichain, Mantle, Morph, X Layer, Hedera, Conflux eSpace, Rootstock, Stable and Tempo. NEAR Intents reaches twenty-one more that neither can -- including the XRP Ledger, Bitcoin, Solana, Tron, TON, Cardano, Litecoin, Dogecoin, Sui, Starknet and BNB Chain -- and delivers the token you pick rather than a stablecoin. The XRP Ledger is among them, carrying native XRP. Six chains take more than one route, and you choose which to use."],
-  ["How long does a transfer take?", "CCTP is ready in about five seconds, because the confirmations Circle counts are on Stellar and Stellar needs one — but it is only ready to claim, and you still have to send that claim. LayerZero takes about 30 minutes and needs nothing from you afterwards: it waits 320 Stellar ledgers before its verifiers sign off, then delivers."],
-  ["What are the cross-chain fees?", "LumosCore takes 0.2% of the amount you bridge, or 0.1% if you hold 250,000 LUMOS or more, so send 100 and 99.8 arrives. Circle charges nothing for CCTP, but you pay the destination chain’s gas to claim. LayerZero charges a messaging fee in XLM, quoted before you sign, and nothing to claim afterwards. Both routes show the whole cost before you commit."],
-  ["Can I bridge my own Stellar asset?", "As the asset you send, yes. Any curated LumosCore asset is swapped into whichever stablecoin the route carries — USDC for CCTP, USDT0 for LayerZero — and that is what crosses. What arrives is real USDC or USDT0 rather than a wrapped copy of your token, and the swap rate is shown before you sign."],
+  ["What is NEAR Intents?", "A network of solvers, reached through NEAR’s 1Click. Instead of burning and minting a stablecoin it takes XLM or USDC from you on Stellar and has a solver deliver the token you actually picked on the other chain — ETH on Ethereum, SOL on Solana, native XRP on the XRP Ledger. That is how it reaches twenty-one chains the burn-and-mint routes cannot. It is also the fastest, usually about thirty seconds, with no claim and no gas needed on arrival, and if a solver cannot complete the job your deposit is returned."],
+  ["What is Axelar?", "A cross-chain network whose Interchain Token Service carries a token itself rather than swapping it for dollars. On LumosCore it moves SHX from Stellar to Ethereum, Solana and the XRP Ledger in about five minutes, delivered automatically. It adds no new destinations — all three were already reachable — so think of it as the way to land SHX on them rather than a stablecoin. What arrives is the Axelar-issued SHX on that chain, so the receiving address has to be able to hold it: an SHX trustline on the XRP Ledger, an SHX token account on Solana, nothing at all on Ethereum."],
+  ["Which chains are supported?","Fifty-two destinations. CCTP carries USDC to Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, World Chain, Sonic, Cronos, XDC, Plume, Codex, Pharos, Unichain, Morph and X Layer. LayerZero carries USDT0 to Ethereum, Arbitrum, Optimism, Polygon, Berachain, Ink, Hyperliquid, Monad, Flare, Sei, MegaETH, Plasma, Unichain, Mantle, Morph, X Layer, Hedera, Conflux eSpace, Rootstock, Stable and Tempo. NEAR Intents reaches twenty-one more that neither can -- including the XRP Ledger, Bitcoin, Solana, Tron, TON, Cardano, Litecoin, Dogecoin, Sui, Starknet and BNB Chain -- and delivers the token you pick rather than a stablecoin. The XRP Ledger is among them, carrying native XRP. Axelar adds no destination of its own — it is a second way to reach Ethereum, Solana and the XRP Ledger, carrying SHX rather than a stablecoin. Several chains take more than one route, and you choose which to use."],
+  ["How long does a transfer take?", "NEAR Intents is the quickest end to end at about thirty seconds, delivered for you. Axelar takes about five minutes, also delivered for you. LayerZero takes about 30 minutes and likewise needs nothing from you afterwards: it waits 320 Stellar ledgers before its verifiers sign off, then delivers. CCTP is ready in about five seconds, because the confirmations Circle counts are on Stellar and Stellar needs one — but ready is not arrived, and you still have to send the claim yourself."],
+  ["What are the cross-chain fees?", "LumosCore takes 0.2% of the amount you bridge, or 0.1% if you hold 250,000 LUMOS or more, so send 100 and 99.8 arrives. Circle charges nothing for CCTP, but you pay the destination chain’s gas to claim. LayerZero charges a messaging fee in XLM, quoted before you sign, and nothing to claim afterwards. Axelar charges a delivery fee, also in XLM and also quoted before you sign — if it cannot be priced the route is shown as unavailable rather than as free. NEAR Intents quotes one all-in rate from its solvers before you deposit. Every route shows the whole cost before you commit."],
+  ["Can I bridge my own Stellar asset?", "As the asset you send, yes. Each route carries one thing, so whatever you send is swapped into it first, at a rate shown before you sign. For CCTP that is USDC and for LayerZero USDT0, and what lands is real USDC or USDT0 rather than a wrapped copy of your token. NEAR Intents takes XLM or USDC from Stellar and delivers the token you chose on the other side. Axelar carries SHX, which is the one case where a Stellar asset crosses as itself."],
 ];
 
 const FEE = 'LumosCore charges 0.2% per trade, reduced to 0.1% if you hold at least 250,000 LUMOS. '
@@ -93,7 +109,7 @@ const FAQ = {
     ["What do the pool reserves mean?", "The reserves are how much of each asset the pool currently holds. Their ratio is its price and their size is its depth, so a bigger pool absorbs a large trade with less movement."],
     ["What are the risks?", "As prices move the pool sells whichever asset is rising and buys the one falling, so you can withdraw less of the winner than you put in and fees may not cover it. A pool is also only as sound as its two assets."],
   ],
-  'bridge': LZ_LIVE ? BRIDGE_TWO_ROUTES : [
+  'bridge': LZ_LIVE ? BRIDGE_ALL_ROUTES : [
     ["How do I bridge USDC to or from Stellar?", "Pick the source and destination chains, enter an amount and approve it in your wallet. The USDC is burned on one chain and minted on the other, never wrapped and never held by us. You then redeem it on the destination chain to finish."],
     ["Do I have to claim the USDC on the other side?", "Yes. A bridge is two halves: LumosCore burns the USDC on the chain you are leaving, and the destination chain only mints once a redeem is submitted there. That redeem is your own transaction, so keep a little of the destination chain’s gas token."],
     ["What if I close the tab before claiming?", "Nothing is stranded. The burn hash, Circle’s message and the attestation, everything a redeem needs, are saved the moment they exist and listed under Awaiting redemption. Come back and finish the transfer whenever you like."],
@@ -133,53 +149,9 @@ const FAQ = {
 
 };
 
-// The answers used to sit as bare text in a bare div -- no card, no edge, nothing separating one
-// question from the next but a gap. Sixty-four of them stacked that way is a wall. They are cards now,
-// and each question carries an accent "?" so the eye can find where one ends and the next begins.
-//
-// THE "?" IS A CSS `content`, NOT A <span>?</span>, and that is not a stylistic preference: the site's
-// logo healer repaints any element holding 1-5 characters into a ticker logo, so a one-character span
-// here would have been turned into a token badge. `::before` content is invisible to it.
-//
-// `transform-origin:center bottom` + scale on hover rather than a lift, for the reason written out in
-// _prodcards.js: a hover that raises the bottom edge pulls it out from under the pointer, drops the
-// hover, falls back, and flickers. Sixty-four cards is sixty-four chances to hit that.
-const CSS = `<style id="lx-faq-css">
-.lx-faq{max-width:1180px;margin:8px auto 0;padding:52px 24px 60px;border-top:1px solid var(--border)}
-.lx-faq h2{font-size:clamp(26px,3vw,36px);font-weight:800;letter-spacing:-.02em;color:var(--text);
- text-align:center;text-wrap:balance;margin:0 0 26px}
-.lx-faq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
-.lx-faq-item{position:relative;padding:22px 22px 24px;border-radius:16px;
- border:1px solid var(--border);background:linear-gradient(180deg,var(--surface),var(--bg));
- transform-origin:center bottom;
- transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease}
-.lx-faq-item:hover{transform:scale(1.012);border-color:rgba(234,106,44,.42);
- box-shadow:0 16px 36px -26px rgba(234,106,44,.7)}
-.lx-faq-q{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;
- font-size:16.5px;font-weight:700;line-height:1.38;color:var(--text);margin:0 0 9px}
-.lx-faq-q::before{content:"?";display:flex;align-items:center;justify-content:center;
- width:24px;height:24px;border-radius:8px;font-size:14px;font-weight:800;line-height:1;
- color:var(--accent);background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.26)}
-.lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0;padding-left:35px}
-/* The eight category pills needed 1207px in a row against a 1132px strip, so "MCP" wrapped alone onto
-   a second line and read as a mistake. 24px of side padding down to 19 gives back 80px across eight
-   pills, and 12px of gap down to 10 gives 14 more -- about 1113px, one row with room spare.
-   .lx-faq-scoped (0,2,0) ON PURPOSE: _landingsections.js sets these same two properties on the bare
-   .lx-faqtab (0,1,0) and is injected LATER in the document, so an equal-specificity rule here would
-   lose on source order. It also cannot be edited there -- that transform injects the networks header
-   _whylumos.js later replaces, so it can no longer be re-run on its own. These pills exist only on the
-   six landing files, so scoping this globally touches nothing else. */
-.lx-faq .lx-faqtabs{gap:10px}
-.lx-faq .lx-faqtab{padding:13px 19px}
-@media(max-width:900px){.lx-faq .lx-faqtab{padding:11px 16px}}
-@media(max-width:640px){.lx-faq .lx-faqtab{padding:9px 14px}}
-@media(prefers-reduced-motion:reduce){.lx-faq-item,.lx-faq-item:hover{transition:none;transform:none}}
-@media(max-width:640px){.lx-faq{padding:34px 16px 40px}.lx-faq h2{font-size:22px;margin-bottom:20px}
-.lx-faq-grid{gap:14px}.lx-faq-item{padding:18px 17px 19px;border-radius:14px}
-.lx-faq-a{padding-left:0}}
-</'+'style>`.replace("</'+'style>", "</" + "style>");
-
-function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
+// The look of this block -- the stylesheet, the accordion markup and its behaviour -- is in
+// _faqview.js. See that file for why it is shaped the way it is and which three constraints the
+// shape is answering. Everything below is content and grouping.
 
 // The landing page was showing 7 of the ~64 answers this file already holds, because it rendered one
 // page's set like every other page does. The other 57 existed and were reachable nowhere from the front
@@ -200,120 +172,19 @@ const GROUPS = [
   ['MCP', ['mcp']],
 ];
 
-const TABCSS = '<style id="lx-faqtabs-css">'
-  // Centred, and tighter than before: at 10px gap and 18px of side padding the eight pills wrapped
-  // with MCP stranded alone on a second row, which reads as a mistake rather than a layout.
-  + '.lx-faqtabs{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 28px;justify-content:center}'
-  + '.lx-faqtab{appearance:none;cursor:pointer;font:inherit;font-size:14px;font-weight:700;'
-  + 'color:var(--text-soft);background:var(--surface);border:1px solid var(--border);'
-  + 'border-radius:999px;padding:9px 16px;display:inline-flex;align-items:center;gap:8px;'
-  + 'transition:color .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease}'
-  + '.lx-faqtab:hover{color:var(--text);border-color:rgba(234,106,44,.5)}'
-  + '.lx-faqtab span{font-size:12px;font-weight:600;color:var(--text-soft);'
-  + 'background:var(--bg-elev,rgba(127,127,127,.14));border-radius:999px;padding:2px 8px;'
-  + 'transition:color .16s ease,background .16s ease}'
-  // The selected pill is the only lit thing in the strip, so it gets a real gradient and a glow
-  // rather than a flat accent fill -- it has to win against seven neighbours at a glance.
-  + '.lx-faqtab.is-on{color:#fff;border-color:transparent;'
-  + 'background:linear-gradient(180deg,#f0813f,var(--accent));'
-  + 'box-shadow:0 8px 22px -10px rgba(234,106,44,.9)}'
-  + '.lx-faqtab.is-on span{color:#fff;background:rgba(255,255,255,.24)}'
-  + '.lx-faqtab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}'
-  // Panes are hidden with display:none rather than height:0 so a collapsed pane is not focusable and
-  // not read out, and so the section does not reserve the tallest group's height.
-  //
-  // Selector is .lx-faq .lx-faqpane, not .lx-faqpane: a pane also carries .lx-faq-grid, whose
-  // display:grid lives in the lx-faq-css block that gets appended AFTER this one. At equal specificity
-  // the later rule wins, so the bare class lost and every pane rendered open at once. Two classes beat
-  // one regardless of which order the two style blocks land in.
-  + '.lx-faq .lx-faqpane{display:none}'
-  + '.lx-faq .lx-faqpane.is-on{display:grid}'
-  + '@media (max-width:640px){.lx-faqtabs{gap:8px;margin-bottom:22px}'
-  + '.lx-faqtab{font-size:13px;padding:9px 14px}}'
-  + '</st' + 'yle>';
-
-const TABJS = '<script id="lx-faqtabs-js">(function(){'
-  + 'function go(root,id){'
-  + 'var ts=root.querySelectorAll(".lx-faqtab"),ps=root.querySelectorAll(".lx-faqpane"),i;'
-  + 'for(i=0;i<ts.length;i++){var on=ts[i].getAttribute("data-lxfaq")===id;'
-  + 'ts[i].classList.toggle("is-on",on);ts[i].setAttribute("aria-selected",on?"true":"false");}'
-  + 'for(i=0;i<ps.length;i++){ps[i].classList.toggle("is-on",ps[i].getAttribute("data-lxfaqpane")===id);}'
-  + '}'
-  // Delegated, so it survives the page re-rendering the section, and bound once.
-  + 'if(window.__lxFaqTabs)return;window.__lxFaqTabs=1;'
-  + 'document.addEventListener("click",function(e){'
-  + 'var b=e.target&&e.target.closest?e.target.closest(".lx-faqtab"):null;if(!b)return;'
-  + 'var root=b.closest(".lx-faq");if(!root)return;'
-  + 'e.preventDefault();go(root,b.getAttribute("data-lxfaq"));'
-  + '},false);'
-  + '})();</scr' + 'ipt>';
-
-function blockGrouped() {
-  const groups = GROUPS.map(function (g) {
-    const seen = {}, items = [];
-    g[1].forEach(function (k) {
-      (FAQ[k] || []).forEach(function (qa) { if (!seen[qa[0]]) { seen[qa[0]] = 1; items.push(qa); } });
-    });
-    return { label: g[0], id: g[0].toLowerCase().replace(/[^a-z0-9]+/g, '-'), items: items };
-  }).filter(function (g) { return g.items.length; });
-
-  const tabs = groups.map(function (g, i) {
-    return '<button type="button" class="lx-faqtab' + (i === 0 ? ' is-on' : '') + '" role="tab"'
-      + ' aria-selected="' + (i === 0 ? 'true' : 'false') + '" aria-controls="lxfaq-' + g.id + '"'
-      + ' data-lxfaq="' + g.id + '">' + esc(g.label) + ' <span>' + g.items.length + '</span></button>';
-  }).join('');
-
-  const panes = groups.map(function (g, i) {
-    const qs = g.items.map(function (qa) {
-      return '<div class="lx-faq-item"><h3 class="lx-faq-q">' + esc(qa[0]) + '</h3>'
-        + '<p class="lx-faq-a">' + esc(qa[1]) + '</p></div>';
-    }).join('');
-    return '<div class="lx-faq-grid lx-faqpane' + (i === 0 ? ' is-on' : '') + '" id="lxfaq-' + g.id + '"'
-      + ' role="tabpanel" data-lxfaqpane="' + g.id + '">' + qs + '</div>';
-  }).join('');
-
-  // Every answer on the page goes into the structured data, deduped across groups.
-  const seen = {}, all = [];
-  groups.forEach(function (g) {
-    g.items.forEach(function (qa) { if (!seen[qa[0]]) { seen[qa[0]] = 1; all.push(qa); } });
-  });
-  const ld = {
-    '@context': 'https://schema.org', '@type': 'FAQPage',
-    mainEntity: all.map(function (qa) {
-      return { '@type': 'Question', name: qa[0], acceptedAnswer: { '@type': 'Answer', text: qa[1] } };
+// Grouped (landing) and flat (every other page) both go through the one renderer. Grouping is by
+// what a reader would look for, not by page key -- Trade covers the market, the asset page and the
+// overview -- and a question that appears in more than one merged set is kept once.
+function groupedSpec() {
+  return {
+    groups: GROUPS.map(function (g) {
+      const seen = {}, items = [];
+      g[1].forEach(function (k) {
+        (FAQ[k] || []).forEach(function (qa) { if (!seen[qa[0]]) { seen[qa[0]] = 1; items.push(qa); } });
+      });
+      return { label: g[0], id: g[0].toLowerCase().replace(/[^a-z0-9]+/g, '-'), items: items };
     }),
   };
-
-  // data-lxnonav is not decoration. The landing page runs a delegated click handler that matches an
-  // element's TEXT against the nav labels and navigates, with stopImmediatePropagation, before any
-  // later listener sees the event. Four of these tabs are named after destinations -- Trade, Launchpad,
-  // Pools, Wallet -- so clicking them tried to leave the page and the panel never switched, while
-  // Cross-chain and MCP worked fine. That handler bails on the first [data-lxnonav] ancestor, so the
-  // flag goes on the tab strip. Its own role="tab" skip-list is checked too late to help.
-  return '<section class="lx-faq" id="faq"><h2>Frequently asked questions</h2>'
-    + '<div class="lx-faqtabs" role="tablist" data-lxnonav="1">' + tabs + '</div>'
-    + '<div class="lx-faqpanes">' + panes + '</div></section>'
-    + '<script type="application/ld+json" id="lx-faq-ld">'
-    + JSON.stringify(ld).replace(/</g, '\\u003c') + '</scr' + 'ipt>'
-    + TABCSS + TABJS;
-}
-
-function block(items) {
-  const qs = items.map(([q, a]) =>
-    '<div class="lx-faq-item"><h3 class="lx-faq-q">' + esc(q) + '</h3>'
-    + '<p class="lx-faq-a">' + esc(a) + '</p></div>').join('');
-  const ld = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: items.map(([q, a]) => ({
-      '@type': 'Question', name: q,
-      acceptedAnswer: { '@type': 'Answer', text: a },
-    })),
-  };
-  return '<section class="lx-faq" id="faq"><h2>Frequently asked questions</h2>'
-       + '<div class="lx-faq-grid">' + qs + '</div></section>'
-       + '<script type="application/ld+json" id="lx-faq-ld">'
-       + JSON.stringify(ld).replace(/</g, '\\u003c') + '</scr' + 'ipt>';
 }
 
 function baseName(key) {
@@ -331,28 +202,14 @@ for (const chain of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'st
     for (const key of Object.keys(json)) {
       const items = FAQ[baseName(key)];
       if (!items) continue;
-      let h = json[key];
-      // idempotent: drop whatever a previous run injected
-      h = h.replace(/<section class="lx-faq"[\s\S]*?<\/section>/g, '')
-           .replace(/<script type="application\/ld\+json" id="lx-faq-ld">[\s\S]*?<\/script>/g, '')
-           .replace(/<style id="lx-faq-css">[\s\S]*?<\/style>/g, '')
-           .replace(/<style id="lx-faqtabs-css">[\s\S]*?<\/style>/g, '')
-           .replace(/<script id="lx-faqtabs-js">[\s\S]*?<\/script>/g, '');
-
       const isLanding = /^lumoscore-landing(-mobile)?\.html$/.test(key);
-      const markup = isLanding ? blockGrouped() : block(items);
-      // The landing page ends on its call to action, so the FAQ goes ABOVE it. Anchoring on the footer
-      // like every other page would drop it below the CTA and leave the page closing on a list of
-      // questions -- the opposite of the order the page was rearranged into.
-      const cta = isLanding ? h.indexOf('<section class="final-cta-section"') : -1;
-      const fi = cta >= 0 ? cta : h.lastIndexOf('<footer');
-      if (fi < 0) continue;                       // nothing to anchor to — skip rather than guess
-      h = h.slice(0, fi) + markup + h.slice(fi);
+      // Strip, render and re-anchor all happen in the renderer, so the two chains cannot diverge on
+      // any of the three. It returns null when a page has nowhere to put the block -- skip rather
+      // than guess, same as before.
+      const out = view.apply(json[key], isLanding ? groupedSpec() : { items: items });
+      if (out === null) continue;
 
-      const bi = h.lastIndexOf('</body>');
-      if (bi >= 0) h = h.slice(0, bi) + CSS + h.slice(bi);
-
-      json[key] = h; changed = true; touched++;
+      json[key] = out; changed = true; touched++;
     }
 
     if (changed) {
