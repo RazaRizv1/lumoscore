@@ -58,11 +58,14 @@ const APTOS_LOGO_PREFIX = CH.aptos.logo.slice(0, 96);
 //
 // The class-based rules above KEEP their gate — those hide by element, not by src, so they have no
 // way to clear themselves and genuinely need lx-chainready to reveal.
-const HEAD='<style id="lx-chainready-css">'
+const HEAD_CSS='<style id="lx-chainready-css">'
 +'html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}'
 +'img[src^="'+APTOS_LOGO_PREFIX+'"]{visibility:hidden!important}'
-+'</style>'
-+'<script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();<'+'/script>';
++'</style>';
+// The same two blocks addressable one at a time, so each can be swapped where it already sits rather
+// than re-inserted at </head>. HEAD stays the concatenation, for the first-time append path.
+const HEAD_JS='<script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();<'+'/script>';
+const HEAD=HEAD_CSS+HEAD_JS;
 
 const STYLE='<style id="lx-mc-css">'
 +'.lxmc{position:relative;flex-shrink:0}'
@@ -96,7 +99,30 @@ const STYLE='<style id="lx-mc-css">'
 +'.lxw-neti{border-radius:50%!important;box-shadow:none!important}.lxw-neti img{transform:scale(1.12)}'
 +'</style>';
 
-let n=0;
+// IN PLACE, NOT STRIP-AND-RE-APPEND.
+//
+// This used to strip `lx-mc-css` + `lx-mc` by regex and re-append both before </body>. On a tree that
+// already carries them that is a MOVE: the pair lands LAST however early it used to sit, dragging
+// every layer that followed it one position earlier. Harmless in a full rebuild, where every
+// transform runs in order; a silent, 95-page cascade when this one is run on its own to carry a
+// single edit to _mc_engine.js -- which is exactly what it is useful for.
+// ([[running-one-stellar-transform-reorders-layers]], [[a-transform-that-patches-in-place-cannot-reorder]])
+//
+// Swapping each block where it already sits makes the transform order-neutral. A page that never
+// carried the layer still appends, and still lands last; that is correct, and a layer-order gate
+// should read it as a set difference rather than as a move -- which is why `swapped` and `appended`
+// are reported separately below. An `appended` above zero on an already-built tree is the one outward
+// sign a layer is about to change position.
+const swapAt=(src,open,block)=>{
+  const at=src.indexOf(open);
+  if(at<0) return null;
+  const close=open.slice(0,1)+'/'+open.slice(1,open.indexOf(' '))+'>';
+  const end=src.indexOf(close,at);
+  if(end<at) return null;
+  return src.slice(0,at)+block+src.slice(end+close.length);
+};
+
+let n=0,swapped=0,appended=0;
 for(const dev of ['desktop','mobile']){
   const file=`lumoscore-aptos-${dev}.html`;
   let data; try{ data=read(file); }catch(e){ continue; }
@@ -104,15 +130,37 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     if(h.indexOf('</body>')<0) continue;
-    h=h.replace(/<style id="lx-mc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-mc">[\s\S]*?<\/script>/g,'');
-    // strip the OLD whole-body gate (blanked heavy pages) + our own chainready gate (idempotent re-inject)
+    // The OLD whole-body gate is REMOVED, not re-inserted — a genuine deletion, so it moves nothing.
     h=h.replace(/<style id="lx-preskin-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-preskin-js">[\s\S]*?<\/script>/g,'');
-    h=h.replace(/<style id="lx-chainready-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-chainready-js">[\s\S]*?<\/script>/g,'');
-    if(h.indexOf('</head>')>=0) h=h.replace('</head>',HEAD+'</head>');   // TARGETED per-element gate in <head>
-    const bi=h.lastIndexOf('</body>');
-    json[k]=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); n++;
+
+    // `</head>` IS NOT A FIXED CASCADE POSITION EITHER. This pair was stripped and re-inserted at
+    // </head> under the comment "a FIXED anchor ... cannot change their position". It can and did:
+    // re-inserting at </head> lands them LAST in the head, so on a tree that already carried them
+    // they jumped from just after lx-wrongchain to after lx-faq-head — 128 of 128 page keys, caught
+    // by the ordered-id fingerprint and not by anything else. Same trap as </body>, same fix: swap
+    // where they already sit ([[body-end-is-not-a-fixed-cascade-position]]).
+    const hs1=swapAt(h,'<style id="lx-chainready-css">',HEAD_CSS);
+    const hs2=swapAt(hs1===null?h:hs1,'<script id="lx-chainready-js">',HEAD_JS);
+    if(hs1!==null&&hs2!==null) h=hs2;
+    else{
+      h=h.replace(/<style id="lx-chainready-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-chainready-js">[\s\S]*?<\/script>/g,'');
+      if(h.indexOf('</head>')>=0) h=h.replace('</head>',HEAD+'</head>');   // first time: lands last in <head>
+    }
+
+    const sw1=swapAt(h,'<style id="lx-mc-css">',STYLE);
+    const sw2=swapAt(sw1===null?h:sw1,'<script id="lx-mc">',SCRIPT);
+    if(sw1!==null&&sw2!==null){ h=sw2; swapped++; }
+    else{
+      // Never carried the pair (or carried only half of one): clear whatever is there and append,
+      // which correctly lands last on a page seeing this for the first time.
+      h=h.replace(/<style id="lx-mc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-mc">[\s\S]*?<\/script>/g,'');
+      const bi=h.lastIndexOf('</body>');
+      h=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); appended++;
+    }
+    json[k]=h; n++;
   }
   const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
   fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
 }
-console.log('multichain engine injected on '+n+' aptos page keys');
+console.log('multichain engine injected on '+n+' aptos page keys — '
+  +swapped+' swapped in place, '+appended+' appended');

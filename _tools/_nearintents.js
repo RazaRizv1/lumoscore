@@ -506,12 +506,12 @@ function runtime(NI_SENDABLE) {
           var goSign = function () { return Promise.resolve(f.signTransaction(tb.toXDR(), { networkPassphrase: CC.passphrase, network: 'PUBLIC', address: pk })); };
           return (window.lxCctpGateSign ? window.lxCctpGateSign(label, goSign) : goSign()).then(function (sig) {
             var xdr = (sig && (sig.signedTxXdr || sig.signedXDR)) || sig;
-            if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Signing cancelled.');
+            if ((sig && sig.error) || typeof xdr !== 'string') throw new Error('Cancelled by the user.');
             up('Submitting ' + label + '…');
             return fetch(CC.horizon + '/transactions', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'tx=' + encodeURIComponent(xdr) })
               .then(function (r) { return r.json(); }).then(function (res) {
                 if (res.successful || res.hash) return res;
-                var rc = res.extras && res.extras.result_codes; throw new Error(label + ' failed: ' + (rc ? JSON.stringify(rc) : 'unknown'));
+                var rc = res.extras && res.extras.result_codes; throw new Error(window.lxBrTxMsg ? window.lxBrTxMsg(rc, label) : (label + ' did not go through. Nothing was sent.'));
               });
           });
         }

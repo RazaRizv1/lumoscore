@@ -53,7 +53,11 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + 'max-width:50ch;margin:0 auto;text-wrap:pretty}'
   + '@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}'
   + '.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}'
-  + '@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}'
+  // One column until 1024. Between ~720 and ~1050 the desktop layout's side column leaves the
+  // content area only 448-584px wide, so two card columns give the meta line under 140px and the
+  // longest route list ("CCTP, LayerZero, NEAR Intents, Axelar") needs 5 lines inside a 2-line
+  // clamp. Measured on staging 3f9f8f79: 768->68px, 820->94px, 900->134px, 1024->196px (fits).
+  + '@media(max-width:1023px){.lx-lp-grid{grid-template-columns:1fr}}'
   + '.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;'
   + 'border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;'
   // a barely-there top highlight, so the card reads as a raised surface on the dark build without
@@ -79,8 +83,17 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + '.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}'
   + '.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
   + 'letter-spacing:-.01em}'
+  // IT WRAPS NOW, 2026-11-14. This was `white-space:nowrap` with an ellipsis, and the bridge card
+  // had already outgrown it: at RAZA's window the XRPL card read "NEAR Intents, Axelar, THORCha..."
+  // -- a truncation that silently drops a route from a list whose whole job is naming the routes.
+  // Adding Axelar to Stellar's line would have clipped that one too.
+  //
+  // Two lines, then ellipsis, so a long list stays readable while a runaway string still cannot
+  // stretch the card. -webkit-line-clamp is the only way to ellipsise a MULTI-line box; it needs
+  // the -webkit-box display and is supported everywhere this site runs.
   + '.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;'
-  + 'color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + 'color:var(--text-muted,#8a8fa3);white-space:normal;overflow:hidden;'
+  + 'display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}'
   // The chevron sits in a disc that fills with the accent on hover, so the live card has one obvious
   // thing to aim at rather than a bare glyph.
   + '.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;'
@@ -214,7 +227,13 @@ const HUBS = [
     key: 'lumoscore-bridge', path: '/bridge',
     h1: 'Bridge', title: 'Bridge — Choose a network | LumosCore',
     sub: 'Move assets between networks. Choose the network you are bridging from.',
-    stellarMeta: 'CCTP, LayerZero, NEAR Intents',
+    // AXELAR ADDED 2026-11-14 (RAZA: "stellar is not mentioning Axelar"). Counted on
+    // /bridge/stellar rather than assumed, using the method the note below insists on: a vocabulary
+    // deliberately wider than this card's, so a route nobody thought of still shows up. Axelar
+    // appears 74 times on that page, beside CCTP 326, LayerZero 121, USDT0 115 and NEAR Intents 101
+    // -- and the page carries its own note answering "Why is Axelar bridge written differently?",
+    // which is not something an absent route attracts. THORChain remains 0 there.
+    stellarMeta: 'CCTP, LayerZero, NEAR Intents, Axelar',
     // THREE ROUTES, and I got this wrong twice before reading the page properly. It is not "Axelar
     // ITS" (my first guess), and it is not "Axelar, NEAR Intents" (my second): /bridge/xrpl titles
     // itself "39 networks via NEAR Intents, Axelar and THORChain" and answers its own FAQ with
@@ -224,9 +243,10 @@ const HUBS = [
     // expected to find -- cctp|layerzero|axelar|near intents -- which cannot report a route I did not
     // think of. Counting what the page actually names is the only check that can.
     //
-    // The two chains' route sets are genuinely different and neither contains the other: Axelar and
-    // THORChain are XRPL-only, CCTP and LayerZero are Stellar-only, NEAR Intents is on both. Ordered
-    // as the page orders them.
+    // THE CLAIM THAT FOLLOWED THIS WAS TRUE WHEN WRITTEN AND IS NOT NOW: it read "Axelar and
+    // THORChain are XRPL-only". Axelar came back to Stellar (ITS), so the only route still exclusive
+    // to this fork is THORChain. CCTP and LayerZero stay Stellar-only; NEAR Intents is on both.
+    // A route set is a fact with a date on it -- re-count it, do not inherit it.
     xrplMeta: 'NEAR Intents, Axelar, THORChain',
   },
   {
@@ -410,11 +430,15 @@ function scriptHTML(hub) {
     + 'try{ a=localStorage.getItem("lumos.address")||"";'
     + 'n=(localStorage.getItem("lumos.network")||"").toLowerCase();'
     + 'c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}'
-    + 'if(n!=="xrpl"&&n!=="stellar"){ n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":""); }'
-    + 'if(!n)n=(c==="xrpl"||c==="stellar")?c:"";'
+    + 'if(n!=="xrpl"&&n!=="stellar"&&n!=="near"){ n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":""); }'
+    + 'if(!n)n=(c==="xrpl"||c==="stellar"||c==="near")?c:"";'
     // XRPL only when this build actually carries those pages. Forwarding to /xrpl on a Stellar-only
     // build would replace a working chooser with a 404 — the chooser is the correct answer there.
     + 'if(a&&n==="xrpl"&&' + JSON.stringify(XRPL_PUBLIC) + '){ location.replace(HUB+"/xrpl"); return; }'
+    // NEAR TOO (RAZA 2026-11-15: from /mcp with a NEAR wallet, every side-menu link landed on the Stellar page). This
+    // knew two networks, so a NEAR wallet matched neither and fell through to the Stellar line below. Production
+    // combines NEAR in (xrpl near), so /<hub>/near is always there.
+    + 'if(a&&n==="near"){ location.replace(HUB+"/near"); return; }'
     + 'if(a&&(n===""||n==="stellar")){ location.replace(HUB+"/stellar"); return; }'
     + 'document.documentElement.classList.add("lx-lp-on");'
     // THE COOKIE IS THE CHOICE, on a hub whose two networks share one url. Only the launchpad is
@@ -483,8 +507,25 @@ function scriptHTML(hub) {
 
 const baseOf = (k) => k.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '');
 
-let pages = 0, missed = 0;
+let pages = 0, missed = 0, swapped = 0, appended = 0;
 const hit = {};
+
+// IN PLACE, NOT STRIP-AND-RE-APPEND (2026-11-14). The head blocks used to be stripped and re-added
+// just before </head>, which lands them LAST in the cascade however early they used to sit -- the
+// trap in [[running-one-stellar-transform-reorders-layers]], and the reason a single Stellar
+// transform could not safely be run on its own. There is no recipe file on the Stellar side, so
+// "just re-run everything in order" is not available here; the fix is to stop moving things.
+//
+// Swapping each block where it already sits makes this transform order-neutral. The two counters
+// are reported separately because an `appended` above zero on a tree that already carries the layer
+// is the one outward sign that a block was not found where it was left.
+function putHead(h, open, close, block) {
+  const at = h.indexOf(open);
+  const end = at < 0 ? -1 : h.indexOf(close, at);
+  if (at >= 0 && end > at) { swapped++; return h.slice(0, at) + block + h.slice(end + close.length); }
+  appended++;
+  return h.indexOf('</head>') >= 0 ? h.replace('</head>', block + '</head>') : h;
+}
 for (const dev of ['desktop', 'mobile']) {
   const file = `lumoscore-aptos-${dev}.html`;
   let data; try { data = read(file); } catch (e) { continue; }
@@ -499,11 +540,17 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    // Strip unconditionally, on EVERY page: an earlier run of this file put the LUMOS chooser on its
-    // page, and a page that is no longer a hub must lose its markup rather than keep it forever.
-    p = p.replace(/<style id="lx-lumosparent-css">[\s\S]*?<\/style>/g, '')
-         .replace(/<script id="lx-lumosparent">[\s\S]*?<\/script>/g, '')
-         .replace(/<section class="lx-lp"[\s\S]*?<\/section>/g, '');
+    // The VIEW is stripped and re-inserted at a FIXED anchor below (top of <main> or .container),
+    // so it lands exactly where it was and needs no in-place handling. Only the two head blocks do.
+    p = p.replace(/<section class="lx-lp"[\s\S]*?<\/section>/g, '');
+
+    // A page that is no longer a hub must LOSE its markup rather than keep it forever -- an earlier
+    // run of this file put the LUMOS chooser on its own page. On a page that is still a hub the
+    // blocks are left where they are and swapped in place by putHead(), not stripped and re-added.
+    if (!hub) {
+      p = p.replace(/<style id="lx-lumosparent-css">[\s\S]*?<\/style>/g, '')
+           .replace(/<script id="lx-lumosparent">[\s\S]*?<\/script>/g, '');
+    }
 
     if (hub) {
       // The view goes at the top of the page's own content wrapper, so the breadcrumb above it still
@@ -519,7 +566,8 @@ for (const dev of ['desktop', 'mobile']) {
       if (ins > 0) {
         p = p.slice(0, ins) + viewHTML(hub) + p.slice(ins);
         // head, so the gate is pre-paint and the style is present before the first frame
-        if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + scriptHTML(hub) + '</head>');
+        p = putHead(p, '<style id="lx-lumosparent-css">', '</style>', STYLE);
+        p = putHead(p, '<script id="lx-lumosparent">', '</script>', scriptHTML(hub));
         pages++;
         hit[hub.path] = (hit[hub.path] || 0) + 1;
       } else { console.log('  ! no insertion point on ' + k); missed++; }
@@ -534,7 +582,8 @@ for (const dev of ['desktop', 'mobile']) {
   }
 }
 const cover = HUBS.map((h) => h.path + ':' + (hit[h.path] || 0)).join(' ');
-console.log('network choosers: ' + pages + ' page key(s) — ' + cover);
+console.log('network choosers: ' + pages + ' page key(s) — ' + cover
+  + '  [' + swapped + ' head block(s) swapped in place, ' + appended + ' appended]');
 // Every hub must land on at least one page key, or a bare path silently serves the chain page.
 const empty = HUBS.filter((h) => !hit[h.path]);
 if (empty.length) { console.error('  ! no page key matched: ' + empty.map((h) => h.path).join(', ')); process.exit(1); }

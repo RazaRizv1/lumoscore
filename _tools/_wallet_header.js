@@ -129,6 +129,19 @@ function scriptFor(net){
   +'var ARROW=\'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>\';'
   +'function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}'
   +'function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\\u2026"+a.slice(-4):a;}'
+  // THE CHIP IS THE SAME ON EVERY PAGE, WHATEVER CHAIN THE PAGE IS FOR.
+  //
+  // RAZA, 2026-11-14: "You need to show the exact same thing that you're showing on dashboard header
+  // even when we open any other network pages."
+  //
+  // An attempt at a third state here — connected, but on another network — was reverted. The wallet
+  // address is one key shared across chains, and the header simply shows it. Which chain the page is
+  // for is the BODY NOTICE's job (lx-wrongchain: "View only mode. You are currently connected to
+  // Stellar…"), and that notice already names the chain and links to the right page. The header
+  // saying it a second time bought nothing and twice rendered wrong.
+  //
+  // Do not reintroduce a connected test here. NEAR's fork had one; it rendered "Launch App" at
+  // someone who was connected and hid the Disconnect control with it.
   +'function sync(){'
   +'var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);'
   +'mobileMenu(on,addr);'
@@ -259,6 +272,24 @@ function scriptFor(net){
   +'})();</script>';
 }
 
+// SWAP IN PLACE, DO NOT STRIP AND RE-APPEND.
+//
+// This used to strip both blocks and re-insert them before </body>, which always lands them LAST.
+// Measured on the 2026-11-14 build: lx-whead-css and lx-whead moved from index 78/79 to 86/87,
+// jumping over lx-realconnect, lx-nofollow, lx-dexmain, lx-hiw, lx-searchassets and lx-ammdata — so
+// the header's stylesheet started winning cascade fights it had always lost. Nothing was added or
+// removed, which is exactly why a byte count or a layer-set check cannot see it.
+//
+// Rewriting each block where it already sits keeps the position exactly. Only a page that never had
+// the layer appends, and that one correctly lands last. See [[a-transform-that-patches-in-place-cannot-reorder]].
+function swapAt(h,open,close,block){
+  const at=h.indexOf(open); if(at<0) return null;
+  const end=h.indexOf(close,at); if(end<at) return null;
+  return h.slice(0,at)+block+h.slice(end+close.length);
+}
+const SOPEN='<style id="lx-whead-css">', SCLOSE='</style>';
+const JOPEN='<script id="lx-whead">', JCLOSE='</scr'+'ipt>';
+let anchored=0, swapped=0, appended=0;
 let n=0;
 for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
@@ -268,14 +299,47 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
     for(const k of Object.keys(json)){
       let h=json[k];
       if(h.indexOf('lx-topwallet')<0) continue;              // no header chip on this page
-      h=h.replace(/<style id="lx-whead-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-whead">[\s\S]*?<\/script>/g,'');
       h=blankChipAddr(h);
       h=blankAvatar(h);
-      const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-      json[k]=h.slice(0,bi)+STYLE+scriptFor(chain)+h.slice(bi); n++;
+      const js=scriptFor(chain);
+      // PREFERRED: re-insert at a FIXED ANCHOR — immediately after the lx-mc block. Measured on the
+      // approved staging build d63cdcae, lx-mc is the layer directly before lx-whead-css on all ten
+      // routes sampled and on all 128 live page keys, while the layer that FOLLOWS whead varies by
+      // page (lx-realconnect-css, lx-lhiw, lx-dashblogdata, lx-blogdata-css). Anchoring is what makes
+      // this run REPAIR the position a previous strip-and-append had already pushed to the end, and
+      // land in the same place every time after that. A swap in place cannot repair: it preserves
+      // wherever the block currently sits, including somewhere wrong.
+      const mi=h.indexOf('<script id="lx-mc"');
+      const me=mi<0?-1:h.indexOf(JCLOSE,mi);
+      if(mi>=0&&me>mi){
+        h=h.replace(/<style id="lx-whead-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-whead">[\s\S]*?<\/script>/g,'');
+        const cut=h.indexOf(JCLOSE,h.indexOf('<script id="lx-mc"'))+JCLOSE.length;
+        h=h.slice(0,cut)+STYLE+js+h.slice(cut);
+        anchored++; json[k]=h; n++; continue;
+      }
+      const si=h.indexOf(SOPEN), ji=h.indexOf(JOPEN);
+      if(si>=0&&ji>=0){
+        // Rewrite the LATER block first, so the earlier block's offsets are still valid.
+        let t;
+        if(ji>si){
+          t=swapAt(h,JOPEN,JCLOSE,js);     if(t) h=t;
+          t=swapAt(h,SOPEN,SCLOSE,STYLE);  if(t) h=t;
+        }else{
+          t=swapAt(h,SOPEN,SCLOSE,STYLE);  if(t) h=t;
+          t=swapAt(h,JOPEN,JCLOSE,js);     if(t) h=t;
+        }
+        swapped++;
+      }else{
+        // Never carried the layer (or carries only half of it): clear any remnant and append.
+        h=h.replace(/<style id="lx-whead-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-whead">[\s\S]*?<\/script>/g,'');
+        const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
+        h=h.slice(0,bi)+STYLE+js+h.slice(bi);
+        appended++;
+      }
+      json[k]=h; n++;
     }
     const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
   }
 }
-console.log('wallet header-sync injected on '+n+' page keys');
+console.log('wallet header-sync on '+n+' page keys ['+anchored+' re-anchored after lx-mc, '+swapped+' swapped in place, '+appended+' appended]');

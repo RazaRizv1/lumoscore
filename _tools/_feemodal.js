@@ -313,16 +313,59 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
   +'var n=b>=1?Math.round(b).toLocaleString("en-US"):(Math.round(b*100)/100);'
   +'t.innerHTML="You hold <b>"+n+"</b> / 250,000 LUMOS";}'
   +'window.addEventListener("lx:feetier",function(){try{lxRvBal();}catch(_){}} );'
-    +'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-limit .dxa-trade-summary,.dxa-pane-swap .mdxa-trade-summary,.dxa-pane-limit .mdxa-trade-summary");'
+// THE LIMIT PANE IS NOT IN THIS SELECTOR, because a Stellar limit order is free (RAZA 2026-11-01:
+// "on stellar we weren't charging because its a limit order. what if the order never fills. the user
+// would have still paid the fees").
+//
+// It is not a policy choice that could go the other way here. A limit order is a native
+// manageSellOffer/manageBuyOffer (_dexassetdata.js dxExecuteLimit) -- the order rests on Stellar's own
+// book and the fill happens directly between two accounts, with NO LumosCore operation in the path. So
+// placement is the only moment a fee could be attached, and an order that never fills would have paid
+// for nothing. /docs/fees has said "Limit orders | Free | No platform fee, whether the order fills or
+// not" since launch and /docs/limit-orders is titled "Free Resting Orders"; this pane was the last
+// surface contradicting them.
+//
+// Dropping the pane here removes BOTH things this function appends to a summary: the "Trading fee" row
+// and the .lx-feebanner-wrap under it, which advertised "50% off trading fees" on a pane with no fee to
+// halve. The .lx-feetier card below the CTA is a third claim and belongs to _feetier.js, narrowed there.
+// All three were read off production before the change, not off the build.
+//
+// CROSS-REPO, and the reason this is a selector change rather than a CSS hide: NEAR charges on its
+// limit orders and its dxalimit.js feeRow() starts `var row = $('.lx-feerow', p); if (!row) return;`
+// -- it writes its own figure INTO the row this function creates. A NEAR base re-cut from today's
+// Stellar build therefore finds no row and silently stops showing the NEAR fee. Raised for the NEAR
+// chat, not patched from here. XRPL already hides this row itself (browser/limit.js), Hedera creates
+// its own when absent (browser/hederalimit.js), Arc strips the whole limit tab -- those three are
+// unaffected either way.
+    +'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-swap .mdxa-trade-summary");'
+// THE BANNER IS REPAINTED ON EVERY CALL, NOT ONLY THE FIRST (RAZA 2026-10-16: "I have more than
+// 250K lumos in my wallet yet still im seeing Hold 250,000 for 50% off. This shouldnt appear to
+// those who already have enough lumos in their wallet").
+//
+// This function used to RETURN as soon as it found an existing .lx-feerow, after updating that row
+// and nothing else. So the banner below was written exactly once — on the first call, which happens
+// while the fee tier is still unresolved and __lxFeeRate is its 0.002 default. disc() was false,
+// the nudge went in, and it stayed there for the life of the page.
+//
+// Every later call hit the early return: the 300/1200/3000ms passes, and — the one that was
+// supposed to fix precisely this — the lx:feetier listener below. All of them updated the fee ROW
+// and skipped the BANNER, which is exactly the state reported: "Trading fee 0.1%" sitting directly
+// above "hold 250,000 LUMOS". The two disagreed because only one of them was ever repainted.
+//
+// Reproduced on production with a wallet holding 464,038 LUMOS: __lxFeeRate 0.001, fee row "0.1%",
+// banner class "nudge". Replaying lx:feetier by hand changed nothing, which is what pointed here
+// rather than at the event or the tier resolver — both of which were working.
+//
+// The row creation stays guarded; only the return is gone, so the banner is reached either way.
 +'sums.forEach(function(sum){var ex=sum.querySelector(".lx-feerow");'
-+'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();return;}'
++'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();}else{'
 +'var row=document.createElement("div");var sib=sum.querySelector(".dxa-tsum-row");row.className=(sib?sib.className.replace(/\blx-feerow\b/g,"")+" ":"dxa-tsum-row ")+"lx-feerow";'
 +'row.innerHTML=\'<span>Trading fee</span><span class="lx-feehint">\'+feeHTML()+\'</span>\';'
-+'sum.appendChild(row);'
++'sum.appendChild(row);}'                      // closes the else opened above
   +'try{lxRvBal();}catch(_){}'
   +'var bw=sum.querySelector(".lx-feebanner-wrap");if(!bw){bw=document.createElement("div");bw.className="lx-feebanner-wrap";sum.appendChild(bw);}'
   +'bw.innerHTML=disc()'
-  +'?\'<div class="lx-fee-banner holder"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>You qualify for 0.1% trading fees</b> \u2014 50% Discount</span></div>\''
+  +'?\'<div class="lx-fee-banner holder"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>0.1% trading fees</b> \u2014 50% discount active</span></div>\''
   +':\'<div class="lx-fee-banner nudge"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>50% off trading fees</b> \\u2014 hold 250,000 <a class="lx-fee-lumos" href="lumoscore-lumos-token.html" data-lxc="" data-logoed="1"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>LUMOS</a></span></div>\';'
   +'});return sums.length>0;}'
 +'window.addEventListener("lx:feetier",function(){addRows();});'

@@ -265,19 +265,36 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // 1 + 1 + 73 = 75 assets. The NEAR Intents part is recounted live from the list the bridge's picker uses (same
   // rule: per chain, by symbol, deprecated excluded), so the figure follows 1Click; 75 stands if that call fails.
   // Until LayerZero and NEAR Intents can send (LZ_LIVE), the card states CCTP alone: 8 networks, USDC, Circle CCTP.
+  //
+  // AXELAR added 2026-11-13 (RAZA: "also add axelar on cross-chain now that we've added it"). It rides the SAME
+  // LZ_LIVE gate as the other two optional routes -- _axelar.js is sendable only in an LZ_LIVE build -- so naming
+  // it here can never outrun the route being selectable on the bridge.
+  //
+  //   NETWORKS STAYS 16. Axelar's destinations are Ethereum, Solana and XRPL, and all three were ALREADY
+  //   reachable: Ethereum by CCTP, LayerZero and NEAR Intents; Solana and XRPL by CCTP/LayerZero/NEAR Intents.
+  //   Checked against those route tables, not taken from _axelar.js's own comment. It is a SECOND route on each,
+  //   so bumping the count would have promised a destination that was already counted once.
+  //
+  //   ASSETS +1, NOT +3. SHX lands on all three chains, so the question is whether one asset on three chains
+  //   counts once or three times. The precedent on this very card answers it: CCTP contributes USDC as 1 though
+  //   it delivers on 8 chains, and LayerZero contributes USDT0 as 1 across 12. NEAR Intents is counted per
+  //   chain:symbol only because its token LIST genuinely differs per chain. Axelar is the CCTP shape -- one
+  //   asset, several chains -- so 1. Hence 2 + 1 + n, and every fallback moves 75 -> 76 WITH it: there are
+  //   THREE of them (no-tokens, 6s-timeout, fetch-rejected) and leaving any behind makes the figure depend on
+  //   which failure happened ([[one-formatter-two-cells]]).
   + (LZ_LIVE
-    ? 'set("cnet","16"); set("cvia","CCTP · LayerZero · NEAR Intents");'
+    ? 'set("cnet","16"); set("cvia","CCTP · LayerZero · NEAR Intents · Axelar");'
       + 'fetch("/lxapi/oneclick?op=tokens").then(function(r){ return r.ok?r.json():null; }).then(function(d){'
       + ' var C={eth:1,arb:1,base:1,pol:1,op:1,avax:1,bera:1,monad:1,plasma:1}, seen={}, n=0;'
       + ' ((d&&d.tokens)||[]).forEach(function(t){ if(!t||!C[t.blockchain]||/DEPRECATED/i.test(t.symbol||""))return;'
       + '  var k=t.blockchain+":"+t.symbol; if(!seen[k]){ seen[k]=1; n++; } });'
-      + ' set("casset", n>0?String(2+n):"75"); }).catch(function(){ set("casset","75"); });'
+      + ' set("casset", n>0?String(3+n):"76"); }).catch(function(){ set("casset","76"); });'
       // NOT BELT AND BRACES. Without this, a fetch that never settles leaves this one figure on its
       // skeleton for ever, and a permanently blank stat is worse than a slightly stale one -- the
       // same trade as the $LUMOS pool button, decided the same way. set() clears the "wait" class,
       // so that class IS the "still counting" test; no second flag to keep in sync with the writer.
       + 'try{ setTimeout(function(){ var _ca=row.querySelector(\'[data-k="casset"]\'); '
-      + 'if(_ca&&_ca.classList.contains("wait")) set("casset","75"); },6000); }catch(_){}'
+      + 'if(_ca&&_ca.classList.contains("wait")) set("casset","76"); },6000); }catch(_){}'
     : 'set("cnet","8"); set("casset","USDC"); set("cvia","Circle CCTP");')
   + '})();</script>';
 

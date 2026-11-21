@@ -289,6 +289,170 @@ const SUBS = [
   // The desktop LUMOS page indents this one further again, so neither earlier anchor reached it.
   ["alt=\"\"></span>\n                  </span>\n                  Aptos",
     "alt=\"\"></span>\n                  </span>\n                  Stellar"],
+
+  // ---- PHASE 3: the figures that are nobody's (RAZA 2026-10-27, "use em-dash placeholders and fix
+  //      the Wormhole copy") ---------------------------------------------------------------------
+  //
+  // THIS IS THE ONE EXCLUSION THE HEADER ABOVE MAKES THAT HAS NOW BEEN LIFTED, so read that note
+  // first: it refused to touch "25,420.18 APT" because the runtime turns it into a real balance, and
+  // "baking the settled text would freeze one visitor's data into the page". That reasoning is right
+  // about baking a VALUE and silent about baking a PLACEHOLDER. An em dash is nobody's data, so it
+  // cannot freeze anyone's, and it is what the rest of this codebase already shows for a balance it
+  // does not know -- _dexassetdata.js writes "Balance: --" on a null, and _ammdata.js hides the
+  // Deposit/Withdraw balance line until the real one lands, calling the baked figure "a number
+  // belonging to nobody, beside a MAX button that would have used it".
+  //
+  // WHY IT WAS NOT MERELY COSMETIC. fixBalances() in _walletdata.js opened with
+  // "if(window.__lxNative==null)return", so one value meant both "not loaded yet" and "could not be
+  // read", and in both cases this baked line stayed. Verified on production with the Send dialog
+  // actually OPEN -- not from the markup, and not from a closed modal, whose innerText silently falls
+  // back to textContent and reports hidden nodes as visible:
+  //
+  //     Send   AMOUNT  XLM  Max   Balance: 25,420.18 XLM   RECIPIENT ADDRESS ...
+  //
+  // Max was never wrong (it reads window.__lxMaxXLM, and with no balance known it fills 0); only the
+  // line lied. Receive and Swap were checked the same way and are CLEAN -- Swap shows a real
+  // "Balance: 0 XLM" and its stale rate block is already display:none'd by its own layer -- so
+  // neither is touched here.
+  //
+  // THE MATCHING FIX LANDS IN THE SAME CHANGE, and this pair is unsafe without it: fixBalances
+  // recognised the row by /Balance:\s*[\d.,]+\s*XLM/, which an em dash does not satisfy, so on its
+  // own this edit would have stopped the REAL balance ever being written. That function now accepts
+  // the dash and writes one when the balance is unknown.
+  //
+  // Counted in the containers first, as everything in this file is: 63 desktop + 26 mobile.
+  ['Balance: 25,420.18 APT', 'Balance: —'],
+  // 30 desktop, 0 mobile -- the phone build has no second LP field. Deliberate, not a missed anchor.
+  ['Balance: 4,200.00 USDC', 'Balance: —'],
+
+  // THE RECEIVE ADDRESS, which is the worst-shaped of these: the element shows a Stellar G-address
+  // and its data-copy carries a DIFFERENT fabricated address, an Aptos 0x one, so the screen and the
+  // clipboard disagreed and both were invented. 30 desktop + 25 mobile.
+  //
+  // NOT user-reachable, which is why this is a markup pair and not a layer fix: on /wallet, where
+  // Receive can actually be opened, the real layer has already replaced the whole element -- verified
+  // by opening it, which showed the connected address in both the text and data-copy. Everywhere else
+  // the overlay is an orphan with no trigger, so this text was only ever read by a crawler or an
+  // assistant reading markup. That is exactly this file's remit.
+  //
+  // The data-copy attributes are left for a separate pass: there are five distinct fabricated values
+  // and blanking an attribute is a behaviour change, not a copy one.
+  ['>GA7K5N4M2X9P3R8Q1L6T2V8W4Y7Z3A5B8C2D6E1F4G7H9J2K5N4M2</div>', '>—</div>'],
+
+  // THE BRIDGE PROVIDERS. 2 occurrences each, desktop only, both inside the "How the bridge works"
+  // modal -- which is why no earlier sweep saw them: the modal is display:none until opened, and on
+  // the /bridge HUB it is an orphan that extract_site.js now drops outright. What is left is the
+  // Stellar bridge page, so these name Stellar's three real routes.
+  //
+  // Wormhole is not one of them. It is a correct entry in _bridge.js's provider table for the aptos
+  // and worldchain site folders, so the word itself is not wrong everywhere -- only in this sentence,
+  // on this chain, which is the same "the key on the left, not the word on the right" discipline the
+  // header sets out.
+  ['Cross-chain transfers via Wormhole and LayerZero.',
+    'Cross-chain transfers via Circle CCTP, LayerZero and NEAR Intents.'],
+  ['Transfers route through Wormhole and LayerZero, so you receive the destination asset directly.',
+    'Transfers route through Circle CCTP, LayerZero or NEAR Intents, so you receive the destination asset directly.'],
+
+  // ---- PHASE 4: the Create Pool trading fee (RAZA 2026-10-27, "fix the 0.5% pool fee") ----------
+  //
+  // THE ROW IS ALREADY HIDDEN, which is the whole reason this belongs here and not in a layer.
+  // hideCpFee() in _ammdata.js sets display:none on it, for a reason that file states twice: every
+  // Stellar AMM pool charges 0.3%, fixed by the protocol, so a line stating it on a form whose job is
+  // the decisions you ARE making looks like a setting and is not one. Verified by OPENING the dialog
+  // on production: the summary reads "Initial pool price —" and "Network fee ~0.00001 XLM", nothing
+  // between them. No human sees 0.5%.
+  //
+  // What still said 0.5% was the MARKUP, 5 desktop + 3 mobile (home, amm light+dark, lumos-token
+  // light+dark, and the three phone pages), and that is this file's entire remit -- the header's
+  // "a no-op for every human and a fix for every machine". A JS gate cannot fix what the bytes say.
+  //
+  // 0.3% AND NOT A REMOVAL. Deleting the row would also make the bytes honest, but it would leave
+  // hideCpFee() with nothing to match, so the day the markup changes shape there is no second line of
+  // defence. Correcting the number keeps both: the row is right if it is ever read, and still hidden.
+  // The hide matches /^trading fee/i on the row's text, so "Trading fee0.3%" still trips it.
+  //
+  // XRPL carries the identical row and gets the identical treatment in _xrplcopy2.js -- at 0.2%,
+  // because there the fee is not protocol-fixed: createpool.js submits TradingFee 200 and writes the
+  // same figure into the row at runtime. Same bug, different true value, so the pair cannot be shared.
+  ['<div class="row"><span>Trading fee</span><strong>0.5%</strong></div>',
+    '<div class="row"><span>Trading fee</span><strong>0.3%</strong></div>'],
+
+  // THE SAME WRONG FIGURE, in the OTHER place it appears -- the pool page's Deposit / Withdraw
+  // summary, 2 desktop + 1 mobile (amm-pool light, amm-pool dark, amm-pool mobile). _ammdata.js
+  // already knows about both ("#16: the same row, in the other place it appears") and hides this one
+  // too, via hidePoolFeeRow(), which is why it survived every sweep that looked at the rendered page.
+  //
+  // A DIFFERENT CLASS AND A DIFFERENT LABEL, so the pair above does not reach it: `.r` not `.row`,
+  // and "Trading fee tier" not "Trading fee". Found only by grepping the BUILT bytes for the value
+  // alone after the pair above was applied -- the lesson this file keeps relearning.
+  ['<div class="r"><span>Trading fee tier</span><strong>0.5%</strong></div>',
+    '<div class="r"><span>Trading fee tier</span><strong>0.3%</strong></div>'],
+
+  // ---- PHASE 5: the promo carousel's "Low fees" slide (RAZA 2026-10-27, "fix the promo slide copy
+  //      too") --------------------------------------------------------------------------------
+  //
+  // WHAT IT IS. The design ships a 4-slide promo carousel on the PHONE Trade page. Slide 3 invents a
+  // pricing model LumosCore does not have: a free "sign up" that unlocks a member rate, a 0.8% guest
+  // rate for everyone else, and 0.5% as the headline. There is no account on this site -- slide 4 of
+  // the same carousel says so ("your wallet, your rules") -- and the real schedule is 0.2%, or 0.1%
+  // holding 250,000 LUMOS, which _dexdata.js already states in the How-it-works modal.
+  //
+  // NOBODY SEES IT. inject_livemarket.js replaces this banner with the Living Market hero, so the
+  // whole `.lumos-promo` block computes to display:none on production -- checked on the live phone
+  // page, every slide 0x0. That is what makes it this file's problem and not a layer's: the invented
+  // fee schedule is only ever read by a crawler, an LLM, or anyone viewing source.
+  //
+  // ONE SLIDE, ONE PAGE, ONE CONTAINER. Counted: 1 occurrence each, on lumoscore-dex-mobile.html, in
+  // the MOBILE container only. The desktop Trade page and the Pools carousel have no fee slide --
+  // the Pools one reads "Provide liquidity / Boosted pools / Launch a pool / Sub-second swaps" and
+  // claims no percentage at all. XRPL carries the identical slide and gets the identical copy.
+  //
+  // TEXT ONLY. The CTA keeps href="#" -- a dead link on a hidden element, and the same attributes
+  // exclusion the Receive-address note above sets out.
+  ['Pay just <span class="lumos-promo-hi">0.5%</span> per trade.',
+    'Pay just <span class="lumos-promo-hi">0.2%</span> per trade.'],
+  ['Sign up free for the LumosCore rate. Guests pay 0.8% — every other trader keeps more of every fill.',
+    '0.1% if you hold 250,000 LUMOS. No sign-up and no account — your wallet is all you need.'],
+  ['<a href="#" class="lumos-promo-cta">Sign Up Free',
+    '<a href="#" class="lumos-promo-cta">Start Trading'],
+
+  // SLIDE 2 OF THE SAME CAROUSEL (RAZA 2026-10-27, "yes fix that too"), which promised
+  // "fair-launch mechanics, transparent vesting, and on-chain verification from day one".
+  //
+  // Two of those three are things the Launchpad does not do, and our own docs say so:
+  //   * VESTING does not exist. No transform in either fork mentions it; /docs/launch-a-token
+  //     describes the opposite -- "Supply is fixed at issuance ... minted to your account in the
+  //     issuing transaction".
+  //   * VERIFICATION is explicitly refused. That page has a section headed "What it does not get
+  //     you": "Issuing through LumosCore does not give your asset a verification mark. Our own
+  //     domain cannot vouch for an asset." A promo claiming it from day one contradicts the
+  //     documentation on the same site.
+  //   * "CURATED" is the third: the Launchpad is open to anyone for $25. Curation is a separate,
+  //     paid listing process with its own page.
+  //
+  // The replacement says only what the docs say: fixed supply, a pool opened in the same flow, and
+  // the asset page every launch gets ("showing its price, pool and activity").
+  ['Curated launches with fair-launch mechanics, transparent vesting, and on-chain verification from day one.',
+    'Every launch has a fixed supply, a live pool from day one, and its own page here with price, pool and activity.'],
+
+  // ---- PHASE 6: the network-fee unit (RAZA 2026-10-27, "now fix the ~0.00001 APT in the markup")
+  //
+  // 157 occurrences, 102 desktop + 55 mobile, across 66 built pages -- the largest single piece of
+  // Aptos left in the markup, and the plainest: the FIGURE is right and only the ASSET is wrong.
+  // Stellar's base fee is 100 stroops per operation = 0.00001 XLM, which the prose pair 200 lines up
+  // already states and which _ammdata.js, _dexassetdata.js and _swapcalc.js all write at runtime.
+  //
+  // ONE PAIR FOR FIVE SHAPES. They differ by wrapper -- an inline-styled JetBrains Mono <strong> (144,
+  // the Send/Swap overlays), `.row`/`.r` summary rows (11), and a `<span class="mono">` with no
+  // leading "~" (2) -- so matching the VALUE instead of any wrapper covers all of them, including the
+  // two the tilde-anchored form would have missed. The sibling fork learned that the hard way: XRPL's
+  // `['~0.00001 APT', '~0.00001 XRP']` left exactly those 2 behind.
+  //
+  // SAFE AS A BARE STRING, checked both ways this file requires:
+  //   * no Stellar transform EMITS it -- every one of them writes XLM -- so nothing re-introduces it;
+  //   * every one of the 157 is in MARKUP, none inside a <script>. (On XRPL 10 of its leftovers are
+  //     inside layer COMMENTS quoting this very bug, which is why that fork cannot use a bare pair.)
+  ['0.00001 APT', '0.00001 XLM'],
 ];
 
 const problems = [];

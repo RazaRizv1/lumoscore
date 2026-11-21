@@ -6,6 +6,11 @@
 // All three sources are public + CORS-enabled. Runs ONLY when the connected network is Stellar;
 // other networks keep their sample data until their APIs are wired. Idempotent.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+// Inert stand-ins that hold this layer's place in the cascade while the page is rewritten -- see the
+// note at the strip below. HTML comments, so nothing can style, script or match them, and distinctive
+// enough that no page content collides.
+const CSS_SLOT='<!--lx-realdata-css-slot-->';
+const JS_SLOT='<!--lx-realdata-js-slot-->';
 
 const SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>';
 const DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';
@@ -101,6 +106,16 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}'
 +'@keyframes lxdbxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}'
 +'@media(prefers-reduced-motion:reduce){.lx-vpill .val.lx-pending{animation:none}}'
+// ONE COLUMN WHEN A FIGURE WILL NOT FIT, rather than a figure cut off mid-number. Between roughly 480px
+// and 720px the dashboard still lays out as desktop -- sidebar in flow -- and the panel is squeezed to
+// ~215px, which is two columns of 94px, which is 54px of room for a value. "65,410,728" needs 88px and
+// came out as "65,41...". This was always marginal: the old strip's "40,077" cleared 54px by one pixel.
+// fitStats() adds the class only after measuring a real overflow, so normal widths are untouched.
+// Three classes beats _dashtop.js's two-class `.lx-xlmpanel>.status-row{...!important}` on specificity,
+// so it wins wherever it applies; the second selector covers the moment before the row is re-parented
+// into the panel. [[lumoscore-css-override-traps]]
++'.lx-xlmpanel>.status-row.lx-ns-stack,.status-row.lx-ns-stack{grid-template-columns:minmax(0,1fr)!important}'
++'.status-row.lx-ns-stack>.status-pill.lx-netcard{grid-column:1/-1}'
 // item 28: the marks were small enough to read as decoration. The identicon and the asset marks now
 // share one size, so a row scans as [who or what] + [what happened] instead of two sizes of dot.
 +'.lx-actident{flex:0 0 auto;vertical-align:-6px;margin-right:7px;box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
@@ -474,58 +489,133 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 // Rebuild the whole stats row atomically (keeps the network logo card, replaces the 4 value cards).
 // This sidesteps the logo-painter (which mangles individual pills) and the re-skin entirely.
+// THE ORIGINAL FOUR LABELS, RESTORED (RAZA 2026-11-12: "network stats still messed up on Stellar").
+// The 11-10 rebuild swapped them for throughput figures because three of the four sources had gone
+// behind stellar.expert's paywall. That was the wrong call -- a dashboard strip is for the size of the
+// network, not its clock speed. Assets, Pools and Trades are back, each on a source we own. Accounts is
+// NOT back: nothing free publishes a Stellar account total, so the fourth pill is Ledger, which we can
+// stand behind. The icons are the originals so the row reads as it did.
+// Labels are deliberately Capitalised, not ALL CAPS (the row uppercases them in CSS): the logo engine's
+// resolveTicker() reads a neighbour's text for a 2-8 character uppercase run and treats it as an asset
+// code, and "POOLS" next to a value cell is an invitation to have that cell painted with a token logo.
 +'var PICO={'
 +'"Assets":["#f7b733",\'<ellipse cx="14.8" cy="8.6" rx="4.4" ry="2.1"/><path d="M10.4 8.6v3.4c0 1.16 1.97 2.1 4.4 2.1s4.4-.94 4.4-2.1V8.6"/><ellipse cx="9.2" cy="14.4" rx="4.4" ry="2.1"/><path d="M4.8 14.4v3.4c0 1.16 1.97 2.1 4.4 2.1s4.4-.94 4.4-2.1v-3.4"/>\'],'
 +'"Pools":["#38bdf8",\'<path d="M12 3.4l3.9 4.7a5.1 5.1 0 1 1-7.8 0z"/><ellipse cx="12" cy="17.6" rx="7.4" ry="2.5"/><path d="M8.6 15.9c.9.5 2.1.8 3.4.8s2.5-.3 3.4-.8"/>\'],'
 +'"Trades":["#a855f7",\'<path d="M4.8 9.2h13.6M15.4 6.2l3 3-3 3"/><path d="M19.2 14.8H5.6M8.6 11.8l-3 3 3 3"/>\'],'
+// The ORIGINAL Accounts glyph and colour, restored byte-for-byte from 08f4d18f. XRPL's dashboard.js
+// carries the identical pair because RAZA asked for the same icons on both chains, so changing it here
+// silently breaks that parity on the chain nobody is looking at.
 +'"Accounts":["#2dd4bf",\'<circle cx="12" cy="8.7" r="3.5"/><path d="M5.5 19.4a6.5 6.5 0 0 1 13 0"/>\']};'
 +'function pico(lbl){var e=PICO[lbl];if(!e)return "";'
 +'return \'<span class="lx-pico" style="color:\'+e[0]+\'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">\'+e[1]+\'</svg></span>\';}'
-+'function vpill(lbl,val,tip){var _p=(val==="\\u2014"||val==="\\u2026")?" lx-pending":"";return \'<span class="status-pill lx-vpill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'>\'+pico(lbl)+\'<span class="lx-vpt"><span class="lbl">\'+lbl+\'</span><span class="val\'+_p+\'">\'+val+\'</span></span></span>\';}'
+// THE ZERO-SIZE SVG IS A GUARD, NOT DECORATION -- do not remove it. The design's inherited logo engine
+// (window.__lumosLogoEngine) sweeps every span/div/i/b on the page, and its isCandidate() accepts any
+// element holding 1-5 characters that "looks like an icon" -- which it defines as, among other things, a
+// computed border-radius of 4px or more. `.lx-vpill .val.lx-pending` is a 5px-radius shimmer box, so a
+// value of a single em dash matched it exactly: the engine stamped data-logo="APT" on the cell, painted
+// the Aptos logo into it as a background and EMPTIED it, permanently -- every later write went into an
+// element that no longer displays its text. Caught on the dashboard in the netstats-failure case, where
+// the Tx/sec pill came back blank instead of showing a dash.
+// isCandidate()'s second line is `if(el.querySelector('img,svg,[data-logo]')) return false`, so one
+// zero-size svg inside the cell makes it fail the test in every state, for good. This is the same guard
+// lx-mc and lx-swapcalc already use on their own short-text nodes, and what lx-ammdata undoes the hijack
+// with. [[lumoscore-token-logos]], [[lumoscore-second-writer-listeners]].
++'var LXNOLOGO=\'<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>\';'
++'function vpill(lbl,val,tip){var _p=(val==="\\u2014"||val==="\\u2026")?" lx-pending":"";return \'<span class="status-pill lx-vpill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'>\'+pico(lbl)+\'<span class="lx-vpt"><span class="lbl">\'+lbl+\'</span><span class="val\'+_p+\'">\'+val+LXNOLOGO+\'</span></span></span>\';}'
 +'function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
 // keep the LIVE netcard node (do NOT snapshot its HTML or mark the row noswap) so mc-engine can still
 // rebrand it aptos->stellar; only the value pills are rebuilt (each is its own data-lx-noswap pill).
 +'[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});'
 +'var frag=document.createElement("div");frag.innerHTML='
-+'vpill("Assets",v.assets,"Every asset ever issued on Stellar")'
-+'+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")'
-+'+vpill("Trades",v.trades,v.dayTip)'
-+'+vpill("Accounts",v.accounts,(v.accountsExact?v.accountsExact+" \\u2014 e":"E")+"very account ever funded on Stellar, a running total rather than a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);'
-+'row.classList.add("lx-ready");}'
+// EVERY TOOLTIP SAYS WHAT THE FIGURE COUNTS AND HOW IT WAS ARRIVED AT. All four replace figures from a
+// paid aggregator whose definitions we never knew, and each lands on a different number than the strip
+// used to show (assets 428k against 3,862; pools 40k against 15,630; accounts 10.05M against 278.82M,
+// which counted every account EVER funded rather than those that still exist). A reader who remembers
+// the old value has to be able to find out why this one differs without asking.
+// THE FOUR LABELS ARE Assets / Pools / Trades / Accounts AND THEY MATCH XRPL's STRIP. Do not substitute
+// one for a figure that happens to be easier to source — on 2026-11-12 I swapped Accounts for Ledger
+// after one source 402'd, and that is the whole reason this pill had to be put back.
++'vpill("Assets",v.assets,v.assetsTip)'
++'+vpill("Pools",v.pools,v.poolsTip)'
++'+vpill("Trades",v.trades,v.tradesTip)'
++'+vpill("Accounts",v.accounts,v.accountsTip);while(frag.firstChild)row.appendChild(frag.firstChild);'
++'row.classList.add("lx-ready");fitStats();}'
+// Measure, never guess: the class comes off FIRST so the test is "does it overflow at full width", not
+// "does it overflow in the layout the class already imposed" -- that second question always answers no,
+// and the strip would flip between one and two columns forever. While a pill is still pending its text
+// is an ellipsis inside a 56px min-width box, so nothing reads as overflowing and the wide layout stands.
++'function fitStats(){var row=document.querySelector(".status-row");if(!row)return;'
++'row.classList.remove("lx-ns-stack");'
++'var els=row.querySelectorAll(".lx-vpill .val"),over=false;'
++'for(var i=0;i<els.length;i++){if(els[i].scrollWidth>els[i].clientWidth+1){over=true;break;}}'
++'if(over)row.classList.add("lx-ns-stack");}'
++'var _fitT=0;try{window.addEventListener("resize",function(){clearTimeout(_fitT);_fitT=setTimeout(fitStats,150);});}catch(_){}'
 // ---- stat cards ----
-+'var _lxX=null,_lxNS=null,_lxPS=null;'
++'var _lxX=null,_lxNS=null;'
+// poolstats is no longer fetched here: the only pill that read it was Pools, and the same figure is
+// already stated by the Pools box further down the dashboard -- two requests to say one number twice.
 +'function stats(){'
 +'Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;})])'
 +'.then(function(res){if(res[0])_lxX=res[0];if(res[1])_lxNS=res[1];paintStats();}).catch(function(){});'
-+'j("/lxapi/poolstats").catch(function(){return null;}).then(function(p){if(p){_lxPS=p;paintStats();}}).catch(function(){});'
 +'}'
-+'function paintStats(){var x=_lxX||{};var ns=_lxNS;var ps=_lxPS;'
++'function paintStats(){var x=_lxX||{};var ns=_lxNS;'
 +'var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};'
 // Publish it: _dashtop.js needs the same price and 24h change, and CoinGecko's free tier is a few
 // calls a minute -- two components each fetching the same object is how that budget gets spent.
 +'try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}'
-// #2: the strip used to be TVL, market cap and 24h volume -- three prices, none of which say anything
-// about the chain a trader is about to trade on. These four do: how much there is to trade, where, how
-// busy the place was yesterday, and how many accounts exist. All of them are ledger facts.
+// 2026-11-10: the four figures changed, because three of the old four no longer exist. Assets, Trades
+// and Accounts all came from stellar.expert, which now answers 402 Payment Required
+// ([[stellar-expert-api-went-paid]]), and nothing free publishes them -- see the header of
+// functions/lxapi/netstats.js for what was measured. Pools came from /lxapi/poolstats and was already
+// stated by the Pools box below. What is left is what Horizon gives in ONE request: how high the chain
+// is and how fast it is running. Still four pills, so neither grid declaration needs changing.
 +'var _n=function(x){return (x==null||!isFinite(x))?"\\u2014":Math.round(x).toLocaleString("en-US");};'
-// Past a million the digits stop being readable at a glance and start being counted; 2dp keeps it
-// honest to ~0.05%. Below that, exact -- these are the figures people cross-check.
+// Abbreviated form, for Accounts only (XRPL's strip shows 8.65M; a 10,046,016 here would read as noise).
+// THE RUNG IS PICKED ON THE ROUNDED VALUE, not the raw one. Choosing it first and rounding after is how
+// a figure once shipped as "6666.70M" instead of "6.67B": 999,999,999 is below 1e9, so the old ladder
+// stayed on M and then rounded to "1000.00M". Round to the B rung first and ask whether it reached 1.
 +'var _na=function(x){if(x==null||!isFinite(x))return "\\u2014";var a=Math.abs(x);'
-+'if(a>=1e9)return (x/1e9).toFixed(2)+"B";if(a>=1e6)return (x/1e6).toFixed(2)+"M";return _n(x);};'
-+'var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}'
-
-+'var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\\u2014",'
-+'pools:(ps&&ps.pools)?_n(ps.pools):"\\u2014",'
-+'trades:(ns&&ns.trades)?_n(ns.trades):"\\u2014",'
-+'accounts:(ns&&ns.accounts)?_na(ns.accounts):"\\u2014",'
-// the exact total, for the tooltip
-+'accountsExact:(ns&&ns.accounts)?_n(ns.accounts):"",'
-+'dayTip:_day};'
-+'var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
-+'if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\\u2014"&&_old[_k]&&_old[_k]!=="\\u2014")_v[_k]=_old[_k];}}'
++'if(a>=1e6){if(+(a/1e9).toFixed(2)>=1)return (x/1e9).toFixed(2)+"B";return (x/1e6).toFixed(2)+"M";}'
++'return _n(x);};'
+// One decimal on the rates. They move continuously, so more digits would be noise that changes every
+// beat, and a whole number would hide the difference between a quiet minute and a busy one.
++'var _f1=function(x){return (x==null||!isFinite(x))?"\\u2014":(Math.round(x*10)/10).toFixed(1);};'
+// Every rate here is an average over a window, never an instant, so each tooltip has to SAY which
+// window -- a figure captioned "per second" with no period is the kind of number people quote wrongly.
++'var _win="";try{if(ns&&ns.windowLedgers&&ns.windowSec)_win="measured over the last "+ns.windowLedgers+" ledgers, about "+Math.round(ns.windowSec/60)+" minutes";}catch(_){}'
+// A FIGURE THIS FRESH CANNOT BE SHOWN LATE. The old code did the opposite: it quietly refilled a
+// missing figure from this visitor's last successful visit, so a dashboard sat there showing five-day-old
+// numbers as current ([[never-cache-a-failure-as-an-answer]]). That substitution is gone, and so is the
+// localStorage copy it read -- for a ledger height and a per-second rate, a saved value is simply wrong.
+// This guard is the remaining case the endpoint cannot see: a 200 served from a cache that outlived its
+// own TTL. 300s is far outside the 60s cache and loose enough to survive a visitor with a skewed clock.
++'var _fresh=false;try{_fresh=!!(ns&&ns.ok&&ns.ts&&(Date.now()/1000-ns.ts)<300);}catch(_){}'
+// EACH PILL DASHES ON ITS OWN. Pools comes out of KV and is null until the ranking has been built, while
+// the other three are already good -- an all-or-nothing guard would blank a whole row of correct figures
+// for one missing one. `_n` already returns a dash for null, so per-pill independence comes free.
++'var _ap=function(){var t="Every asset issued on the Stellar ledger, counted page by page from Horizon.";'
++'try{if(ns&&ns.assetsCountedAt)t+=" Last counted "+new Date(ns.assetsCountedAt*1000).toLocaleDateString("en-US",{month:"short",day:"numeric"})+".";'
++'else if(ns&&ns.assetsMeasuredAt)t+=" Measured "+ns.assetsMeasuredAt+"; the live count is still building.";}catch(_){}'
++'return t+" This counts ALL of them, which is why it is far larger than the figure this pill used to show.";};'
++'var _pp=function(){var t="Every liquidity pool on Stellar.";'
++'try{if(ns&&ns.poolsRanked)t+=" "+ns.poolsRanked.toLocaleString("en-US")+" we can price in USD, plus "+ns.poolsUnpriceable.toLocaleString("en-US")+" with no XLM or USDC leg to price them against.";}catch(_){}'
++'return t+" The same total the Pools page states.";};'
++'var _tp=function(){var t="Trades per 24 hours, PROJECTED \\u2014 not a counted total.";'
++'try{if(ns&&ns.tradesPerLedger)t+=" Measured at "+ns.tradesPerLedger+" trades per ledger"+(ns.tradesLedgersSampled?" across "+ns.tradesLedgersSampled+" ledgers":"")+", times the "+(ns.tradesLedgersPerDay||17280).toLocaleString("en-US")+" ledgers Stellar closes in a day. Counting a real day means paging roughly 4,300 pages of Horizon.";}catch(_){}'
++'return t;};'
+// Accounts is the one pill shown ABBREVIATED (8.65M on XRPL, 10.05M here) because it is the only one
+// whose exact digits say nothing — the tooltip carries the full count for anyone who wants it.
++'var _acp=function(){var t="Accounts holding a balance on Stellar, a running total rather than a daily figure.";'
++'try{if(ns&&ns.accounts)t=_n(ns.accounts)+" \\u2014 a"+t.slice(1);'
++'if(ns&&ns.accountsMeasuredAt)t+=" Measured "+ns.accountsMeasuredAt+".";}catch(_){}'
++'return t;};'
++'var _v={assets:_fresh?_n(ns.assets):"\\u2014",'
++'pools:_fresh?_n(ns.pools):"\\u2014",'
++'trades:_fresh?_n(ns.trades):"\\u2014",'
++'accounts:_fresh?_na(ns.accounts):"\\u2014",'
++'assetsTip:_ap(),poolsTip:_pp(),tradesTip:_tp(),accountsTip:_acp(),'
++'win:_win};'
 +'rebuildStats(_v);'
-+'var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\\u2014")_keep[_k2]=_v[_k2];}'
-+'try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
 +'}'
 // ---- live activity feed (real swaps) ----
 +'var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";'
@@ -566,12 +656,29 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // a transfer with only one address does not say who was paid, which is the half that matters.
 // (Kept, unreachable, so the shape is on record if transfers are ever shown again in some other form.)
 +'return {ic:SWAP,cls:"transfer",act:"Transfer",from:(o.from||""),to:(o.to||""),type:"<b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};'
-+'if(o.type&&o.type.indexOf("offer")>=0)'
+// ORDERS ARE NOT SHOWN AT ALL (RAZA 2026-11-06: "please dont show limit order placed on Platform
+// activity. i dont wanna show that").
+//
+// Cancellations were already dropped here, for having no content worth publishing. This drops the rest
+// of the offer family with them -- "Order placed" and "Order updated" too -- which is the same call
+// that was made for transfers above, and for the same reason.
+//
+// A resting order is not a trade. It is a standing intention: this account will sell this much of this
+// pair at this price, and it is still sitting on the book where anyone can act on it. Publishing that
+// on a dashboard broadcasts one trader's open position while it is open, which is a different thing
+// from publishing what has already executed. Every other row in this feed describes something that
+// FINISHED -- a swap, a pool deposit, a mint, a bridge.
+//
+// The execution is not lost by this: when a resting order is taken, that trade arrives as its own
+// path_payment row through the branch above, which is where the volume belongs anyway.
+//
+// Skipped rather than anonymised, for the reason the transfer note gives: an order stripped of its
+// account is still a size, a pair and a minute, which is enough to match against a ledger explorer.
++'if(o.type&&o.type.indexOf("offer")>=0) return {skip:true};'
++'if(false)'
+// (Kept, unreachable, so the shape is on record if orders are ever shown again in some other form --
+// same convention as the transfer branch above.)
 +'{var oamt=+o.amount||0, isNew=String(o.offer_id||"0")==="0";'
-// A cancellation is an offer set to zero: no amount, no trade, nothing that happened on the market --
-// just a pair and the account that withdrew. Same empty disclosure as a trustline, so it goes the same
-// way. "Order placed" and "Order updated" stay: those carry a real size and a real intent.
-+'if(oamt===0) return {skip:true};'
 +'var pair=aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+" / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying"));'
 +'return {ic:DROP,cls:"order",act:(oamt===0?"Order cancelled":(isNew?"Order placed":"Order updated")),'
 +'type:(oamt===0?("<b>"+pair+"</b>"):("<b>"+amt(oamt)+" "+pair+"</b>")),inl:1};}'
@@ -591,7 +698,21 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'inl:lp.length?1:0};}'
 +'if(o.type==="invoke_host_function")'
 +'return {ic:SWAP,cls:"xchain",act:"Cross-chain",type:"Cross-chain transfer"};'
-+'if(o.type==="create_claimable_balance")'
+// CLAIMABLE BALANCES ARE NOT PLATFORM ACTIVITY (RAZA 2026-11-10: "Remove claimable trx from platform
+// activity"). Both halves of the mechanic go, for the same reason change_trust does below.
+//
+// The CLAIM half had no case at all, so it fell through to the generic row at the end of this function
+// and published the raw Horizon op type with its underscores swapped for spaces -- the "claim claimable
+// balance" row in the report, under an address, with no amount and no asset, because the claim operation
+// carries neither: it names a balance id and nothing else.
+//
+// The CREATE half did have a designed row, but it describes a payment that has not been delivered and may
+// never be. It is somebody parking funds, not a trade, a swap or a transfer through this platform, and a
+// feed headed "Platform Activity" should not count it. (Shape kept, unreachable, in case they are ever
+// shown differently.)
++'if(o.type==="claim_claimable_balance") return {skip:true};'
++'if(o.type==="create_claimable_balance") return {skip:true};'
++'if(false)'
 +'return {ic:DROP,cls:"claim",act:"Claimable",type:"Payment set aside to be claimed"};'
 // Same call as the transfer skip above. A trustline row carries an account and the exact asset that
 // account chose to hold, and nothing else -- no amount, no trade, no platform action. It is a
@@ -916,6 +1037,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // and the row's shape are already known and stay put, and nothing is claimed about what happened until it is.
 // `ts` rides along so the 24h counter can be recomputed from what is actually DRAWN -- see _feedRender.
 +'var rows=use.map(function(o){return {ic:SWAP,cls:"",type:"",pending:1,who:o.from,when:ago(o.created_at),ts:Date.parse(o.created_at),hash:o.transaction_hash};});'
+// Claimed identities, for the fee-bump de-duplication further down. It cannot live beside the hash
+// dedupe above, because the fact it needs -- that two hashes are one transaction -- is not known
+// until each row's transaction has been read.
++'var _canonSeen={};'
 // ONE REPAINT PER BURST, NOT ONE PER ROW (RAZA 2026-09-22, Android tablet: "the dashboard kinda lags for ~5 seconds
 // until becoming smooth"). Every row that resolved rebuilt the WHOLE list and queued five more icon passes, so ~50 rows
 // arriving one by one meant ~50 rebuilds and ~250 passes -- measured at 8,000+ attribute writes in three seconds, each
@@ -1013,6 +1138,29 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // payment WAS the fee". That is the rule the author meant, expressed in the filtering that was
 // already happening. An lx: marker still rescues a bridge, which genuinely does pay alone.
 +'if(_tx0&&(_tx0.operation_count>64||(!ops.length&&String(_tx0.memo||"").indexOf("lx:")!==0))){ put({skip:true}); return; }'
+// ONE SWAP, TWO HASHES (RAZA 2026-11-14: platform activity showing a single swap twice).
+//
+// The hash dedupe where the two sources merge is correct and still cannot catch this. When a wallet
+// sponsors a user's network fee, Stellar wraps the real transaction in an outer FEE-BUMP transaction,
+// and Horizon indexes both of them under DIFFERENT hashes. The beacon records the inner hash -- it is
+// what the app submitted -- while the collector's payment record carries the outer one, because
+// operations are indexed against the transaction that actually paid. Two strings, one transaction,
+// and the merge compares strings.
+//
+// Measured on 65448424: inner 5a143c13… and outer cd653991… report the same ledger, the same sequence
+// 251021420904054888, the same two path payments and the same 4797 stroops. Of the fifty rows the card
+// was considering, forty-three were real and SEVEN were this.
+//
+// Horizon states the relationship itself, on both of them: whichever hash is asked for, the response
+// carries inner_transaction.hash. That makes the inner hash a canonical name for the pair, available
+// from a read this row already performs -- so no extra request, and nothing to keep in sync.
+//
+// Claimed AFTER the skip test above, so a row that is not going to be drawn does not take the name and
+// hide the copy that would have been. First to resolve wins; both describe the same transaction, so
+// there is nothing to choose between them.
++'var _cid=(_tx0&&_tx0.inner_transaction&&_tx0.inner_transaction.hash)||o.transaction_hash;'
++'if(_canonSeen[_cid]){ put({skip:true}); return; }'
++'_canonSeen[_cid]=1;'
 +'var _mint=ops.some(function(x){return x.type==="create_account";})&&ops.some(function(x){return x.type==="set_options"&&String(x.master_key_weight)==="0";});'
 +'var pick=(_mint&&ops.filter(function(x){return x.type==="payment"&&x.asset_issuer&&x.asset_issuer===x.from;})[0])'
 +'||ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]'
@@ -1062,16 +1210,16 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
 +'}).catch(function(){});}'
-// A cache written by a previous build is an ARRAY, not this object, so the shape check is what stops a
-// warm start restoring a strip of undefineds.
-// The other way to get a strip of undefineds is for THIS list to fall behind the pills: prep() renders
-// before the fetch lands, so any key rebuildStats reads that is missing here paints the literal string
-// "undefined" until the network answers. That is why the key list lives in NSKEYS and is used both to
-// build the placeholders and to restore them -- rename a pill, change it in one place.
+// prep() renders BEFORE the fetch lands, so any key rebuildStats reads that is missing here paints the
+// literal string "undefined" until the network answers. That is why the key list lives in NSKEYS and is
+// used to build the placeholders -- rename a pill, change it in one place.
+// It no longer restores anything from localStorage. It used to, and that is how a dashboard came to show
+// a five-day-old figure as the current one; the rates and the ledger height on this strip are worthless
+// a minute later, so the honest placeholder is an ellipsis until the one request answers. removeItem
+// clears the copy earlier builds left in every returning visitor's browser.
 +'var NSKEYS=["assets","pools","trades","accounts"];'
-+'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
-+'var _d={dayTip:"",accountsExact:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\\u2026";'
-+'if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\\u2014")_d[k]=c[k];}}'
++'function prep(){try{localStorage.removeItem("lumos.netstats");}catch(_){}'
++'var _d={win:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\\u2026";'
 +'rebuildStats(_d);}'
 // paintChainMark runs here as well as from paint24: the mark belongs to the heading, not to the data,
 // so it must not wait on a fetch that might never land. The later calls cover the language switcher,
@@ -1083,7 +1231,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'setInterval(feed,60000);setInterval(stats,45000);'
 +'})();</script>';
 
-let n=0;
+let n=0, pillsCleared=0;
 for(const dev of ['desktop','mobile']){
   const file=`lumoscore-aptos-${dev}.html`;
   let data; try{ data=read(file); }catch(e){ continue; }
@@ -1091,12 +1239,56 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     if(h.indexOf('activityList')<0 || h.indexOf('status-row')<0) continue;   // dashboard only
-    h=h.replace(/<style id="lx-realdata-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-realdata">[\s\S]*?<\/script>/g,'');  // idempotent
-    if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');   // CSS in head -> applies before first paint (no flash)
-    const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-    json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;
+    // IDEMPOTENT, AND IT MUST ALSO NOT MOVE (2026-11-14). Stripping the old layer and re-inserting at
+    // </body> is idempotent in CONTENT and not in POSITION: on the dashboard five layers sit after this
+    // one -- lx-searchassets, lx-ammdata, lx-themefix, lx-tiptheme -- so a lone re-run of this transform
+    // silently relocated it past all of them, which is the cascade-reorder trap this codebase has been
+    // bitten by before. Verified against live production: the order there is the spec and this layer is
+    // not last in it.
+    //
+    // So the old block is replaced by an inert marker, the rewrites below run as they always did, and
+    // the new block goes back into the marker's place. Position is preserved by construction rather than
+    // by remembering an offset, which would drift as those rewrites change the length of h. A page that
+    // does not have the layer yet still falls back to the </head> and </body> inserts further down.
+    let cssSlot=false, jsSlot=false;
+    h=h.replace(/<style id="lx-realdata-css">[\s\S]*?<\/style>/g,function(){ if(cssSlot) return ''; cssSlot=true; return CSS_SLOT; })
+       .replace(/<script id="lx-realdata">[\s\S]*?<\/script>/g,function(){ if(jsSlot) return ''; jsSlot=true; return JS_SLOT; });
+    // THE STAT PILLS SHIP THE DESIGN'S INVENTED NUMBERS: Assets "4,234", Pools "4,521",
+    // Volume "12,532,325 APT", Stellar price "$0.245". None are real, and one is still denominated
+    // in APT. Real values are 122,494 assets and 39,605 pools.
+    //
+    // prep() rewrites them to a pending marker, but prep() runs INSIDE this layer, AFTER the
+    // net()!=="stellar" gate. So on a wallet this layer declines to serve, the mock is what stays.
+    // There is no flash today only because the stripped design stylesheet left
+    // `.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}` behind -- the row is blind
+    // for 3s and is then force-revealed WHETHER OR NOT any data arrived. So the gate's early return
+    // does not hide the mock, it publishes it three seconds late and leaves it there.
+    //
+    // This is XRPL's rule, ported. _xrpldash.js already does exactly this and says why: "an em dash
+    // in the markup means the safety stops depending on a leftover bug still being there". Stellar
+    // never got it -- the same asymmetry as the 2026-10-09 activity flash, which was also fixed in
+    // the XRPL repo first and left standing here.
+    //
+    // Keyed on the LABEL, like XRPL's, so it can only reach the four pills named below. The
+    // Network/Stellar pill is <span class="status-pill lx-netcard">, is correct as shipped, and is
+    // deliberately absent from this list. Idempotent: a re-run rewrites the em dash to itself.
+    for(const lbl of ['Assets','Pools','Volume','Stellar price']){
+      h=h.replace(new RegExp('(<span class="lbl">'+lbl+'</span>\\s*<span class="val">)[^<]*(</span>)','g'),
+        function(_m,open,close){ pillsCleared++; return open+'—'+close; });
+    }
+    // Back into the slot it came from. Only a page that never carried the layer takes the insert path:
+    // CSS in head so it applies before first paint (no flash), script at the end of body.
+    // Function replacements, not strings: CSS and SCRIPT both contain `$`, and a string replacement
+    // gives `$&`, `$'` and `$1` special meaning -- which would corrupt the layer silently rather than
+    // throw. A function result is inserted verbatim.
+    if(cssSlot){ h=h.replace(CSS_SLOT,function(){return CSS;}); }
+    else if(h.indexOf('</head>')>=0){ h=h.replace('</head>',function(){return CSS+'</head>';}); }
+    if(jsSlot){ json[k]=h.replace(JS_SLOT,function(){return SCRIPT;}); n++; }
+    else { const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
+      json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++; }
   }
   const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
   fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
 }
-console.log('real-data (Stellar) injected on '+n+' dashboard page keys');
+console.log('real-data (Stellar) injected on '+n+' dashboard page keys; cleared '+pillsCleared+' static pill(s) carrying a mock figure');
+if(n && !pillsCleared) console.error('  ! no stat pill was cleared -- the markup shape changed, the mock is still shipping');

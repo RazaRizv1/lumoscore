@@ -50,7 +50,20 @@ const EDITS = [
   // 4. one tag per row: the recency tag supersedes the availability tag
   [`sp.textContent='Last used';`,
    `sp.textContent='Last used';var iB=rows[i].querySelector('.lxw-inst');`
-   + `if(iB&&iB.parentNode)iB.parentNode.removeChild(iB);`],
+   + `if(iB&&iB.parentNode)iB.parentNode.removeChild(iB);`,
+   `var iB=rows[i].querySelector('.lxw-inst')`],
+
+  // 5. ONE TAG IN THE WHOLE LIST. Edit 4 drops "Installed" from the last-used row only, which leaves
+  //    every other installed wallet still tagged. RAZA 2026-10-17, after the same change on XRPL:
+  //    "make it same on stellar too". Once the list can say which wallet you came back to, "Installed"
+  //    on the rows beside it answers a question nobody is asking any more.
+  //
+  //    Keyed on `last` being set, so before the first connect — when there is no history to show —
+  //    the availability tags still appear and still earn their place.
+  [`var on=(!!last && id===last);`,
+   `var on=(!!last && id===last);if(last){var iA=rows[i].querySelector('.lxw-inst');`
+   + `if(iA&&iA.parentNode)iA.parentNode.removeChild(iA);}`,
+   `var iA=rows[i].querySelector('.lxw-inst')`],
 ];
 
 let pages = 0, containers = 0, edits = 0, already = 0;
@@ -64,15 +77,22 @@ for (const chain of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'st
     for (const key of Object.keys(json)) {
       let p = json[key];
       if (typeof p !== 'string') continue;
-      if (p.indexOf('lxw-last') >= 0) { already++; continue; }
-      let n = 0;
-      for (const [from, to] of EDITS) {
+      // PER-EDIT, NOT PER-PAGE. This used to skip any page that already carried `lxw-last`, which made
+      // the whole transform un-rerunnable: adding edit 5 below would have been silently skipped on
+      // every page the first four had already touched. Each edit now carries its own marker — a string
+      // that exists only once that edit has been applied — so new ones reach old pages and none of them
+      // can apply twice. Edits 1-3 consume their own anchor and are safe either way; 4 and 5 append to
+      // an anchor that survives, so for those the marker is the only thing standing between one copy
+      // and two.
+      let n = 0, skipped = 0;
+      for (const [from, to, marker] of EDITS) {
+        if (marker && p.indexOf(marker) >= 0) { skipped++; continue; }
         const parts = p.split(from);
         if (parts.length < 2) continue;
         n += parts.length - 1;
         p = parts.join(to);
       }
-      if (!n) continue;
+      if (!n) { if (skipped) already++; continue; }
       json[key] = p; changed = true; pages++; edits += n;
     }
 

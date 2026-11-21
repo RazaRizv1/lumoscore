@@ -323,6 +323,33 @@ const VIZ = (rays) => '<div class="lxu-viz">'
 // ---------------------------------------------------------------------------------------------------
 // The stylesheet. /*lxts:1.1*/ first, so _typescale.js treats it as already scaled.
 // ---------------------------------------------------------------------------------------------------
+// THE HEADLINE FLASHED UNSTYLED ON EVERY REFRESH (RAZA 2026-10-17, screenshot of the landing hero:
+// "Many networks.One Core." on ONE line, italic, no accent). Nothing was painting a mock over it --
+// the markup is correct from the first byte. The problem is WHERE its stylesheet sits: the <h1> is
+// served at offset ~190k and this block lands before </body> at ~804k, so the browser lays the hero
+// out six hundred kilobytes before it reads the rules for it, and paints the <i> elements with the
+// UA default: inline, italic, inherited colour.
+//
+// These four rules are the ones that decide what the hero LOOKS like, so they are emitted twice --
+// here, and again into <head> as lx-herofirst. ONE string, not two hand-kept copies, because the
+// first edit to one of them would otherwise silently un-fix the flash.
+//
+// Duplicating is deliberate, in preference to MOVING this block into <head>: nineteen other body
+// stylesheets are parsed before this one and currently lose to it, and moving it would hand them the
+// win instead. Emitting it in both places changes no cascade at all -- the body copy still has the
+// last word with identical declarations, so the settled page is byte-for-byte what it was.
+const HERO_TEXT =
+  // clamp rather than a media-query ladder: the headline is the one element that has to stay on two
+  // lines from 900px to 2560px, and steps leave it either cramped or overflowing between breakpoints.
+    '.lxu-h1{font:800 clamp(34px,3.85vw,56px)/1.06 "Hanken Grotesk",system-ui,sans-serif;'
+  + 'letter-spacing:-.036em;color:var(--text);margin:0 0 22px}'
+  + '.lxu-h1 i{display:block;font-style:normal}'
+  + '.lxu-h1 .lxu-accent{color:var(--accent)}'
+  + '.lxu-sub{font:500 19px/1.55 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted);'
+  + 'max-width:34ch;margin:0 0 32px;text-wrap:pretty}';
+
+// Carries the same /*lxts:1.1*/ marker as the block below, and for the same reason: the sizes here are
+// already scaled, and _typescale.js reads that marker to know it must not scale them a second time.
 const CSS = '<style id="lx-herounify-css">/*lxts:1.1*/'
 
   // -- the section becomes a track; the stage inside it is what gets pinned ---------------------------
@@ -355,14 +382,7 @@ const CSS = '<style id="lx-herounify-css">/*lxts:1.1*/'
   + 'align-items:center;gap:28px;flex:0 0 auto}'
   + '.lxu-copy{min-width:0}'
 
-  // clamp rather than a media-query ladder: the headline is the one element that has to stay on two
-  // lines from 900px to 2560px, and steps leave it either cramped or overflowing between breakpoints.
-  + '.lxu-h1{font:800 clamp(34px,3.85vw,56px)/1.06 "Hanken Grotesk",system-ui,sans-serif;'
-  + 'letter-spacing:-.036em;color:var(--text);margin:0 0 22px}'
-  + '.lxu-h1 i{display:block;font-style:normal}'
-  + '.lxu-h1 .lxu-accent{color:var(--accent)}'
-  + '.lxu-sub{font:500 19px/1.55 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted);'
-  + 'max-width:34ch;margin:0 0 32px;text-wrap:pretty}'
+  + HERO_TEXT
 
   + '.lxu-ctas{display:flex;flex-wrap:wrap;gap:13px;margin:0}'
   + '.lxu-btn{height:52px;padding:0 24px;font-size:17px;border-radius:12px}'
@@ -847,6 +867,20 @@ const CSS = '<style id="lx-herounify-css">/*lxts:1.1*/'
 
   + '</st' + 'yle>';
 
+// The SAME stylesheet again, under its own id, for <head>. Derived from CSS rather than retyped, so
+// the two cannot drift: every rule the hero has is present at the first paint, not just the headline.
+//
+// The whole sheet, because the hero's LAYOUT comes from it too -- measured with the body copy
+// disabled, .lxu-grid falls back from grid to block, .lxu-ring from absolute to static and the
+// section from 2340px to 900px, which is the "raw grid of square tiles" half of the flash.
+//
+// Duplicating costs ~13KB on two page keys and changes NO cascade: the body copy is still parsed
+// last and still has the final word on every declaration, so the settled page is byte-for-byte what
+// it was. Moving the block instead would hand nineteen earlier body stylesheets a win they do not
+// have today, and _externalize.js -- which exists to hoist all of these properly -- also splits every
+// inline script into its own scope, which is a far larger change than a flash fix should carry.
+const FIRSTPAINT = CSS.replace('<style id="lx-herounify-css">', '<style id="lx-herofirst">');
+
 // ---------------------------------------------------------------------------------------------------
 // Element surgery
 // ---------------------------------------------------------------------------------------------------
@@ -912,6 +946,9 @@ for (const p of PAGES) {
   // 1. Strip this transform's own stylesheet. /g, always: one strip against two stale copies leaves a
   //    rival sheet competing at equal specificity for ever.
   html = html.replace(/<style id="lx-herounify-css">[\s\S]*?<\/style>/g, '');
+  //    Same strip for the head copy, /g for the same reason: a second stale copy competing at equal
+  //    specificity is exactly the trap the line above exists to avoid.
+  html = html.replace(/<style id="lx-herofirst">[\s\S]*?<\/style>/g, '');
 
   // 2. DELETE the two blocks the landing no longer carries, from wherever a previous run left them --
   //    the search field (with its network selector) and the live network figures. Both are cut out of
@@ -983,6 +1020,13 @@ for (const p of PAGES) {
 
   const bo = html.lastIndexOf('</body>');
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
+
+  // IN <head>, so the hero is styled on the FIRST paint rather than six hundred kilobytes later.
+  // Appended at the end of the head, after every other head stylesheet, so it cannot be overridden by
+  // one of them at equal specificity and then flash a third appearance.
+  const ho = html.indexOf('</head>');
+  if (ho < 0) { problems.push(p.key + ': no </head> for the first-paint block'); continue; }
+  html = html.slice(0, ho) + FIRSTPAINT + html.slice(ho);
 
   json[p.key] = html;
   staged.push({ file: p.file, data, s, e, json, key: p.key });
