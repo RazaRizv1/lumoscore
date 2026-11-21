@@ -127,6 +127,8 @@ const REVENUE_MOB=`
 `;
 
 const CSS=`<style id="lx-admin-css">
+/* B03 (2026-11-21): the pools strip fits its box -- auto-fit columns, never two fixed 192 px ones. */
+.top-strip{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}.top-strip-card,.top-mini-meta{min-width:0}
 /* A FALL IN 24H / 7D READS AS RED, LIKE THE RISE READS AS GREEN (RAZA 2026-09-24).
    pct() has always emitted .ch-up / .ch-down, and the design styles only .ch-up -- so a gain was
    green and bold while a loss fell back to plain body text, the same white as the price beside it.
@@ -1405,7 +1407,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      +"<span class=\\"lxadm-sub\\">platform fees, converted at today\u2019s prices</span></div>"'
 +'      +"<div class=\\"adm-card-body\\"><div id=\\"lxDashBars\\" class=\\"lxbars-empty\\">Loading\u2026</div></div>"; }'
 +'  var netBars=q(".net-bars"); if(netBars)retitle(netBars.previousElementSibling,"Revenue by asset");'
-+'  var strip=q(".top-strip"); if(strip)retitle(strip.previousElementSibling,"Largest LumosCore pools");'
++'  var strip=q(".top-strip"); if(strip)retitle(strip.previousElementSibling,"Largest curated pools (Stellar)");'
 +'  var feed=q("#actFeed"); if(feed){ feed.id="lxActFeed"; feed.innerHTML="<div class=\\"lxadm-empty\\">Loading\u2026</div>"; }'
 // nothing on a static site watches for anomalies, so the alert list is emptied rather than invented
 +'  var alertRows=qa(".alert-row");'
@@ -1457,11 +1459,12 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'  if(strip){ loadPools().then(function(ps){ priceUsd("XLM","",function(px){'
 +'    if(!ps.length){ strip.innerHTML="<div class=\\"lxadm-empty\\">No curated pools found.</div>"; return; }'
 +'    strip.innerHTML=ps.map(function(p){'
-+'      return "<a class=\\"top-strip-card\\" href=\\"lumoscore-pools-pool.html?pool="+esc(p.id)+"\\" style=\\"text-decoration:none;color:inherit\\">"'
++'      return "<a class=\\"top-strip-card\\" href=\\"https://lumoscore.com/pools/stellar/id/"+esc(p.id)+"\\" style=\\"text-decoration:none;color:inherit\\">"'
 +'        +"<span class=\\"top-mini-ico\\" data-lxc=\\""+esc(p.code)+"\\" style=\\"background:transparent "+cssUrl(LG[p.code+"-"+p.iss]||avatar(p.code))+" center/cover no-repeat\\"></span>"'
 +'        +"<div class=\\"top-mini-meta\\"><div class=\\"top-mini-name\\">"+esc(p.code)+" / XLM</div>"'
 +'        +"<div class=\\"top-mini-sub\\">Stellar mainnet</div></div>"'
 +'        +"<div class=\\"top-mini-val\\">"+(px?usd(p.xlm*px):num(p.xlm)+" XLM")+"</div></a>"; }).join("");'
++'    strip.querySelectorAll("a.top-strip-card").forEach(function(a){ a.target="_blank"; a.rel="noopener"; });'
 +'    ps.forEach(function(p){ priceUsd(p.code,p.iss,function(){ var u=LG[p.code+"-"+p.iss]; if(!u)return;'
 +'      var el=strip.querySelector("[data-lxc=\\""+p.code+"\\"]"); if(el)el.style.background="transparent "+cssUrl(u)+" center/cover no-repeat"; }); });'
 +'  }); }); }'
