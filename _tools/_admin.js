@@ -986,7 +986,7 @@ function loadNearVol(){ if(NVOL)return NVOL;
     var nu=(m&&+m.usd>0)?+m.usd:((pl&&+pl.usd>0)?+pl.usd:null), px={};
     ((m&&m.rows)||[]).forEach(function(r){ if(r&&r.i&&+r.p>0)px[r.i]=+r.p; });
     var rows=(d.rows||[]).map(function(r){ var p=(r.c==="near"||r.c==="wrap.near")?1:px[r.c];
-      return {t:+r.ts,kind:r.kind,route:r.via||"",usd:(nu&&p!=null&&r.v!=null)?(+r.v)*p*nu:null}; });
+      return {t:+r.ts,who:r.who||"",kind:r.kind,route:r.via||"",usd:(nu&&p!=null&&r.v!=null)?(+r.v)*p*nu:null}; });
     return {rows:rows,complete:!!d.complete}; }).catch(function(){ return null; });
   return NVOL; }
 // Assets we cannot price are reported, never guessed at -- the rule the revenue table already follows.
@@ -1736,10 +1736,15 @@ function paintUsers(){
       v.rows.forEach(function(r){ var u=idx[r.from]; if(!u)return; if(!r.code||!r.gross)return;
         var k=r.code+"-"+r.iss;
         u.vol[k]=(u.vol[k]||0)+r.gross; vcodes[k]=1; });
+      var vpend=Object.keys(vcodes).length; if(!vpend){ window.__lxUVolDone=1; render(); }
       Object.keys(vcodes).forEach(function(k){ var pp=k.split("-");
-        priceUsd(pp[0],pp[1]||"",function(px){ if(px==null)return;
+        priceUsd(pp[0],pp[1]||"",function(px){ if(--vpend<=0)window.__lxUVolDone=1; if(px==null){ render(); return; }
           ROWS.forEach(function(u){ if(u.vol[k]!=null){ u.volUsd=(u.volUsd||0)+u.vol[k]*px; } }); sortRows(); render(); }); });
     });
+    // NEAR wallets: swap volume from the NEAR activity the dashboard already prices (B08, 2026-11-21).
+    loadNearVol().then(function(nv){ if(!nv)return; var by={};
+      nv.rows.forEach(function(r){ if(r.kind!=="swap"||!r.who||r.usd==null)return; by[r.who]=(by[r.who]||0)+r.usd; });
+      ROWS.forEach(function(u){ if(u.chain==="near"&&by[u.addr]!=null)u.volUsd=by[u.addr]; }); sortRows(); render(); });
     // fee tier: membership of the >=250K LUMOS set, which is already fetched for the dashboard
     // Separate from everything else on the page, and failing softly: a missing geo map costs a column
     // of dashes, never the table.
@@ -1784,7 +1789,7 @@ function paintUsers(){
         // XRPL wallet's volume never arrives. The ellipsis means "still loading" and would have sat
         // there for ever; a dash with a reason is the honest cell.
         +"<td class='num-cell' style='text-align:right'>"+(u.volUsd!=null?esc(usd(u.volUsd))
-          :(xr?"<span title='Swap volume is reconstructed from Stellar transaction envelopes. There is no "+chainName(u.chain)+" equivalent yet, so volume is not measured for this wallet \u2014 the fees it paid are.'>\u2014</span>":"\u2026"))+"</td>"
+          :(xr?"<span title='Swap volume is reconstructed from Stellar transaction envelopes. There is no "+chainName(u.chain)+" equivalent yet, so volume is not measured for this wallet \u2014 the fees it paid are.'>\u2014</span>":(window.__lxUVolDone?"<span title='No priced swap volume: its swaps could not be priced, or it only paid fees.'>\u2014</span>":"\u2026")))+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+u.n+"</td>"
         +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
         +"<td style='text-align:right'>"+tier+"</td>"
