@@ -546,7 +546,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // rather than silently reporting a smaller business. The two are read side by side, not one after the
 // other: neither waits on the other's network.
 +'    return Promise.all([loadXrpl(),loadNear()]).then(function(z){ var xr=z[0], nr=z[1]; RV_SELF+=XSELF+NSELF;'
-+'      var all=inc.concat(xr).concat(nr).filter(function(p){ var f=String(p.from||""); /* D02: our own NEAR wallets are not revenue */ return !(p.chain==="near"&&(({"lumoscore.near":1,"razarizv1.near":1,"lumos01.near":1,"lumoscore-near-testing.near":1})[f]||f.slice(-15)===".lumoscore.near")); }).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
++'      var all=inc.concat(xr).concat(nr).filter(function(p){ var f=String(p.from||""); /* D02: our own NEAR wallets are not revenue */ return !((p.chain==="near"&&(({"lumoscore.near":1,"razarizv1.near":1,"lumos01.near":1,"lumoscore-near-testing.near":1})[f]||f.slice(-15)===".lumoscore.near"))||((p.chain||"stellar")==="stellar"&&TREASURY[f])); /* D03: and the Stellar treasury wallets */ }).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
 // SPLIT, not dropped. Everything the collector received is still in `other` and still counted in the
 // note below, so a transfer like the 1,000,000 LUMOS can be seen and queried -- it is simply not
 // revenue, and nothing above it is computed from it.
@@ -1708,6 +1708,8 @@ function paintUsers(){
       if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });
     ROWS=Object.keys(w).map(function(k){return w[k];});
     // The top row by volume was a LumosDAO treasury wallet -- our own testing, not a customer.
+    // D03 (RAZA 2026-11-21, "Yes, hide it"): treasury receipts now leave loadRevenue, so they reach neither this list
+    // nor the dashboard or Revenue totals -- the disagreement the next lines guarded against cannot happen.
     // Labelling beats silently dropping: excluding them here would make this page disagree with the
     // dashboard and the Revenue page, which DO count that on-chain activity. The admin can filter.
     ROWS.forEach(function(u){ u.tre=!!TREASURY[u.addr]; });
