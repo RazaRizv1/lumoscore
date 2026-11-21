@@ -2189,6 +2189,10 @@ function paintAssets(){
   }
 
   function win(k,w){ var r=LXV&&LXV[k]; return (r&&r[w])||null; }
+  // Dollar volume for sorting (B07): 7D, then 30D; an asset with no price ranks as 0.
+  function volUsd(k){ var p=PXA[k]; if(!(p>0))return [0,0]; return [((win(k,"d7")||{}).amt||0)*p, ((win(k,"d30")||{}).amt||0)*p]; }
+  function byVol(x,y){ var a=volUsd(key(x)), b=volUsd(key(y)); return (b[0]-a[0])||(b[1]-a[1]); }
+  function volSortOn(){ var s=q(".filter-strip .fs-select"); return !s||s.selectedIndex===0; }
   // USD, not asset units: 4,000,001 LUMOS and 1,200 USDC are not comparable, and a table exists to be
   // compared down a column.
   function volCell(k,w){
@@ -2638,7 +2642,7 @@ function paintAssets(){
     // Sorted on the FILTERED copy, never on rows() itself. The curated array is the saved order and
     // gets written back to KV by the Sort dropdown's own handler -- reordering it from a column click
     // would silently persist a view preference as the list's real order.
-    if(COL)LI.sort(bySort);
+    if(COL)LI.sort(bySort); else if(volSortOn())LI.sort(byVol);
     if(!LI.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>"+(rows().length?"No asset matches that search.":"Nothing here yet.")+"</td></tr>"; return; }
     tb.innerHTML=LI.map(function(a){ var k=key(a), v=DATA[k], xa=isXA(k);
       // undefined means still looking; null means the lookup came back with nothing. Both used to
@@ -2730,7 +2734,7 @@ function paintAssets(){
         LI.sort(function(x,y){ var a=DATA[key(x)]||{}, b=DATA[key(y)]||{};
           if(mm===1)return (b.trust||0)-(a.trust||0);
           if(mm===2)return x.code.localeCompare(y.code);
-          var xa=(win(key(x),"d7")||{}).amt||0, xb=(win(key(y),"d7")||{}).amt||0;
+          return byVol(x,y); var xa=0, xb=0;
           return xb-xa; });
         if(MODE==="curated")aSave(CUR); render(); }); }
     else sel.remove(); });
