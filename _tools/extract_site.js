@@ -2703,6 +2703,12 @@ export async function onRequest(context){
     });
   }
 
+  // NO KEYBOARD ON THE WAY BACK FROM THE WALLET (RAZA 2026-11-23: "Whenever I confirm the order from my wallet and
+  // return back to LumosCore, whys always the keypad open ... on phone on all networks"). Signing hands the page to the
+  // wallet app; the phone keeps the Amount field focused and reopens its keyboard when the page comes back. When the
+  // page goes to the background the focused text field is let go, so there is nothing to reopen. Every HTML page, every
+  // network, from here; a field the reader taps again works as before.
+  head.push('<script id="lx-kbdblur">(function(){if(window.__lxKbd)return;window.__lxKbd=1;function off(){var a=document.activeElement;if(a&&a!==document.body&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable)){try{a.blur();}catch(e){}}}document.addEventListener("visibilitychange",function(){if(document.hidden)off();});window.addEventListener("pagehide",off);})();</scr' + 'ipt>');
   head.push('<script type="application/ld+json" id="lx-ld-core">'
     // THIS ESCAPE WAS A NO-OP AND THAT WAS AN INJECTION. It used to read .join('<\\/'), which this
     // template literal turns into .join('<\/') in the generated file -- and '<\/' in JavaScript is
