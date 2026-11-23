@@ -37,6 +37,12 @@ const STYLE = `<style id="lx-searchassets-css">
 </style>`;
 
 const SCRIPT = `<script id="lx-searchassets">(function(){
+// EVERY /lxapi/assetsearch CALL FALLS BACK TO THE BROWSER (bug sweep 2026-11-23). stellar.expert refuses our Cloudflare
+// proxy most of the time (429) but not browsers, and about 20 callers on these pages (logos, domains, pool icons,
+// wallet rows) ask the proxy: the Pools and Wallet pages each logged 3-8 refusals. One wrapper here, on every
+// Stellar page, retries a refused or 5xx answer once from the visitor's connection; the same list endpoint, same
+// query, same JSON, so no caller changes. A 400 (query refused) and every other URL pass through untouched.
+if(!window.__lxSeFetch){window.__lxSeFetch=1;try{var _lxF=window.fetch;window.fetch=function(u,o){var s=typeof u==="string"?u:((u&&u.url)||"");var m=s.indexOf("/lxapi/assetsearch?")===0||s.indexOf(location.origin+"/lxapi/assetsearch?")===0;var p=_lxF.apply(this,arguments);if(!m)return p;var qs=s.slice(s.indexOf("?")+1);return p.then(function(r){if(r.status!==429&&r.status<500)return r;return _lxF("https://api.stellar.expert/explorer/public/asset?"+qs).then(function(d){return d.ok?d:r;},function(){return r;});});};}catch(_){}}
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
