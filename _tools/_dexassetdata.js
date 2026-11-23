@@ -3538,35 +3538,42 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Write the live numbers into the rows that are already on screen. TVL and pool share move on every
   // tick; re-rendering the row for that destroys the node under the pointer, which is what made the
   // hovered pool CTA flash between its normal and hover colour.
+  // UNPRICED POOLS ARE STILL POOLS (RAZA 2026-11-23, B2B9X: the tab said Pools 7, opening it said 0). The list kept only
+  // pools it could value -- an XLM side, or this asset's XLM price -- so an asset with no XLM pool and no price lost every
+  // one of its 7 real pools, and the badge was then rewritten to the empty list. A pool holding some of this asset is
+  // listed; what cannot be priced reads "—" (value, share, combined), priced pools first. Empty pools still drop.
+  function plTvl(p){ return p.tvlXlm>0?(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM"):"—"; }
+  function plSh(x){ return x<0?"—":((x>=0.1?x.toFixed(1):"<0.1")+"%"); }
+  function plComb(c){ return c>0?(xlmUsd>0?abbrUsd(c*xlmUsd):abbrNum(c)+" XLM"):"—"; }
   function poolsNums(body,top,combined,MOB){ var rows=body.children;
     for(var i=0;i<rows.length&&i<top.length;i++){ var p=top[i],r=rows[i];
-      var share=combined>0?(p.tvlXlm/combined*100):0;
-      var tvl=xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM";
-      var sh=(share>=0.1?share.toFixed(1):"<0.1")+"%";
+      var share=(combined>0&&p.tvlXlm>0)?(p.tvlXlm/combined*100):-1;
+      var tvl=plTvl(p);
+      var sh=plSh(share);
       if(MOB){ setTxt(r.querySelector(".mdxa-pl-tvl"),tvl); setTxt(r.querySelector(".mdxa-pl-lp"),num(p.tl)+" LP holders");
-        setTxt(r.querySelector(".mdxa-pl-apr"),sh+" share"); }
+        setTxt(r.querySelector(".mdxa-pl-apr"),share<0?"—":sh+" share"); }
       else { var c=r.children; if(c.length>=4){ setTxt(c[1],tvl); setTxt(c[2],num(p.tl)); setTxt(c[3],sh); } } } }
   // Same idea for the three stats above the table.
   function poolsHead(){ var v=poolsView; if(!v||!v.wrap)return;
     var vals=v.wrap.querySelectorAll(v.MOB?".mdxa-hl-stat .val":".dxa-hl-stat .val"); if(vals.length<3)return;
     setTxt(vals[0],num(v.list.length));
-    setTxt(vals[1],xlmUsd>0?abbrUsd(v.combined*xlmUsd):abbrNum(v.combined)+" XLM");
+    setTxt(vals[1],plComb(v.combined));
     setTxt(vals[2],abbrNum(v.lps));
     for(var i=0;i<3;i++)lxMark(vals[i]); }
-  function poolsRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
+  function poolsRowsHTML(top,combined){ return top.map(function(p){ var share=(combined>0&&p.tvlXlm>0)?(p.tvlXlm/combined*100):-1;
       return '<tr class="dxa-pl-row" data-pool="'+poolHref(p.id)+'"><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
         +'<span class="dxa-pl-name">'+CODE+' / '+p.other+'</span></div></td>'
-        +'<td class="mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</td>'
+        +'<td class="mono">'+plTvl(p)+'</td>'
         +'<td class="mono">'+num(p.tl)+'</td>'
-        +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
+        +'<td class="mono">'+plSh(share)+'</td>'
         +'</tr>'; }).join(""); }
-  function poolsMRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
+  function poolsMRowsHTML(top,combined){ return top.map(function(p){ var share=(combined>0&&p.tvlXlm>0)?(p.tvlXlm/combined*100):-1;
       return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
         +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
         +'<div><div class="mdxa-pl-name">'+CODE+' / '+p.other+'</div>'
         +'<div class="mdxa-pl-net mdxa-pl-lp">'+num(p.tl)+' LP holders</div></div></div>'
-        +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</div>'
-        +'<div class="mdxa-pl-apr apr-low">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join(""); }
+        +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+plTvl(p)+'</div>'
+        +'<div class="mdxa-pl-apr apr-low">'+(share<0?'—':plSh(share)+' share')+'</div></div></a>'; }).join(""); }
   // Repaints rows + footer for the current page. Called on build and by the Prev/Next buttons, so paging
   // never re-runs the whole panel build (which would refetch logos and re-mask the stat row).
   var POOLS_NONE="No liquidity pools yet \u2014 this asset is not paired in any AMM pool.";
@@ -3642,8 +3649,8 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(!raw.length && !window.__lxDXApoolsDone)return;
     var list=raw.map(function(p){ var other=null; (p.res||[]).forEach(function(rv){ if(rv.code!==CODE&&!other)other=rv; }); if(!other)other=(p.res||[])[0]||{code:"XLM",iss:""};
       var tvlXlm=p.nat>0?p.nat*2:((p.ass>0&&assetXlm>0)?p.ass*assetXlm*2:0);
-      return {id:p.id,other:other.code,otherIss:other.iss,tvlXlm:tvlXlm,fee:p.feeBp,tl:p.tl}; })
-      .filter(function(p){return p.tvlXlm>0;}).sort(function(a,b){return b.tvlXlm-a.tvlXlm;});
+      return {id:p.id,other:other.code,otherIss:other.iss,tvlXlm:tvlXlm,fee:p.feeBp,tl:p.tl,ass:+p.ass||0}; })
+      .filter(function(p){return p.tvlXlm>0||p.ass>0;}).sort(function(a,b){return (b.tvlXlm-a.tvlXlm)||(b.ass-a.ass);});
     // Deliberately NOT an early return: pools that exist but hold no value are still "nothing to show",
     // and bailing here is what left the comp rows up.
     if(!list.length && !window.__lxDXApoolsDone)return;
@@ -3662,7 +3669,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(wrap.getAttribute("data-lxsig")===sig){ poolsHead(); poolsPaint(); return; }
     var head='<div class="dxa-pl-head">'
       +'<div class="dxa-hl-stat"><span class="lbl">Active pools</span><span class="val mono">'+num(list.length)+'</span></div>'
-      +'<div class="dxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
+      +'<div class="dxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+plComb(combined)+'</span></div>'
       +'<div class="dxa-hl-stat"><span class="lbl">LP positions</span><span class="val mono">'+abbrNum(lps)+'</span></div>'
       +'</div>';
     if(MOB){
@@ -3671,7 +3678,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // pool share instead of an invented yield.
       var mhead='<div class="mdxa-pl-head">'
         +'<div class="mdxa-hl-stat"><span class="lbl">Active pools</span><span class="val mono">'+num(list.length)+'</span></div>'
-        +'<div class="mdxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
+        +'<div class="mdxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+plComb(combined)+'</span></div>'
         +'<div class="mdxa-hl-stat"><span class="lbl">LP positions</span><span class="val mono">'+abbrNum(lps)+'</span></div>'
         +'</div>';
       wrap.innerHTML=mhead+'<div class="mdxa-pl-list"></div><div class="lx-pl-foot"></div>';
