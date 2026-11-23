@@ -33,9 +33,15 @@ function list(){var base=document.getElementById("spAssetList");if(!base)return 
   var l=document.getElementById("lxXsList");
   if(!l){l=document.createElement("div");l.id="lxXsList";l.setAttribute("data-lxnonav","");var h=head();(h||base).parentNode.insertBefore(l,h||base);}
   base.style.display="none";var hh=head();if(hh)hh.style.display="none";var f=document.getElementById("spFilters");if(f)f.style.display="none";l.style.display="";return l;}
+// The popup's footer line names the PAGE's network ("Search assets, pools and wallets on the XRP Ledger."); while ours
+// shows, it names the wallet's, and off() puts the page's own words back.
+function foot(w){var b=document.getElementById("spAssetList"),body=b&&b.closest(".sp-body"),ft=body&&body.parentNode.querySelector(".sp-foot"),s=ft&&ft.querySelector("span");
+  if(!s)return;if(!s.hasAttribute("data-lxxs-orig"))s.setAttribute("data-lxxs-orig",s.textContent);
+  var t=w?"Search assets on "+NAMES[w]+", your wallet's network.":s.getAttribute("data-lxxs-orig");if(s.textContent!==t)s.textContent=t;}
 function off(){var l=document.getElementById("lxXsList"),base=document.getElementById("spAssetList"),hh=head(),f=document.getElementById("spFilters");
-  if(l)l.style.display="none";if(base)base.style.display="";if(hh)hh.style.display="";if(f)f.style.display="";}
-function paint(w,rows,msg){var l=list();if(!l)return;css();
+  if(l)l.style.display="none";if(base)base.style.display="";if(hh)hh.style.display="";if(f)f.style.display="";
+  var s=document.querySelector(".sp-foot span[data-lxxs-orig]");if(s&&s.textContent!==s.getAttribute("data-lxxs-orig"))s.textContent=s.getAttribute("data-lxxs-orig");}
+function paint(w,rows,msg){var l=list();if(!l)return;css();foot(w);
   var h='<div class="sp-section-head"><h4>Assets on '+esc(NAMES[w])+' <span class="count">('+rows.length+')</span></h4></div>';
   if(msg){l.innerHTML=h+'<div class="sp-seaempty">'+esc(msg)+'</div>';return;}
   l.innerHTML=h+rows.map(function(r,i){
