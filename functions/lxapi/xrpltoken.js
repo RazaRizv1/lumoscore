@@ -43,8 +43,12 @@ async function upstream(path, env) {
 
 const num = (v) => { const n = Number(v); return isFinite(n) ? n : null; };
 
+import { loadVouched } from './_unvouched.js';
+
 export async function onRequest(context) {
   const { request, env } = context;
+  // Admin-curated tokens (RAZA 2026-11-24, _netcurated.js) join the built-in list before anything reads it.
+  await loadVouched(env);
   const url = new URL(request.url);
   // Accepts the upstream's own id forms: "issuer-currencyHex", an md5, or the literal XRP.
   const id = (url.searchParams.get('id') || '').trim().slice(0, 120);

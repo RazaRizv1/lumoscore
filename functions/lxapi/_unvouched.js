@@ -29,6 +29,8 @@
 // Kept in one place and applied at every endpoint that publishes the flag, because a tick that is
 // absent in search and present on the asset page is worse than either answer on its own.
 
+import { readNetCurated } from './_netcurated.js';
+
 // Keyed ISSUER|TICKER, the shape used by the curated roster in trade.js and the description table in
 // dexasset.js. One entry per token; an issuer is not denied wholesale, because a gateway issuing a
 // confusable USDC says nothing about its other currencies.
@@ -151,7 +153,7 @@ export function currencyOf(ticker) {
 // somewhere else. Returned as issuer/ticker pairs rather than the raw keys so the caller does not
 // have to re-parse a format this file owns.
 export function vouchedTokens() {
-  return [...ALLOW].map((k) => {
+  return [...new Set([...ALLOW, ...EXTRA])].map((k) => {
     const cut = k.indexOf('|');
     return { issuer: k.slice(0, cut), ticker: k.slice(cut + 1) };
   });
@@ -160,8 +162,21 @@ export function vouchedTokens() {
 export function vouched(issuer, currency, flag) {
   const key = String(issuer || '').trim() + '|' + tickerOf(currency);
   if (DENY.has(key)) return 0;
-  if (ALLOW.has(key)) return 1;
+  if (ALLOW.has(key) || EXTRA.has(key)) return 1;
   return flag ? 1 : 0;
+}
+
+// TOKENS CURATED FROM ADMIN (RAZA 2026-11-24): admin's Add asset writes XRPL tokens to a list in KV
+// (_netcurated.js) instead of a code change here. They count exactly like an ALLOW entry -- ticked and listed.
+// Every endpoint that calls vouched()/vouchedTokens() awaits loadVouched(env) first; until it has, EXTRA is
+// whatever the last read in this isolate saw (empty on a cold start, which is ALLOW alone, as before).
+let EXTRA = new Set();
+export async function loadVouched(env) {
+  try {
+    const rows = await readNetCurated(env, 'xrpl');
+    EXTRA = new Set(rows.filter((r) => r && r.issuer && r.ticker)
+      .map((r) => String(r.issuer).trim() + '|' + tickerOf(currencyOf(r.ticker))));
+  } catch (e) { /* keep the last good set */ }
 }
 
 // THE ISSUER'S DISPLAY NAME, where the upstream feed has one we do not accept. xrpl.to carries

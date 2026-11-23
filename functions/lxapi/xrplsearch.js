@@ -239,8 +239,12 @@ async function withLedgerDomains(rows, origin, ctx, stat) {
   return false;
 }
 
+import { loadVouched } from './_unvouched.js';
+
 export async function onRequest(context) {
   const { request, env } = context;
+  // Admin-curated tokens (RAZA 2026-11-24, _netcurated.js) join the built-in list before anything reads it.
+  await loadVouched(env);
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') || '').trim().slice(0, 40);
   if (q.length < 2) return json({ ok: true, q, rows: [] }, 60);
