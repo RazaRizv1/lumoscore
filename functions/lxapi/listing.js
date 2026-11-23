@@ -1,3 +1,4 @@
+import { isTestWallet, TEST_PRICE } from '../../_lib/testwallets.js';
 // Curated listing applications from the public "List your token" page.
 //
 // THE ONLY THING THAT MAKES THIS SAFE IS THAT THE PAYMENT IS VERIFIED ON-CHAIN. This endpoint is
@@ -232,7 +233,9 @@ export async function onRequestPost({ request, env }) {
   const pay = await verifyPayment(hash);
   if (pay.err) return json({ ok: false, error: pay.err }, 400);
 
-  const want = await quoted(request, pay.code);
+  // An approved test wallet (_lib/testwallets.js) pays the minimum, 0.5 XLM -- decided from the address that PAID.
+  const testW = pay.code === 'XLM' && await isTestWallet(env, 'stellar', pay.payer);
+  const want = testW ? TEST_PRICE : await quoted(request, pay.code);
   if (!want) return json({ ok: false, error: 'could not price the listing; try again shortly' }, 503);
   if (+pay.amount < want * TOLERANCE) {
     return json({

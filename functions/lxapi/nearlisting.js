@@ -16,6 +16,7 @@
 // Same listing_request table, network = 'near': code = the token's symbol (from ft_metadata, else as
 // typed), issuer = the token CONTRACT (that is the identity on NEAR), tx_hash = the base58 hash.
 import { storeLogo } from './listing.js';
+import { isTestWallet, TEST_PRICE } from '../../_lib/testwallets.js';
 
 const COLLECTOR = 'fees-lumoscore.near';          // the NEAR platform fee account (RAZA)
 const RPC = ['https://free.rpc.fastnear.com', 'https://near.drpc.org'];
@@ -122,7 +123,14 @@ async function hexId(s) {
   return h;
 }
 
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
+  // TEST WALLETS (RAZA 2026-11-23): asked with ?a=<connected wallet>, an approved test wallet is quoted the minimum,
+  // 0.5 NEAR. Never cached (the answer is per address). The POST re-checks the PAYING address itself.
+  const qa = new URL(request.url).searchParams.get('a');
+  if (qa && await isTestWallet(env, 'near', qa)) {
+    return json({ ok: true, test: true, priceUsd: null, collector: COLLECTOR,
+      options: [{ asset: 'native', code: 'NEAR', amount: String(TEST_PRICE) }], quotedAt: Date.now(), validForSeconds: QUOTE_VALID_S }, 200, 0);
+  }
   const usd = await nearUsd(request);
   if (!usd) return json({ ok: false, error: 'price unavailable' }, 503);
   return json({
@@ -186,8 +194,11 @@ export async function onRequestPost({ request, env }) {
   } catch (e) { return json({ ok: false, error: 'could not reach NEAR; try again shortly' }, 503); }
   if (!t || t.error) return json({ ok: false, error: 'transaction not found yet — if you just paid, try again in a few seconds' }, 400);
 
-  const usd = await nearUsd(request);
-  const want = usd ? PRICE_USD / usd : 0;
+  // An approved test wallet (_lib/testwallets.js) pays the minimum, 0.5 NEAR -- decided from the signer, which
+  // checkPayment confirms signed the transaction.
+  const testW = await isTestWallet(env, 'near', signer);
+  const usd = testW ? 0 : await nearUsd(request);
+  const want = testW ? TEST_PRICE : (usd ? PRICE_USD / usd : 0);
   if (!want) return json({ ok: false, error: 'could not price the listing; try again shortly' }, 503);
   const pay = checkPayment(t, signer, blockMs, want, Date.now());
   if (pay.err) return json({ ok: false, error: pay.err }, 400);

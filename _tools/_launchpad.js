@@ -104,13 +104,23 @@ function lxLpOnPrice(cb){ try{ window.__lxLpPriceCbs.push(cb); if(window.__lxXlm
 // The pool account's own minimum balance, on top of the XLM it puts into the pool: two subentries (the CODE
 // trustline and the pool trustline) need (2 + 2) x 0.5 = 2 XLM, and 0.5 over covers a base-reserve rise.
 var LXLP_POOL_RESERVE=2.5;
-function lxLpCosts(){ var r=(window.__lxXlmUsd>0?window.__lxXlmUsd:0.11), C=window.__lxLP; return { rate:r, createFeeXlm:(C.createFeeUsd||5)/r, liqXlm:(C.liqUsd||10)/r, poolFeeXlm:(C.poolFeeUsd||10)/r }; }
+// TEST WALLETS (RAZA 2026-11-23): an approved test wallet (admin "Test wallets" page; /lxapi/testwallet) launches at the
+// minimum: 0.5 XLM minting fee to the collector and 0.5 XLM of liquidity. Everyone else is priced as before.
+function lxLpCosts(){ var r=(window.__lxXlmUsd>0?window.__lxXlmUsd:0.11), C=window.__lxLP; if(window.__lxTestWallet)return {rate:r,createFeeXlm:0.5,liqXlm:0.5,poolFeeXlm:0,test:1}; return { rate:r, createFeeXlm:(C.createFeeUsd||5)/r, liqXlm:(C.liqUsd||10)/r, poolFeeXlm:(C.poolFeeUsd||10)/r }; }
 // Shared cost-card painter (fixed $25 total; XLM derived from the live rate). Used by BOTH step-1 (live, as
 // the user edits extra liquidity) and the review page — so the two never disagree.
 function lxLpPaintCost(extra){
   extra=Math.max(0, parseFloat(String(extra||"0").replace(/,/g,""))||0);
   if(typeof lxLpSetRow!=="function") return;
   var C=window.__lxLP, K=lxLpCosts(), r=K.rate, dim='<span style="opacity:.55">';
+  window.__lxLpLastExtra=extra;
+  if(K.test){ var tl=K.liqXlm+extra, tt=K.createFeeXlm+tl, tp=dim+"test price</span>";
+    lxLpSetRow(/Token creation/i, K.createFeeXlm.toFixed(2)+" XLM "+tp);
+    lxLpSetRow(/Initial liquidity/i, tl.toFixed(2)+" XLM "+tp);
+    lxLpSetRow(/pool.{0,3}network/i, "0.00 XLM "+tp);
+    var tct=document.querySelector(".cost-total .v"); if(tct) tct.innerHTML=tt.toFixed(2)+" XLM "+tp;
+    var sct=document.getElementById("costTotal"); if(sct) sct.innerHTML=tt.toFixed(2)+' XLM <span class="usd">test price</span>';
+    return; }
   function d2(v){ return (Math.abs(v-Math.round(v))<0.005)?String(Math.round(v)):v.toFixed(2); }
   var createX=K.createFeeXlm, poolX=K.poolFeeXlm, liqX=K.liqXlm+extra, totX=createX+poolX+liqX;
   var cU=(C.createFeeUsd||5), pU=(C.poolFeeUsd||10), lU=(C.liqUsd||10)+extra*r, tU=cU+pU+lU;
@@ -1041,6 +1051,16 @@ window.lxLpTest=function(draft){
     }).then(function(result){ console.log("[lxLpTest] RESULT", result); return {distributor:dist.publicKey(), result:result}; });
   });
 };
+// Is the connected wallet an approved test wallet? Asked once per address (and again when it changes); the cost
+// card repaints with the answer. A failed check leaves normal pricing.
+(function(){ var asked=null;
+  function check(){ var a=""; try{ a=localStorage.getItem("lumos.address")||""; }catch(_){}
+    if(a===asked)return; asked=a;
+    function set(v){ if(!!window.__lxTestWallet===v)return; window.__lxTestWallet=v; try{ lxLpPaintCost(window.__lxLpLastExtra||0); }catch(_){} }
+    if(!/^G[A-Z2-7]{55}$/.test(a)){ set(false); return; }
+    fetch("/lxapi/testwallet?net=stellar&a="+encodeURIComponent(a),{cache:"no-store"}).then(function(r){return r.json();})
+      .then(function(j){ if(asked===a) set(!!(j&&j.test)); }).catch(function(){}); }
+  check(); setInterval(check,3000); })();
 })();`;
 
 const SCRIPT='<script id="lx-lp-js">'+BODY+'<'+'/script>';

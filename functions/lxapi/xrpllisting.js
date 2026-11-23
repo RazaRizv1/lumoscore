@@ -17,6 +17,7 @@
 // so the admin queue is one queue. code = the currency as typed (LUMOS), issuer = the r-address,
 // tx_hash = the 64-hex hash, lower-cased like Stellar's.
 import { storeLogo } from './listing.js';
+import { isTestWallet, TEST_PRICE } from '../../_lib/testwallets.js';
 
 // The XRPL platform fee account (RAZA 2026-09-06), checksum-gated in C:\LumosCore-XRPL\_tools\xrpladdr.js.
 const COLLECTOR = 'rBDV4nwHzg5ByAYJtPWrbBZnuUXSUtFr94';
@@ -125,7 +126,14 @@ export function checkPayment(t, want, now) {
   return { payer: tx.Account, amount: amount.toFixed(6), at };
 }
 
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
+  // TEST WALLETS (RAZA 2026-11-23): asked with ?a=<connected wallet>, an approved test wallet is quoted the minimum,
+  // 0.5 XRP. Never cached (the answer is per address). The POST re-checks the PAYING address itself.
+  const qa = new URL(request.url).searchParams.get('a');
+  if (qa && await isTestWallet(env, 'xrpl', qa)) {
+    return json({ ok: true, test: true, priceUsd: null, collector: COLLECTOR, memo: MEMO,
+      options: [{ asset: 'native', code: 'XRP', amount: String(TEST_PRICE) }], quotedAt: Date.now(), validForSeconds: QUOTE_VALID_S }, 200, 0);
+  }
   const usd = await xrpUsd(request);
   if (!usd) return json({ ok: false, error: 'price unavailable' }, 503);
   return json({
@@ -187,8 +195,10 @@ export async function onRequestPost({ request, env }) {
   catch (e) { return json({ ok: false, error: 'could not reach the XRP Ledger; try again shortly' }, 503); }
   if (!t || t.error) return json({ ok: false, error: 'transaction not found yet — if you just paid, try again in a few seconds' }, 400);
 
-  const usd = await xrpUsd(request);
-  const want = usd ? PRICE_USD / usd : 0;
+  // An approved test wallet (_lib/testwallets.js) pays the minimum, 0.5 XRP -- decided from the account that PAID.
+  const testW = await isTestWallet(env, 'xrpl', (t.tx_json || t).Account);
+  const usd = testW ? 0 : await xrpUsd(request);
+  const want = testW ? TEST_PRICE : (usd ? PRICE_USD / usd : 0);
   if (!want) return json({ ok: false, error: 'could not price the listing; try again shortly' }, 503);
   const pay = checkPayment(t, want, Date.now());
   if (pay.err) return json({ ok: false, error: pay.err }, 400);

@@ -51,7 +51,16 @@ async function xlmUsd(request) {
   } catch (e) { return 0; }
 }
 
-export async function onRequestGet({ request }) {
+import { isTestWallet, TEST_PRICE } from '../../_lib/testwallets.js';
+
+export async function onRequestGet({ request, env }) {
+  // TEST WALLETS (RAZA 2026-11-23): asked with ?a=<connected wallet>, an approved test wallet is quoted the minimum,
+  // 0.5 XLM. Never cached (the answer is per address). /lxapi/listing re-checks the PAYING address itself.
+  const qa = new URL(request.url).searchParams.get('a');
+  if (qa && await isTestWallet(env, 'stellar', qa)) {
+    return json({ ok: true, test: true, priceUsd: null, options: [{ asset: 'native', code: 'XLM', amount: String(TEST_PRICE) }],
+      quotedAt: Date.now(), validForSeconds: QUOTE_VALID_S }, 200, 0);
+  }
   const usd = await xlmUsd(request);
   // No price, no quote. Charging from a stale or guessed rate is worse than asking someone to retry.
   if (!usd) return json({ ok: false, error: 'price unavailable' }, 503);

@@ -91,7 +91,7 @@
     if (!quote) return;
     var o = quote.options[0];
     if (elAmt) elAmt.textContent = human(o.amount) + ' XLM';
-    if (elRate) elRate.textContent = '$' + Number(quote.xlmUsd).toFixed(6) + ' / XLM';
+    if (elRate) elRate.textContent = quote.test ? 'Test price for this wallet' : ('$' + Number(quote.xlmUsd).toFixed(6) + ' / XLM');
     if (elTo) { elTo.textContent = FEE_ACCT; elTo.title = FEE_ACCT; }
 
     // (5) WHERE THE RATE CAME FROM, AND HOW LONG IT HOLDS.
@@ -115,13 +115,20 @@
     // The headline figure comes from the endpoint, not from the markup. The two used to be able to
     // disagree, and a page saying $250 beside a button charging something else is the one thing this
     // page cannot afford to do.
-    var shown = '$' + quote.priceUsd;
+    var shown = quote.test ? (human(o.amount) + ' XLM') : ('$' + quote.priceUsd);
     ['ltFee', 'ltFee2', 'ltFee3'].forEach(function (id) { var e = $(id); if (e) e.textContent = shown; });
     paintButton();
   }
 
+  // TEST WALLETS (RAZA 2026-11-23): the quote is asked WITH the connected wallet, so an approved test wallet sees its
+  // minimum (0.5 of the coin, labelled as a test price); the server re-checks the paying address on submit. Asked again
+  // when the wallet changes, so connecting after the page loaded is not stuck on the normal price.
+  var quoteFor = null;
+  function quoteAddr() { try { return localStorage.getItem('lumos.address') || ''; } catch (e) { return ''; } }
+  setInterval(function () { if (quoteFor !== null && quoteAddr() !== quoteFor) loadQuote().catch(function () {}); }, 3000);
   function loadQuote() {
-    return fetch('/lxapi/listingquote', { cache: 'no-store' })
+    var qa = quoteAddr(); quoteFor = qa;
+    return fetch('/lxapi/listingquote' + (qa ? ('?a=' + encodeURIComponent(qa)) : ''), { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.ok || !d.options || !d.options[0] || !(+d.options[0].amount > 0)) {
