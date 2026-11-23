@@ -356,9 +356,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
        var hp=q(".hero-price-block")||q(".hero-price");
     if(hp&&lumosXlm>0){
       var priceUsd=lumosXlm*xlmUsd;
-      setText(hp.querySelector(".price"), usd(priceUsd));
+      if(xlmUsd>0)setText(hp.querySelector(".price"), usd(priceUsd));
       // "≈ X XLM" sub — the element under .price that mentions XLM
-      var sub=hp.querySelector(".sub-volume")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
+      var sub=hp.querySelector(".sub-volume")||hp.querySelector(".price-native")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
       if(sub)setText(sub, "≈ "+xlmAmt(lumosXlm)+" XLM");
       // 24h change
       var ch=hp.querySelector(".change");
@@ -380,7 +380,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     // Price settled unusable: dash it rather than leave the design's baked $0.00320 standing.
     if(hp&&!(lumosXlm>0)&&pxFailed){
       setText(hp.querySelector(".price"), "—");
-      var _xs=hp.querySelector(".sub-volume")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
+      var _xs=hp.querySelector(".sub-volume")||hp.querySelector(".price-native")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
       if(_xs)setText(_xs, "—");
       var _ch=hp.querySelector(".change"); if(_ch)setText(_ch, "");
       hp.classList.add("lxlt");
