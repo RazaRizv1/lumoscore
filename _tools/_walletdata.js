@@ -1659,6 +1659,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'setTimeout(function(){try{if(window.__lxSwapFrom)window.__lxSwapFrom(code,iss);}catch(_){}} ,60);'
 +'});}'
 +'function wireTradeNav(){if(window.__lxTradeNav)return;window.__lxTradeNav=1;window.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("#assetsTable .qa-row-btn"):null;if(!btn||!/Trade/i.test(btn.textContent||""))return;if(btn.__lxPass)return;var row=btn.closest("tr"),ico=row?row.querySelector(".lx-aico"):null,code=ico?ico.getAttribute("data-lxc"):"",iss=ico?ico.getAttribute("data-lxi"):"";e.preventDefault();e.stopImmediatePropagation();tradeMenu(btn,code,iss);},true);}'
+// THE ASSET NAME OPENS ITS PAGE (RAZA 2026-11-23, auditor point 5 aligned on Stellar): the icon and name showed a hand
+// cursor and did nothing. They now go where "Trade on DEX" goes -- this asset's Trade page, XLM to the DEX page.
+// Icon and name only: the issuer line keeps its own copy button. The phone's card rows (.lxmw-ast in #assetList) too.
++'function wireNameNav(){if(window.__lxNameNav)return;window.__lxNameNav=1;try{var cs=document.createElement("style");cs.textContent="#assetList .lxmw-ast .lxmw-nm,#assetList .lxmw-ast .lxmw-ico{cursor:pointer}";document.head.appendChild(cs);}catch(_){}window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var hit=t.closest("#assetsTable .asset-id .lx-aico, #assetsTable .asset-id .nm, #assetList .lxmw-ast .lxmw-ico, #assetList .lxmw-ast .lxmw-nm");if(!hit)return;var row=hit.closest("tr, .lxmw-ast"),ico=row?row.querySelector(".lx-aico, .lxmw-ico"):null;if(!ico)return;var code=ico.getAttribute("data-lxc")||ico.getAttribute("data-c")||"",iss=ico.getAttribute("data-lxi")||ico.getAttribute("data-i")||"";var isX=(!code||code==="XLM");e.preventDefault();e.stopPropagation();window.location.href=isX?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));},true);}'
 // THE LOADING SHAPE WAS BUILT AND THEN HIDDEN (RAZA 2026-09-17: "On Stellar it doesnt have this loading on the
 // portfolio chart in wallet like there is on XRPL. Also add this on Stellar too"). The skeleton markup, and every class
 // styling it, have been here all along -- what the line below used to do was paint it and REMOVE lx-chart-ready in the
@@ -1726,7 +1730,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'    ["#assetsTable","#lpPanel"].forEach(function(sel){ var t=document.querySelector(sel); var tb=t&&bodyOf(t); if(!tb)return;'
 +'      try{ new MutationObserver(function(){ if((inp.value||"").trim())apply(); }).observe(tb,{childList:true}); }catch(_){} }); }'
 +'}'
-+'function boot(){lxNormToast();wireNavGuard();wireTradeNav();wireBalMax();wireSend();wireSendValidation();wireSendAssetPicker();enhanceSendPre();wireReceiveAddr();wireAssetActions();wireRowMenu();wireWalletLink();wireTf();lxLoadAcctAge();try{lxAssetFilter();}catch(_){}if(!document.querySelector("#heroChart.lx-chart-ready"))renderChart("1M");prep();load();window.__lxWalletRefresh=function(){try{load();}catch(_){}};}'   // finalized Send/Swap/Receive flows stay intact
++'function boot(){lxNormToast();wireNavGuard();wireTradeNav();wireNameNav();wireBalMax();wireSend();wireSendValidation();wireSendAssetPicker();enhanceSendPre();wireReceiveAddr();wireAssetActions();wireRowMenu();wireWalletLink();wireTf();lxLoadAcctAge();try{lxAssetFilter();}catch(_){}if(!document.querySelector("#heroChart.lx-chart-ready"))renderChart("1M");prep();load();window.__lxWalletRefresh=function(){try{load();}catch(_){}};}'   // finalized Send/Swap/Receive flows stay intact
 +'try{renderChart("1M");}catch(_){}'
 +'if(document.readyState!=="loading")boot();else document.addEventListener("DOMContentLoaded",boot);'
 +'setInterval(load,60000);'

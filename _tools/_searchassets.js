@@ -666,11 +666,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // worse than before if the proxy is ever unavailable -- including on the local dev server.
   function seaIdx(q,limit){
     var qs="search="+encodeURIComponent(q)+"&limit="+(limit||12);
-    // NO DIRECT stellar.expert FALLBACK (2026-11-19). From a page on lumoscore.com the browser always blocks it (CORS), and
-    // the API is paid now, so it only added a failed request before every error. A 400 from our proxy means the QUERY was
-    // refused (symbols such as < > ! or an emoji), not that the index is down, so it is tagged and reported as such.
+    // A 400 from our proxy means the QUERY was refused (symbols such as < > ! or an emoji), not that the index is down,
+    // so it is tagged and reported as such.
+    // DIRECT FALLBACK IS BACK (RAZA 2026-11-23: "Why am i unable to search on Stellar"). stellar.expert rate-limits
+    // Cloudflare's shared egress: measured 4 of 5 searches answered 429 through our proxy while the same URL answered 200
+    // from a home connection. The LIST endpoint is still free and now sends access-control-allow-origin: *, checked from a
+    // lumoscore.com page (the 2026-11-19 note that the browser always blocks it no longer holds). So a 429/5xx from the
+    // proxy retries once from the visitor's own connection; only if that fails too does the box say the index is down.
+    function direct(){
+      return fetch("https://api.stellar.expert/explorer/public/asset?"+qs)
+        .then(function(r){ if(!r.ok)throw new Error("d"+r.status); return r.json(); });
+    }
     return fetch("/lxapi/assetsearch?"+qs)
-      .then(function(r){ if(r.status===400){ var e=new Error("p400"); e.bad=1; throw e; } if(!r.ok)throw new Error("p"+r.status); return r.json(); });
+      .then(function(r){ if(r.status===400){ var e=new Error("p400"); e.bad=1; throw e; } if(!r.ok)throw new Error("p"+r.status); return r.json(); })
+      .catch(function(e){ if(e&&e.bad)throw e; return direct(); });
   }
   
     function seaFetch(q,cb){

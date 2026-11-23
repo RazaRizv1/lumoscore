@@ -144,6 +144,8 @@ const STYLE = '<style id="lx-mobdex-css">'
   // collapsed by the whitespace handling and the two figures never touch ('XLM71,946 trades').
   + '.mdx-mk-trades{color:var(--text-soft,#8a8fa3)}'
   + '.mdx-mk-trades::before{content:"·";margin:0 5px;opacity:.7}'
+  // One line on a phone: the figures are shortened above, and anything still too wide ends in an ellipsis.
+  + '.mdx-mk-meta .mdx-mk-vol{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.6px}'
   + '.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);'
   + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
   + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
@@ -254,6 +256,10 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(denom()==="usd"){ var r=xu(); if(r>0)return "$"+fmtPrice(p*r); }
     return fmtPrice(p)+" XLM";
   }
+  // PHONE LIST FIGURES TO THREE DIGITS (auditor 2026-11-23): "Vol $129.43K · 12,161 trades" needed 189px on a 375 phone and
+  // had 155, so "trades" wrapped to a line of its own. "Vol $129K · 12.2K trades" fits; counts under 10,000 stay exact.
+  function lxS3(s){s=String(s);var r=s.replace(/([0-9]+(?:[.][0-9]+)?)([KMB])/,function(m,n,u){var p=(+n).toPrecision(3);if(p.indexOf(".")>=0)p=p.replace(/0+$/,"").replace(/[.]$/,"");return p+u;});return r!==s?r:s.replace(/([0-9]{3,})[.][0-9]+/,"$1");}
+  function lxCnt(v){var x=+v;if(!isFinite(x))return String(v);if(x<1e4)return x.toLocaleString("en-US");var u=x>=1e6?"M":"K";return lxS3(String(x>=1e6?x/1e6:x/1e3)+u);}
   function volTxt(a){
     if(a.vol==null)return DASH;
     if(denom()==="usd"){ var r=xu(); if(r>0)return "$"+abbr(a.vol*r); }
@@ -589,8 +595,8 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         // so this is a field that was fetched and then not shown, not a new request. Omitted rather than
         // dashed when it is null: an unpriced pair already shows one dash on this line and a second
         // would read as two broken figures instead of one missing one.
-        +'<div class="mdx-mk-vol">Vol '+esc(volTxt(a))
-          +(a.trades!=null?('<span class="mdx-mk-trades">'+esc(num(a.trades,0))+' trades</span>'):'')
+        +'<div class="mdx-mk-vol">Vol '+esc(lxS3(volTxt(a)))
+          +(a.trades!=null?('<span class="mdx-mk-trades">'+esc(lxCnt(a.trades))+' trades</span>'):'')
           +'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceTxt(a))+'</div>'
