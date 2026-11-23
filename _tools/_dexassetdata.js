@@ -4794,15 +4794,87 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   }
   // fetch the connected wallet's resting offers (rendered into an open-orders list if the page has one)
   function loadOpenOffers(){ var addr=lxAddr(); if(!addr)return; j(H+"/accounts/"+addr+"/offers?limit=25&order=desc").then(function(d){ window.__lxDXLoffers=(d&&d._embedded&&d._embedded.records)||[]; try{ renderOpenOffers(); }catch(_){} }).catch(function(){}); }
+  // YOUR OPEN ORDERS ON THIS ASSET, UNDER THE LIMIT FORM (RAZA's auditor 2026-11-23: "Limit order not viewable or
+  // cancellable on the Trade page"). The offers were already fetched here (loadOpenOffers) but painted only "if the
+  // design exposes" a box -- it never did, so an order vanished from this page the moment it was placed and could only
+  // be seen or cancelled from the Wallet or the Dashboard dialog. The list now sits under the Place Limit Order button
+  // in every limit pane (desktop .dxa-pane-limit, phone .mdxa-pane-limit), hidden when there is nothing to show.
+  // Amounts are in THIS asset on both sides: Horizon reports a buy (manageBuyOffer) as a sell of the counter asset, so
+  // a buy's amount is amount x price of THIS asset and its price is 1/price -- the old renderer printed the XLM spent
+  // and an inverted price for every buy.
+  // Cancel = manageSellOffer{amount 0, offerId}, the same operation the wallet's Cancel uses, signed and submitted
+  // through this page's own dxSign / Horizon path.
+  function ooCss(){ if(document.getElementById("lx-oo-css"))return; var st=document.createElement("style"); st.id="lx-oo-css";
+    st.textContent=".lx-oo{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,rgba(255,255,255,.1))}"
+      +".lx-oo-h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text,#e8e8ee)}"
+      +".lx-oo-n{font:600 11px/1 'JetBrains Mono',monospace;padding:3px 6px;border-radius:6px;background:var(--surface-2,rgba(255,255,255,.06));color:var(--text-muted,#8b90a0)}"
+      +".lx-oo-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border,rgba(255,255,255,.06));font-size:12.5px}"
+      +".lx-oo-row:first-of-type{border-top:0}"
+      +".lx-oo-side{flex:0 0 auto;font-weight:700;font-size:11px;padding:2px 7px;border-radius:5px}"
+      +".lx-oo-side.lx-oo-b{color:var(--green,#22c55e);background:rgba(34,197,94,.12)}.lx-oo-side.lx-oo-s{color:var(--red,#ea3943);background:rgba(234,57,67,.12)}"
+      +".lx-oo-txt{flex:1 1 auto;min-width:0;font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text,#e8e8ee)}"
+      +".lx-oo-txt small{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted,#8b90a0);font-size:11px}"
+      +".lx-oo-x{flex:0 0 auto;padding:5px 10px;border-radius:7px;border:1px solid var(--border,rgba(255,255,255,.14));background:transparent;color:var(--text,#e8e8ee);font:600 12px/1 inherit;cursor:pointer}"
+      +".lx-oo-more{margin-top:4px;padding:4px 0;border:0;background:none;color:var(--accent,#ea6a2c);font:600 12px/1 inherit;cursor:pointer}"
+      +".lx-oo-x:hover{border-color:var(--red,#ea3943);color:var(--red,#ea3943)}.lx-oo-x[disabled]{opacity:.6;cursor:default}";
+    document.head.appendChild(st); }
+  // Prices under a millionth keep the site's subscript-zero form (0.0₉3102), never "3.1e-10".
+  function ooPx(x) {
+    if (!(x > 0)) return '–';
+    if (x >= 1e-6) return String(+x.toPrecision(6));
+    var z = Math.floor(-Math.log10(x)) - 1, d = String(Math.round(x * Math.pow(10, z + 5)));
+    var sub = String(z).split('').map(function (c) { return '₀₁₂₃₄₅₆₇₈₉'.charAt(+c); }).join('');
+    return '0.0' + sub + d.replace(/0+$/, '');
+  }
+  function ooCode(a){ return (!a||a.asset_type==="native")?"XLM":a.asset_code; }
+  function ooIsMe(a){ return a&&a.asset_code===CODE&&a.asset_issuer===ISSUER; }
   function renderOpenOffers(){
-    var offers=window.__lxDXLoffers; if(!offers)return;
-    // only this asset's offers (base or counter = CODE:ISSUER)
-    var mine=offers.filter(function(o){ function m(a){return a&&a.asset_code===CODE&&a.asset_issuer===ISSUER;} return m(o.selling)||m(o.buying); });
-    var box=q("#dxaOpenOrders,.dxa-open-orders,.dxa-orders-list"); if(!box)return;   // best-effort: only if the design exposes one
-    if(!mine.length){ return; }
-    box.innerHTML=mine.map(function(o){ var sell=o.selling&&o.selling.asset_code===CODE; var pr=o.price?(+o.price):(o.price_r?(+o.price_r.n/+o.price_r.d):0);
-      return '<div class="dxa-oo-row"><span class="type-badge '+(sell?"sell":"buy")+'">'+(sell?"Sell":"Buy")+'</span><span class="mono">'+xlmAmt(+o.amount)+' '+CODE+'</span><span class="mono">@ '+(+pr.toPrecision(6))+' XLM</span></div>'; }).join("");
-    box.classList.add("lxda");
+    var offers=window.__lxDXLoffers; if(!offers||NATIVE)return;
+    var mine=offers.filter(function(o){ return ooIsMe(o.selling)||ooIsMe(o.buying); });
+    ooCss();
+    qa('[class*="dxa-pane-limit"]').forEach(function(pane){
+      var box=pane.querySelector(".lx-oo");
+      if(!mine.length){ if(box)box.style.display="none"; return; }
+      if(!box){ box=document.createElement("div"); box.className="lx-oo";
+        var cta=pane.querySelector('[class*="dxa-trade-cta"]');
+        if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta.nextSibling); else pane.appendChild(box); }
+      box.style.display="";
+      box.innerHTML='<div class="lx-oo-h">Your open orders <span class="lx-oo-n">'+mine.length+'</span></div>'
+        +mine.map(function(o,i){ var sell=ooIsMe(o.selling); var p=o.price?(+o.price):(o.price_r?(+o.price_r.n/+o.price_r.d):0);
+          var amt=sell?(+o.amount):(+o.amount*p), px=sell?p:(p>0?1/p:0), ctr=ooCode(sell?o.buying:o.selling);
+          return '<div class="lx-oo-row"><span class="lx-oo-side '+(sell?"sell":"buy")+'">'+(sell?"Sell":"Buy")+'</span>'
+            +'<span class="lx-oo-txt">'+xlmAmt(amt)+' '+escapeHtml(CODE)+' <small>@ '+ooPx(px)+' '+escapeHtml(ctr)+'</small></span>'
+            +'<button type="button" class="lx-oo-x" data-lxoo="'+escapeHtml(String(o.id))+'">Cancel</button></div>'; }).join("")
+        // Five, then the rest behind one link: a market maker's account can hold dozens on one asset.
+        +(mine.length>5?'<button type="button" class="lx-oo-more">Show all '+mine.length+'</button>':'');
+      if(!box.__lxAll)[].slice.call(box.querySelectorAll('.lx-oo-row')).forEach(function(r,i){ if(i>=5)r.style.display='none'; });
+    });
+    ooWire();
+  }
+  function ooWire(){ if(window.__lxOOwired)return; window.__lxOOwired=1;
+    document.addEventListener("click",function(e){ var mo=e.target&&e.target.closest&&e.target.closest(".lx-oo-more"); if(mo){ e.preventDefault(); e.stopPropagation(); var bx=mo.closest(".lx-oo"); bx.__lxAll=1; [].slice.call(bx.querySelectorAll(".lx-oo-row")).forEach(function(r){ r.style.display=""; }); mo.remove(); return; }
+      var b=e.target&&e.target.closest&&e.target.closest(".lx-oo-x[data-lxoo]"); if(!b||b.disabled)return;
+      e.preventDefault(); e.stopPropagation(); ooCancel(b); },true); }
+  function ooCancel(btn){
+    var id=btn.getAttribute("data-lxoo"), addr=lxAddr(); if(!addr){ dxToast("Connect a Stellar wallet first."); return; }
+    var o=(window.__lxDXLoffers||[]).filter(function(x){ return String(x.id)===id; })[0]; if(!o)return;
+    btn.disabled=true; btn.textContent="Confirm in wallet\\u2026";
+    function asset(S,a){ return (!a||a.asset_type==="native")?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer); }
+    dxLoadSdk().then(function(S){ return j(H+"/accounts/"+addr).then(function(acc){
+      var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB});
+      tb.addOperation(S.Operation.manageSellOffer({selling:asset(S,o.selling),buying:asset(S,o.buying),amount:"0",price:String(o.price),offerId:String(o.id)}));
+      return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again"); }); })
+    .then(function(signed){ btn.textContent="Cancelling\\u2026";
+      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){
+        return r.json().then(function(x){ if(x&&typeof x==="object")x.__status=r.status; return x; },function(){ return {__status:r.status}; }); }); })
+    .then(function(resp){
+      if(resp&&(resp.successful||resp.hash)){ dxToast("Order cancelled");
+        window.__lxDXLoffers=(window.__lxDXLoffers||[]).filter(function(x){ return String(x.id)!==id; }); renderOpenOffers();
+        window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){} setTimeout(function(){ try{ loadOpenOffers(); }catch(_){} },4000); return; }
+      var x=resp&&resp.extras&&resp.extras.result_codes;
+      throw new Error((x&&((window.lxTxMsg?window.lxTxMsg(x,"The cancel"):"")||dxTxMsg(x,"The cancel")))||(resp&&resp.__status===504?"The network did not confirm in time. It MAY have been cancelled - check again in a moment.":"The cancel could not be submitted. Nothing was sent - try again."));
+    })
+    .catch(function(e){ btn.disabled=false; btn.textContent="Cancel"; dxToast("Cancel failed \\u2014 "+((window.lxWalletErr&&window.lxWalletErr(e))||(e&&e.message)||e),true); });
   }
 
   // The shared _feemodal review reads field[0] (limit PRICE) as "You pay" and derives receive from a "Rate"
