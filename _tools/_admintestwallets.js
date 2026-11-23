@@ -32,18 +32,27 @@ const NETS = [['stellar', 'Stellar', 'XLM'], ['xrpl', 'XRPL', 'XRP'], ['near', '
 const MAIN = `<main class="admin-main" id="lxTwMain" data-lxnonav="">
 <style id="lx-admtw-css">
 #lxTwMain .tw-sub{margin:4px 0 0;font-size:13.5px;color:var(--text-muted)}
-#lxTwMain .tw-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
+#lxTwMain .tw-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:16px}
 #lxTwMain .tw-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border)}
 #lxTwMain .tw-title{font-weight:700;font-size:15px;color:var(--text)}
 #lxTwMain .tw-title .tw-n{color:var(--text-muted);font-weight:600;margin-left:4px}
 #lxTwMain .tw-body{padding:16px 18px}
-#lxTwMain .tw-lbl{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin:0 0 6px}
+#lxTwMain .tw-fields label{font-family:inherit}
+#lxTwMain .tw-lbl{display:block;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-muted);margin:0 0 6px}
 #lxTwMain .tw-nets{display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 #lxTwMain .tw-net{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 8px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-soft,var(--text));font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
 #lxTwMain .tw-net:hover{background:var(--surface-2)}
 #lxTwMain .tw-net[aria-checked="true"]{border-color:var(--text);color:var(--text);background:var(--surface-2)}
 #lxTwMain .tw-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block}
-#lxTwMain .tw-fields{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:10px;align-items:end}
+#lxTwMain .tw-fields{display:grid;grid-template-columns:170px minmax(0,1fr) 200px auto;gap:10px;align-items:end}
+#lxTwMain .tw-dd{position:relative}
+#lxTwMain .tw-ddb{display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;font-weight:600}
+#lxTwMain .tw-ddb .tw-ddn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lxTwMain .tw-chev{width:16px;height:16px;color:var(--text-muted);flex-shrink:0}
+#lxTwMain .tw-ddl{position:absolute;z-index:30;left:0;top:calc(100% + 6px);min-width:100%;max-height:280px;overflow-y:auto;padding:6px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md,0 8px 24px rgba(0,0,0,.18))}
+#lxTwMain .tw-ddl[hidden]{display:none}
+#lxTwMain .tw-opt{display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+#lxTwMain .tw-opt:hover,#lxTwMain .tw-opt[aria-selected="true"]{background:var(--surface-2)}
 #lxTwMain .tw-in{width:100%;box-sizing:border-box;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2,transparent);color:var(--text);font:inherit;font-size:14px;outline:none}
 #lxTwMain .tw-in:focus{border-color:var(--border-strong,var(--text-muted))}
 #lxTwMain .tw-in.tw-mono{font-family:'JetBrains Mono',monospace;font-size:13px}
@@ -69,10 +78,9 @@ const MAIN = `<main class="admin-main" id="lxTwMain" data-lxnonav="">
 #lxTwMain .tw-ib.tw-sure{color:#fff;background:var(--red,#ea3943);border-color:var(--red,#ea3943)}
 #lxTwMain .tw-empty{padding:28px 18px;text-align:center;color:var(--text-muted);font-size:13.5px}
 @media (max-width:720px){
-  #lxTwMain .tw-nets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
-  #lxTwMain .tw-net{justify-content:center;padding:0 8px}
-  #lxTwMain .tw-fields{grid-template-columns:1fr}
-  #lxTwMain .tw-add{width:100%}
+  #lxTwMain .tw-fields{grid-template-columns:minmax(0,1fr) auto}
+  #lxTwMain .tw-f-net,#lxTwMain .tw-f-wallet{grid-column:1 / -1}
+  #lxTwMain .tw-add{padding:0 18px}
   #lxTwMain .tw-head,#lxTwMain .tw-body{padding:14px}
   #lxTwMain .tw-row{padding:12px 14px;grid-template-columns:28px minmax(0,1fr);align-items:start}
   #lxTwMain .tw-row .tw-logo{width:28px;height:28px}
@@ -89,12 +97,15 @@ const MAIN = `<main class="admin-main" id="lxTwMain" data-lxnonav="">
     <div class="tw-head"><div class="tw-title">Add a wallet</div></div>
     <div class="tw-body">
       <form id="lxTwForm" autocomplete="off">
-        <span class="tw-lbl">Network</span>
-        <div class="tw-nets" role="radiogroup" aria-label="Network">${NETS.map(([k, n], i) => '<button type="button" class="tw-net" role="radio" data-twpick="' + k + '" aria-checked="' + (i === 0) + '"><img class="tw-logo" alt="" src="/assets/networks/' + k + '.png">' + n + '</button>').join('')}</div>
         <input type="hidden" id="lxTwNet" value="stellar">
         <div class="tw-fields">
-          <label><span class="tw-lbl">Wallet address</span><input id="lxTwAddr" class="tw-in tw-mono" spellcheck="false" placeholder="G..., r... or name.near"></label>
-          <label><span class="tw-lbl">Label (optional)</span><input id="lxTwLabel" class="tw-in" maxlength="60" placeholder="e.g. RAZA test"></label>
+          <div class="tw-f-net"><span class="tw-lbl">Network</span>
+            <div class="tw-dd" id="lxTwDd">
+              <button type="button" class="tw-in tw-ddb" id="lxTwDdb" aria-haspopup="listbox" aria-expanded="false"><img class="tw-logo" alt="" src="/assets/networks/${NETS[0][0]}.png"><span class="tw-ddn">${NETS[0][1]}</span><svg class="tw-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="tw-ddl" id="lxTwDdl" role="listbox" hidden>${NETS.map(([k, n], i) => '<button type="button" class="tw-opt" role="option" data-twpick="' + k + '" aria-selected="' + (i === 0) + '"><img class="tw-logo" alt="" src="/assets/networks/' + k + '.png">' + n + '</button>').join('')}</div>
+            </div></div>
+          <label class="tw-f-wallet"><span class="tw-lbl">Wallet address</span><input id="lxTwAddr" class="tw-in tw-mono" spellcheck="false" placeholder="G..., r... or name.near"></label>
+          <label class="tw-f-lbl"><span class="tw-lbl">Label (optional)</span><input id="lxTwLabel" class="tw-in" maxlength="60" placeholder="e.g. RAZA test"></label>
           <button class="adm-btn primary tw-add" id="lxTwAdd" type="submit">Add wallet</button>
         </div>
         <div id="lxTwMsg" class="tw-msg" style="display:none"></div>
@@ -119,7 +130,10 @@ function $(i){return document.getElementById(i);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c];});}
 function logo(n){return '<img class="tw-logo" alt="" src="/assets/networks/'+esc(n)+'.png">';}
 function say(t,bad){var m=$("lxTwMsg");if(!m)return;m.style.display=t?"":"none";m.style.color=bad?"var(--red,#ea3943)":"var(--green,#22c55e)";m.textContent=t||"";}
-function pick(n){if(!NAMES[n])return;$("lxTwNet").value=n;[].forEach.call(document.querySelectorAll("[data-twpick]"),function(b){b.setAttribute("aria-checked",String(b.getAttribute("data-twpick")===n));});pays(n);}
+function pick(n){if(!NAMES[n])return;$("lxTwNet").value=n;
+  [].forEach.call(document.querySelectorAll("[data-twpick]"),function(b){b.setAttribute("aria-selected",String(b.getAttribute("data-twpick")===n));});
+  var d=$("lxTwDdb");if(d){d.querySelector("img").src="/assets/networks/"+n+".png";d.querySelector(".tw-ddn").textContent=NAMES[n];}pays(n);}
+function dd(open){var l=$("lxTwDdl"),b=$("lxTwDdb");if(!l||!b)return;l.hidden=!open;b.setAttribute("aria-expanded",String(open));}
 // The address names its network: G... (56) Stellar, r... XRPL, anything else NEAR (name.near or a 64-hex implicit account).
 function guess(a){if(/^G[A-Z2-7]{55}$/.test(a))return "stellar";if(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a))return "xrpl";if(/[.]near$|^[0-9a-f]{64}$/.test(a))return "near";return "";}
 function pays(n){var c=COIN[n]||"",p=$("lxTwPays");if(!p)return;
@@ -144,6 +158,7 @@ function load(){fetch("/lxapi/testwallets",{credentials:"include",cache:"no-stor
 }).catch(function(){$("lxTwRows").innerHTML='<div class="tw-empty" style="color:var(--red,#ea3943)">Could not load the list.</div>';});}
 function post(body){return fetch("/lxapi/testwallets",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});}
 function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;pays("stellar");
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")dd(false);});
   $("lxTwAddr").addEventListener("input",function(){var g=guess(this.value.trim());if(g)pick(g);});
   f.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();
     var net=$("lxTwNet").value,addr=$("lxTwAddr").value.trim(),label=$("lxTwLabel").value.trim(),b=$("lxTwAdd");
@@ -155,7 +170,9 @@ function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;pays("stella
     },function(){b.disabled=false;say("Could not add it.",true);});
   },true);
   document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
-    var p=t.closest("[data-twpick]");if(p){e.preventDefault();pick(p.getAttribute("data-twpick"));return;}
+    var p=t.closest("[data-twpick]");if(p){e.preventDefault();pick(p.getAttribute("data-twpick"));dd(false);return;}
+    if(t.closest("#lxTwDdb")){e.preventDefault();dd($("lxTwDdl").hidden);return;}
+    if(!t.closest("#lxTwDd"))dd(false);
     var c=t.closest("[data-twf]");if(c){e.preventDefault();FILTER=c.getAttribute("data-twf");paint();return;}
     var y=t.closest("[data-twcopy]");if(y){e.preventDefault();var a=y.getAttribute("data-twcopy");
       (navigator.clipboard?navigator.clipboard.writeText(a):Promise.reject()).then(function(){y.innerHTML=ICO_OK;setTimeout(function(){y.innerHTML=ICO_COPY;},1400);},function(){});return;}
