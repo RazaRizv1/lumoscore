@@ -23,53 +23,128 @@ function navItem(suffix, active) {
 }
 function suffixOf(f) { const m = /lumoscore-admin-[a-z-]+?(-dark|-mobile)?\.html$/.exec(f); return (m && m[1]) || ''; }
 
+// v2 (RAZA 2026-11-24: "make the test wallets page on admin more organised and better. also check on mobile ...
+// also add network logos"): a network picker with logos (the address also picks it: G... Stellar, r... XRPL,
+// otherwise NEAR), what an approved wallet pays as three small figures, and the list as rows with the network's
+// logo, filter chips with counts, copy, and a two-tap Remove. On a phone everything stacks and addresses wrap.
+// Logos: /assets/networks/<net>.png, copied into the admin tree from the public site's (step 0).
+const NETS = [['stellar', 'Stellar', 'XLM'], ['xrpl', 'XRPL', 'XRP'], ['near', 'NEAR', 'NEAR']];
 const MAIN = `<main class="admin-main" id="lxTwMain" data-lxnonav="">
-  <div class="admin-page-head">
+<style id="lx-admtw-css">
+#lxTwMain .tw-sub{margin:4px 0 0;font-size:13.5px;color:var(--text-muted)}
+#lxTwMain .tw-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
+#lxTwMain .tw-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border)}
+#lxTwMain .tw-title{font-weight:700;font-size:15px;color:var(--text)}
+#lxTwMain .tw-title .tw-n{color:var(--text-muted);font-weight:600;margin-left:4px}
+#lxTwMain .tw-body{padding:16px 18px}
+#lxTwMain .tw-lbl{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin:0 0 6px}
+#lxTwMain .tw-nets{display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+#lxTwMain .tw-net{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 8px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-soft,var(--text));font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+#lxTwMain .tw-net:hover{background:var(--surface-2)}
+#lxTwMain .tw-net[aria-checked="true"]{border-color:var(--text);color:var(--text);background:var(--surface-2)}
+#lxTwMain .tw-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block}
+#lxTwMain .tw-fields{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:10px;align-items:end}
+#lxTwMain .tw-in{width:100%;box-sizing:border-box;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2,transparent);color:var(--text);font:inherit;font-size:14px;outline:none}
+#lxTwMain .tw-in:focus{border-color:var(--border-strong,var(--text-muted))}
+#lxTwMain .tw-in.tw-mono{font-family:'JetBrains Mono',monospace;font-size:13px}
+#lxTwMain .tw-add{height:40px;white-space:nowrap}
+#lxTwMain .tw-msg{margin-top:10px;font-size:13px}
+#lxTwMain .tw-pays{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+#lxTwMain .tw-pay .tw-k{font-size:12px;color:var(--text-muted)}
+#lxTwMain .tw-pay .tw-v{font-size:14px;font-weight:700;color:var(--text);margin-top:2px}
+#lxTwMain .tw-pay .tw-v s{color:var(--text-muted);font-weight:500;margin-left:6px;font-size:12.5px}
+#lxTwMain .tw-chips{display:flex;gap:6px;flex-wrap:wrap}
+#lxTwMain .tw-chip{height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+#lxTwMain .tw-chip[aria-pressed="true"]{color:var(--text);border-color:var(--text);background:var(--surface-2)}
+#lxTwMain .tw-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid var(--border)}
+#lxTwMain .tw-row:first-child{border-top:0}
+#lxTwMain .tw-row .tw-logo{width:32px;height:32px}
+#lxTwMain .tw-addr{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lxTwMain .tw-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:12.5px;color:var(--text-muted)}
+#lxTwMain .tw-tag{padding:1px 8px;border-radius:6px;background:var(--surface-2);color:var(--text-soft,var(--text));font-weight:600}
+#lxTwMain .tw-acts{display:flex;gap:6px}
+#lxTwMain .tw-ib{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+#lxTwMain .tw-ib:hover{color:var(--text);background:var(--surface-2)}
+#lxTwMain .tw-ib svg{width:15px;height:15px}
+#lxTwMain .tw-ib.tw-sure{color:#fff;background:var(--red,#ea3943);border-color:var(--red,#ea3943)}
+#lxTwMain .tw-empty{padding:28px 18px;text-align:center;color:var(--text-muted);font-size:13.5px}
+@media (max-width:720px){
+  #lxTwMain .tw-nets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  #lxTwMain .tw-net{justify-content:center;padding:0 8px}
+  #lxTwMain .tw-fields{grid-template-columns:1fr}
+  #lxTwMain .tw-add{width:100%}
+  #lxTwMain .tw-head,#lxTwMain .tw-body{padding:14px}
+  #lxTwMain .tw-row{padding:12px 14px;grid-template-columns:28px minmax(0,1fr);align-items:start}
+  #lxTwMain .tw-row .tw-logo{width:28px;height:28px}
+  #lxTwMain .tw-addr{white-space:normal;word-break:break-all;font-size:12.5px}
+  #lxTwMain .tw-acts{grid-column:2}
+  #lxTwMain .tw-ib .tw-t{display:inline}
+}
+</style>
+  <div class="admin-page-head" style="display:block">
     <h1 class="admin-page-title">Test wallets</h1>
+    <p class="tw-sub">Approved wallets pay the minimum to launch a token or get a curated listing.</p>
   </div>
-  <div class="adm-card" style="margin-bottom:18px">
-    <div class="adm-card-head"><div>
-      <div class="adm-card-title">Approved test wallets</div>
-      <div class="adm-card-sub" style="font-size:13px;color:var(--text-muted)">These wallets pay the minimum: 0.5 of the network's coin for liquidity and 0.5 for the minting fee when launching, and 0.5 for a curated listing. Everyone else pays the normal price.</div>
-    </div></div>
-    <div class="adm-card-body">
-      <form id="lxTwForm" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-        <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-muted)">Network
-          <select id="lxTwNet" style="min-width:120px;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2,transparent);color:var(--text);font:inherit;font-size:14px">
-            <option value="stellar">Stellar</option><option value="xrpl">XRPL</option><option value="near">NEAR</option>
-          </select></label>
-        <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-muted);flex:1 1 320px">Wallet address
-          <input id="lxTwAddr" autocomplete="off" spellcheck="false" placeholder="G..., r... or name.near" style="padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2,transparent);color:var(--text);font:14px 'JetBrains Mono',monospace"></label>
-        <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-muted);flex:0 1 200px">Label (optional)
-          <input id="lxTwLabel" maxlength="60" autocomplete="off" placeholder="e.g. RAZA test" style="padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2,transparent);color:var(--text);font:inherit;font-size:14px"></label>
-        <button class="adm-btn primary" id="lxTwAdd" type="submit" style="height:38px">Add wallet</button>
+  <section class="tw-card">
+    <div class="tw-head"><div class="tw-title">Add a wallet</div></div>
+    <div class="tw-body">
+      <form id="lxTwForm" autocomplete="off">
+        <span class="tw-lbl">Network</span>
+        <div class="tw-nets" role="radiogroup" aria-label="Network">${NETS.map(([k, n], i) => '<button type="button" class="tw-net" role="radio" data-twpick="' + k + '" aria-checked="' + (i === 0) + '"><img class="tw-logo" alt="" src="/assets/networks/' + k + '.png">' + n + '</button>').join('')}</div>
+        <input type="hidden" id="lxTwNet" value="stellar">
+        <div class="tw-fields">
+          <label><span class="tw-lbl">Wallet address</span><input id="lxTwAddr" class="tw-in tw-mono" spellcheck="false" placeholder="G..., r... or name.near"></label>
+          <label><span class="tw-lbl">Label (optional)</span><input id="lxTwLabel" class="tw-in" maxlength="60" placeholder="e.g. RAZA test"></label>
+          <button class="adm-btn primary tw-add" id="lxTwAdd" type="submit">Add wallet</button>
+        </div>
+        <div id="lxTwMsg" class="tw-msg" style="display:none"></div>
       </form>
-      <div id="lxTwMsg" style="display:none;margin:-6px 0 12px;font-size:13px"></div>
-      <div style="overflow-x:auto"><table class="adm-table" style="width:100%;border-collapse:collapse">
-        <thead><tr><th style="text-align:left">Network</th><th style="text-align:left">Address</th><th style="text-align:left">Label</th><th style="text-align:left">Added</th><th></th></tr></thead>
-        <tbody id="lxTwRows"><tr><td colspan="5" style="color:var(--text-muted)">Loading&hellip;</td></tr></tbody>
-      </table></div>
+      <div class="tw-pays" id="lxTwPays"></div>
     </div>
-  </div>
+  </section>
+  <section class="tw-card">
+    <div class="tw-head"><div class="tw-title">Approved wallets<span class="tw-n" id="lxTwCount"></span></div><div class="tw-chips" id="lxTwChips"></div></div>
+    <div id="lxTwRows"><div class="tw-empty">Loading&hellip;</div></div>
+  </section>
 </main>`;
 
 const SCRIPT = `<script id="lx-admtw">(function(){
 if(window.__lxAdmTw)return;window.__lxAdmTw=1;
-var NAMES={stellar:"Stellar",xrpl:"XRPL",near:"NEAR"};
+var NETS=${JSON.stringify(NETS)},NAMES={},COIN={};NETS.forEach(function(n){NAMES[n[0]]=n[1];COIN[n[0]]=n[2];});
+var ROWS=[],FILTER="all";
+var ICO_COPY='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+var ICO_OK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+var ICO_DEL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 function $(i){return document.getElementById(i);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c];});}
+function logo(n){return '<img class="tw-logo" alt="" src="/assets/networks/'+esc(n)+'.png">';}
 function say(t,bad){var m=$("lxTwMsg");if(!m)return;m.style.display=t?"":"none";m.style.color=bad?"var(--red,#ea3943)":"var(--green,#22c55e)";m.textContent=t||"";}
+function pick(n){if(!NAMES[n])return;$("lxTwNet").value=n;[].forEach.call(document.querySelectorAll("[data-twpick]"),function(b){b.setAttribute("aria-checked",String(b.getAttribute("data-twpick")===n));});pays(n);}
+// The address names its network: G... (56) Stellar, r... XRPL, anything else NEAR (name.near or a 64-hex implicit account).
+function guess(a){if(/^G[A-Z2-7]{55}$/.test(a))return "stellar";if(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a))return "xrpl";if(/[.]near$|^[0-9a-f]{64}$/.test(a))return "near";return "";}
+function pays(n){var c=COIN[n]||"",p=$("lxTwPays");if(!p)return;
+  p.innerHTML=[["Launch liquidity","0.5 "+c],["Minting fee","0.5 "+c],["Curated listing","0.5 "+c,"$250"]].map(function(x){
+    return '<div class="tw-pay"><div class="tw-k">'+esc(x[0])+'</div><div class="tw-v">'+esc(x[1])+(x[2]?'<s>'+esc(x[2])+'</s>':"")+'</div></div>';}).join("");}
+function when(t){if(!t)return "";var d=new Date(+t);return d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"});}
+function paint(){var box=$("lxTwRows");if(!box)return;
+  var cnt={all:ROWS.length};NETS.forEach(function(n){cnt[n[0]]=0;});ROWS.forEach(function(r){cnt[r.net]=(cnt[r.net]||0)+1;});
+  $("lxTwCount").textContent=ROWS.length?"("+ROWS.length+")":"";
+  var chips=[["all","All"]].concat(NETS.filter(function(n){return cnt[n[0]];}).map(function(n){return [n[0],n[1]];}));
+  $("lxTwChips").innerHTML=ROWS.length&&chips.length>2?chips.map(function(c){return '<button type="button" class="tw-chip" data-twf="'+c[0]+'" aria-pressed="'+(FILTER===c[0])+'">'+esc(c[1])+' '+cnt[c[0]]+'</button>';}).join(""):"";
+  var rows=ROWS.filter(function(r){return FILTER==="all"||r.net===FILTER;});
+  if(!ROWS.length){box.innerHTML='<div class="tw-empty">No test wallets yet. Add one above.</div>';return;}
+  box.innerHTML=rows.map(function(r){
+    return '<div class="tw-row">'+logo(r.net)+'<div style="min-width:0"><div class="tw-addr" title="'+esc(r.addr)+'">'+esc(r.addr)+'</div>'
+      +'<div class="tw-meta"><span>'+esc(NAMES[r.net]||r.net)+'</span>'+(r.label?'<span class="tw-tag">'+esc(r.label)+'</span>':"")+'<span>Added '+esc(when(r.added_at))+'</span></div></div>'
+      +'<div class="tw-acts"><button type="button" class="tw-ib" data-twcopy="'+esc(r.addr)+'" title="Copy address" aria-label="Copy address">'+ICO_COPY+'</button>'
+      +'<button type="button" class="tw-ib" data-twnet="'+esc(r.net)+'" data-twaddr="'+esc(r.addr)+'">'+ICO_DEL+'<span class="tw-t">Remove</span></button></div></div>';}).join("");}
 function load(){fetch("/lxapi/testwallets",{credentials:"include",cache:"no-store"}).then(function(r){return r.json();}).then(function(j){
-  var tb=$("lxTwRows");if(!tb)return;
-  if(!j||!j.ok){tb.innerHTML='<tr><td colspan="5" style="color:var(--red,#ea3943)">Could not load the list ('+esc(j&&j.error||"error")+').</td></tr>';return;}
-  var rows=j.rows||[];
-  if(!rows.length){tb.innerHTML='<tr><td colspan="5" style="color:var(--text-muted)">No test wallets yet.</td></tr>';return;}
-  tb.innerHTML=rows.map(function(r){var d=r.added_at?new Date(+r.added_at).toISOString().slice(0,10):"";
-    return '<tr><td>'+esc(NAMES[r.net]||r.net)+'</td><td style="font-family:JetBrains Mono,monospace;font-size:12.5px;word-break:break-all">'+esc(r.addr)+'</td><td>'+esc(r.label||"")+'</td><td style="color:var(--text-muted)">'+esc(d)+'</td>'
-      +'<td style="text-align:right"><button class="adm-btn ghost" type="button" data-twnet="'+esc(r.net)+'" data-twaddr="'+esc(r.addr)+'">Remove</button></td></tr>';}).join("");
-}).catch(function(){var tb=$("lxTwRows");if(tb)tb.innerHTML='<tr><td colspan="5" style="color:var(--red,#ea3943)">Could not load the list.</td></tr>';});}
+  if(!j||!j.ok){$("lxTwRows").innerHTML='<div class="tw-empty" style="color:var(--red,#ea3943)">Could not load the list ('+esc(j&&j.error||"error")+').</div>';return;}
+  ROWS=j.rows||[];if(FILTER!=="all"&&!ROWS.some(function(r){return r.net===FILTER;}))FILTER="all";paint();
+}).catch(function(){$("lxTwRows").innerHTML='<div class="tw-empty" style="color:var(--red,#ea3943)">Could not load the list.</div>';});}
 function post(body){return fetch("/lxapi/testwallets",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});}
-function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;
+function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;pays("stellar");
+  $("lxTwAddr").addEventListener("input",function(){var g=guess(this.value.trim());if(g)pick(g);});
   f.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();
     var net=$("lxTwNet").value,addr=$("lxTwAddr").value.trim(),label=$("lxTwLabel").value.trim(),b=$("lxTwAdd");
     if(!addr){say("Enter a wallet address.",true);return;}
@@ -79,8 +154,16 @@ function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;
       $("lxTwAddr").value="";$("lxTwLabel").value="";say("Added.");load();
     },function(){b.disabled=false;say("Could not add it.",true);});
   },true);
-  document.addEventListener("click",function(e){var b=e.target&&e.target.closest&&e.target.closest("[data-twaddr]");if(!b)return;
-    e.preventDefault();e.stopPropagation();b.disabled=true;
+  document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;
+    var p=t.closest("[data-twpick]");if(p){e.preventDefault();pick(p.getAttribute("data-twpick"));return;}
+    var c=t.closest("[data-twf]");if(c){e.preventDefault();FILTER=c.getAttribute("data-twf");paint();return;}
+    var y=t.closest("[data-twcopy]");if(y){e.preventDefault();var a=y.getAttribute("data-twcopy");
+      (navigator.clipboard?navigator.clipboard.writeText(a):Promise.reject()).then(function(){y.innerHTML=ICO_OK;setTimeout(function(){y.innerHTML=ICO_COPY;},1400);},function(){});return;}
+    var b=t.closest("[data-twaddr]");if(!b)return;e.preventDefault();e.stopPropagation();
+    // Two taps: the first turns the button red ("Sure?"), the second removes. It turns back after 4 seconds.
+    if(!b.classList.contains("tw-sure")){b.classList.add("tw-sure");b.querySelector(".tw-t").textContent="Sure?";
+      clearTimeout(b.__t);b.__t=setTimeout(function(){b.classList.remove("tw-sure");var s=b.querySelector(".tw-t");if(s)s.textContent="Remove";},4000);return;}
+    b.disabled=true;
     post({op:"remove",net:b.getAttribute("data-twnet"),addr:b.getAttribute("data-twaddr")}).then(function(j){
       if(!j||!j.ok){b.disabled=false;say((j&&j.error)||"Could not remove it.",true);return;}say("Removed.");load();
     },function(){b.disabled=false;say("Could not remove it.",true);});},true);
@@ -88,6 +171,12 @@ function boot(){var f=$("lxTwForm");if(!f||f.__lxw)return;f.__lxw=1;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();</script>`;
 
+// 0. The network logos, from the public site's own (dist/assets/networks), into the admin tree.
+fs.mkdirSync(path.join(DIR, 'assets', 'networks'), { recursive: true });
+for (const [k] of NETS) {
+  const src = path.join(__dirname, '..', 'dist', 'assets', 'networks', k + '.png');
+  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DIR, 'assets', 'networks', k + '.png')); else console.log('  no logo', src);
+}
 let navAdded = 0, made = 0;
 const files = fs.readdirSync(DIR).filter((f) => /^lumoscore-admin-.*\.html$/.test(f) && !/testwallets/.test(f) && !/-mobile.html$/.test(f));
 for (const f of files) {
