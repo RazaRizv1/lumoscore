@@ -198,6 +198,13 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-sqt td{text-align:right;padding:9px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.05));white-space:nowrap}
 .lxan-sqt th:first-child,.lxan-sqt td.qq{text-align:left}.lxan-sqt td.qq{white-space:normal;word-break:break-word;color:var(--text)}
 @media (max-width:640px){.lxan-sqt th:nth-child(6),.lxan-sqt td:nth-child(6){display:none}}
+/* SEARCH QUERIES ON A PHONE (RAZA 2026-11-23 "the search queries section needs to be improved"). At 375 px the Query
+   column got 71 px and broke terms mid-word ("lumo/score", "stella/r") while Engine spent 79 px saying "Google" on
+   every row and Impressions / Avg position sat off to the right in a box that had to be swiped. On a phone: Engine is
+   hidden while only one engine reports (.one-eng, set when the rows are drawn), headers shorten to Impr. / Pos.,
+   cells tighten and Query keeps room for whole words -- the four columns fit 290 px with no sideways swipe. */
+.lxan-sqt .sh{display:none}
+@media (max-width:640px){.lxan-sqt .lg{display:none}.lxan-sqt .sh{display:inline}.lxan-sqt.one-eng th:nth-child(2),.lxan-sqt.one-eng td:nth-child(2){display:none}.lxan-sqt th,.lxan-sqt td{padding:9px 10px}.lxan-sqt td.qq{min-width:118px;word-break:normal;overflow-wrap:anywhere}}
 .lxan-src{flex:0 1 auto;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--lxan-s);color:var(--accent,#ea6a2c);margin-right:14px}
 .lxan-src.d{color:var(--text-muted)}
 .lxan-quiet-m .lxan-qsrc{font-family:inherit;font-size:inherit;line-height:inherit;font-weight:600;color:var(--accent,#ea6a2c)}
@@ -1209,7 +1216,8 @@ function loadSearch(){
       +" "+String.fromCharCode(183)+" "+Object.keys(tot).map(function(k){ return (names[k]||k)+": "+num(tot[k].queries||0)+" queries, "+num(tot[k].clicks||0)+" clicks"; }).join(" "+String.fromCharCode(183)+" ");
     var rows=d.rows||[];
     if(!rows.length){ box.innerHTML="<div class='lxadm-empty'>"+((S.google&&S.google.connected)||(S.bing&&S.bing.connected)?"No search queries recorded in this period yet.":"Connect Google Search Console or Bing Webmaster Tools to see search queries here.")+"</div>"; return; }
-    box.innerHTML="<table class='lxan-sqt'><thead><tr><th>Query</th><th>Engine</th><th>Clicks</th><th>Impressions</th><th>Avg position</th><th>First seen</th></tr></thead><tbody>"
+    var oneEng=rows.every(function(r){ return r.engine===rows[0].engine; });
+    box.innerHTML="<table class='lxan-sqt"+(oneEng?" one-eng":"")+"'><thead><tr><th>Query</th><th>Engine</th><th>Clicks</th><th><span class='lg'>Impressions</span><span class='sh'>Impr.</span></th><th><span class='lg'>Avg position</span><span class='sh'>Pos.</span></th><th>First seen</th></tr></thead><tbody>"
       +rows.map(function(r){ return "<tr><td class='qq'>"+esc(r.query)+"</td><td>"+esc(r.engine==="google"?"Google":"Bing")+"</td><td>"+num(r.clicks||0)+"</td><td>"+num(r.impressions||0)+"</td><td>"+(r.position!=null?esc(String(r.position)):"&ndash;")+"</td><td>"+esc(r.first_seen||"")+"</td></tr>"; }).join("")
       +"</tbody></table>";
   }).catch(function(e){ box.innerHTML="<div class='lxadm-empty'>Could not read search queries: "+esc(e.message)+"</div>"; });
