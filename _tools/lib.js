@@ -177,7 +177,10 @@ const VTICK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 //
 // Lives here, like VERIFIED, because a domain that differs between pages is its own kind of wrong.
 const DOMAIN_DISPLAY={
-  "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"
+  "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com",
+  // Ethena: the issuer sets no home_domain on chain (RAZA 2026-11-24)
+  "USDe|GDJ5BNU5NN6NQ54D7OX6NQTUYNBZ42CAT33QGM5BIQ2QIYADAC5ICH47":"ethena.fi",
+  "SUSDE|GDJ5BNU5NN6NQ54D7OX6NQTUYNBZ42CAT33QGM5BIQ2QIYADAC5ICH47":"ethena.fi"
 };
 
 module.exports={read,getContents,writeContents,VERIFIED,CANONICAL,VTICK_SVG,DOMAIN_DISPLAY,GENERATED_ASSETS};
