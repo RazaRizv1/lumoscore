@@ -113,4 +113,17 @@ for (const sfx of VARIANTS) {
   s = s.slice(0, end) + SCRIPT + '\n' + s.slice(end);
   fs.writeFileSync(path.join(DIR, 'lumoscore-admin-testwallets' + sfx + '.html'), s); made++;
 }
-console.log('sidebar entries added:', navAdded, '| pages made:', made);
+// 3. THE LINK GUARD (RAZA 2026-11-24: "the admin -testwallets is unclickable in the menu"). Every admin page carries
+//    a click guard that cancels a click on any lumoscore-*.html link missing from its baked VALID list -- the list
+//    extract_site.js writes from the pages it built, which never included this one. The two pages join the list on
+//    every admin page (mobile included), right after Revenue's entry.
+const OLDV = '"lumoscore-admin-revenue-dark.html",';
+const NEWV = OLDV + '"lumoscore-admin-testwallets.html","lumoscore-admin-testwallets-dark.html",';
+let validFixed = 0;
+for (const f of fs.readdirSync(DIR).filter((x) => /^lumoscore-admin-.*\.html$/.test(x))) {
+  const p = path.join(DIR, f); let s = fs.readFileSync(p, 'utf8');
+  if (s.includes('"lumoscore-admin-testwallets.html","lumoscore-admin-testwallets-dark.html"') || !s.includes('var VALID=')) continue;
+  if (!s.includes(OLDV)) { console.log('  no VALID anchor in', f); continue; }
+  s = s.split(OLDV).join(NEWV); fs.writeFileSync(p, s); validFixed++;
+}
+console.log('sidebar entries added:', navAdded, '| pages made:', made, '| link guard lists updated:', validFixed);
