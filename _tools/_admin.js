@@ -132,6 +132,17 @@ const CSS=`<style id="lx-admin-css">
 /* PHONE FIT (2026-11-21): phones get the full pages again (no -mobile redirect); at phone width the action row wraps,
    the dashboard grids stack (their columns are inline in the markup, hence !important) and the profile minis go 2 x 2. */
 @media (max-width:640px){.admin-page-actions{flex-wrap:wrap}.dash-grid{grid-template-columns:minmax(0,1fr)!important}.up-mini{grid-template-columns:repeat(2,minmax(0,1fr))!important}.up-mini-card{min-width:0}}
+/* PHONE FIT 2 (RAZA 2026-11-23, "admin on mobile ... all so messed up"; measured at 375 px on all 8 pages):
+   1. Card heads were one flex ROW -- title, a subtitle set LARGER than the title (20.9 vs 17.6 px) and the buttons --
+      so Revenue by source / by asset, Fee ledger and both Rewards heads became 150-250 px tall slivers. Now they stack.
+   2. Tables wider than the phone (Users 1,114 px, Assets 1,262, Blogs 845, Revenue and Rewards up to 693) sat in cards
+      with overflow:hidden, so their right-hand columns -- Blogs' Edit/Delete included -- could not be reached. The card
+      body now scrolls sideways.
+   3. The menu: the Collapse button's invisible label still took the button's width, squeezing its arrow to 0 px (a
+      blank square); tapping it widened the grid column to 220 px and crushed the page into ~155 px, and the open state
+      is remembered on every page. On a phone the open menu now lies OVER the page, and lx-admphone below closes it on
+      load and on a tap outside it. Desktop is untouched (every rule is inside this media query). */
+@media (max-width:640px){.adm-card-head{flex-direction:column;align-items:flex-start;gap:10px}.adm-card-head>*{min-width:0;max-width:100%}.adm-card-sub{font-size:14.3px;line-height:1.45}.adm-card-body{overflow-x:auto;-webkit-overflow-scrolling:touch}.admin-shell.expanded{grid-template-columns:56px 1fr}.admin-shell.expanded>.admin-sidebar{position:fixed;left:0;top:64px;bottom:0;width:220px;z-index:80;box-shadow:8px 0 24px rgba(0,0,0,.35);overflow-y:auto}.admin-shell:not(.expanded) .adn-toggle-label{display:none}.adn-toggle svg{flex:0 0 18px;width:18px;height:18px}}
 /* A FALL IN 24H / 7D READS AS RED, LIKE THE RISE READS AS GREEN (RAZA 2026-09-24).
    pct() has always emitted .ch-up / .ch-down, and the design styles only .ch-up -- so a gain was
    green and bold while a loss fell back to plain body text, the same white as the price beside it.
@@ -319,6 +330,21 @@ function lpSigner(){
   return parts.join('\n')+'\n';
 }
 const LP_SIGNER=lpSigner();
+
+// PHONE MENU (2026-11-23, see PHONE FIT 2 in CSS): the design restores the open menu from localStorage
+// (lc-admin-expanded) on every page, which on a phone left every page crushed beside it. On a phone the menu starts
+// closed and a tap outside it closes it (that first tap only closes -- it does not also press whatever was under it).
+// Runs after the design's own toggle script (both sit at the end of <body>, this one later). Desktop is untouched.
+const PHONEJS='<script id="lx-admphone">(function(){var mq=window.matchMedia&&window.matchMedia("(max-width:640px)");'
+  // The design restores the open state INSIDE a DOMContentLoaded handler (ready(fn)), i.e. after this inline script
+  // has run -- so closing it only here left the menu open on load (live bcca394a, 2026-11-23). It is closed again on
+  // DOMContentLoaded: that listener is added after the design's, so it runs after the restore.
+  +'if(!mq||!mq.matches)return;var sh=document.getElementById("adminShell");if(!sh)return;'
+  +'var shut=function(){sh.classList.remove("expanded");};shut();'
+  +'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",shut);'
+  +'document.addEventListener("click",function(e){if(!sh.classList.contains("expanded"))return;'
+  +'if(e.target&&e.target.closest&&e.target.closest(".admin-sidebar"))return;'
+  +'sh.classList.remove("expanded");e.preventDefault();e.stopPropagation();},true);})();</script>';
 
 // ---- data layer ---------------------------------------------------------------------------------------
 const SCRIPT='<script id="lx-admindata">(function(){'
@@ -3277,7 +3303,8 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       // every run of this transform appended another Revenue entry to the container -- which persists
       // between runs because containers are not rebuilt from the design. 28 had accumulated.
       h=h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-revenue-mobile\.html"[\s\S]*?<\/a>\s*/g,'');
-      h=h.replace(/<style id="lx-admin-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-admindata">[\s\S]*?<\/script>/g,'');
+      h=h.replace(/<style id="lx-admin-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-admindata">[\s\S]*?<\/script>/g,'')
+         .replace(/<script id="lx-admphone">[\s\S]*?<\/script>/g,'');
       const suffix=variantOf(k);
       const isRev=/^lumoscore-admin-revenue/.test(k);
       // insert directly after the Dashboard item
@@ -3306,7 +3333,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       h=h.replace(/<a class="adn-item[^"]*" href="lumoscore-admin-create-pool[^"]*"[\s\S]*?<\/a>\s*/g, '');
       h=h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-create-pool[^"]*"[\s\S]*?<\/a>\s*/g, '');
       const bi=h.lastIndexOf('</body>');
-      if(bi>=0) h=h.slice(0,bi)+CSS+SCRIPT+h.slice(bi);
+      if(bi>=0) h=h.slice(0,bi)+CSS+PHONEJS+SCRIPT+h.slice(bi);
       // NO PLACEHOLDER ON SCREEN WHILE THE PAGE LOADS (RAZA 2026-11-18, a screenshot of "Tokens launched 492 · Aptos ·
       // USDC / APT" mid-load: "WTH is this"). The design's invented figures are in the HTML and this layer sits ~1.1 MB
       // into a 1.3 MB page, so a slow load painted them until boot() ran at DOMContentLoaded. The main area is held back
