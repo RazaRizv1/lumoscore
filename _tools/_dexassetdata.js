@@ -1712,6 +1712,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     }catch(_){}
   }
   function drawChart(pts){ pts=pts||chartPts; if(!pts)return;
+    try{ var _ch=q("#dxaChart,#mdxaChart"), _sv=_ch&&_ch.querySelector("svg"); if(_sv)_sv.style.visibility=""; }catch(_){}
     try{ chartWidthWatch(); var _pcw=q("#dxaChart")||q(".dxa-chart"); if(_pcw)_lastCW=Math.round(_pcw.getBoundingClientRect().width||0); }catch(_){}
     // #23: whichever range actually drew is the one to light, and EVERY path ends here -- the
     // aggregations path, the trades fallback and a user click alike. The step-out case has already
@@ -1975,6 +1976,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       // clear any line left from a previous range so the message is not drawn over a stale chart
       var sv=host.querySelector("svg"); if(sv)[].slice.call(sv.querySelectorAll("path")).forEach(function(pp){ if((pp.getAttribute("class")||"").indexOf("lx-ch")>=0&&pp.parentNode)pp.parentNode.removeChild(pp); });
       host.classList.add("lxda");
+      if(sv)sv.style.visibility="hidden";
     }catch(_){}
   }
   // The wide ranges are SLOW on Horizon — the 1Y weekly aggregation measures 6-8s against 0.8s for 1D —
@@ -2531,8 +2533,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       EX_CURSOR=recs.length?recs[recs.length-1].paging_token:null;
       EX_DEEP={};                                   // a refresh invalidates what each filter had crawled
       renderExchanges();
-    }).catch(function(){});
+    }).catch(function(e){
+      // Horizon 404 on /trades = this pair has never traded (USDe, 2026-11-24): an empty list, not a failure.
+      if(String(e&&e.message)==="HTTP404"&&!window.__lxDXAtrades){ window.__lxDXAtrades=[]; EX_SCANNED=0; EX_CURSOR=null; EX_NEVER=1; renderExchanges(); }
+    });
   }
+  var EX_NEVER=0;
   // THE SIZE FILTERS USED TO SLICE ONE FIXED WINDOW. loadTrades pulls the 200 most recent trades and every
   // filter sliced that same 200 -- so on an asset whose recent flow is dust, "1K+ XLM" and "10K+ XLM" read
   // "no trades" even though plenty had happened a little further back. The window was the answer, not the
@@ -2662,7 +2668,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       : TRADE_FILTER>0
       ? (_busy ? ("Looking further back for trades \\u2265 "+_sz+" \\u2026")
                : ("No trades \\u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades"+exSpan()+"."))
-      : 'No trades in the recent window.';
+      : (EX_NEVER?'No trades yet.':'No trades in the recent window.');
     // THE FOOTER AND THE COUNT LINE ARE WRITTEN BEFORE THE SKIP-GUARD, ON EVERY PASS, and that ordering
     // is the fix rather than a tidy-up. They used to sit after it, so a pass that found the TABLE unchanged
     // returned without ever touching them -- and the design's own pager, which it repaints from its own
