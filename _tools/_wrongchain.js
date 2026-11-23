@@ -172,8 +172,10 @@ const CTA = ['.btn-primary', '.summary-cta', '.br-next', '.lx-cplink',
 
 const STYLE = '<style id="lx-wrongchain-css">'
   + CTA.map((s) => 'html.lx-wrongchain ' + s).join(',')
-  + '{pointer-events:none!important;opacity:.42!important;cursor:not-allowed!important;'
-  + 'filter:grayscale(1)!important;box-shadow:none!important}'
+  // DIMMED ORANGE, NOT GREY (RAZA 2026-11-23: "the swap button isnt supposed to be grey when inactive"). The same look an
+  // inactive Swap has with the right wallet connected (55%, a touch of greyscale), still not pressable.
+  + '{pointer-events:none!important;opacity:.55!important;cursor:not-allowed!important;'
+  + 'filter:grayscale(.25)!important;box-shadow:none!important}'
   // The notice. Styled from the theme's own tokens so it inherits light and dark without a second
   // palette, and sized to read as a page-level state rather than a toast that will disappear.
   // STICKY, so the warning is still on screen at the point the reader reaches a control it explains
