@@ -2845,6 +2845,13 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var lbl=b.querySelector(".lx-mtlabel")||b;
       lbl.style.setProperty("color", MY_TRADES?"#ea6a2c":"#8a8fa3", "important");
       lbl.style.setProperty("text-decoration", MY_TRADES?"underline":"none", "important");
+      // MY TRADES IS AS BIG AS THE TABS (RAZA 2026-11-23, from the NEAR audit "My trades option can be a bit bigger"). It
+      // was a fixed 13.5 px beside 18.2 px / 600 tabs on desktop. It takes the tab's size, weight and padding -- but only
+      // when the tab is the bigger one: on a phone the tabs are 11 px and the button (13.8 px) is left as it is.
+      var tb=bar.querySelector(".tab");
+      if(tb){ var tcs=getComputedStyle(tb); if(parseFloat(tcs.fontSize)>parseFloat(getComputedStyle(lbl).fontSize)+0.5){
+        b.style.fontSize=tcs.fontSize; b.style.fontWeight=tcs.fontWeight; b.style.lineHeight=tcs.lineHeight;
+        b.style.padding=tcs.paddingTop+" "+tcs.paddingRight+" "+tcs.paddingBottom+" "+tcs.paddingLeft; lbl.style.fontSize="inherit"; } }
       lxMtView(MY_TRADES);
     }
   // MY TRADES READS AS ITS OWN VIEW (S35, 2026-11-20). While it is on and the Exchanges panel is showing: the panel heading
