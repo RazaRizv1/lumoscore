@@ -19,29 +19,30 @@ function pageNet(){var s=(location.pathname||"").toLowerCase().split("/");for(va
 function on(){var w=walletNet();return w&&w!==pageNet()?w:"";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
 function short(a){a=String(a||"");return a.length>14?a.slice(0,5)+"…"+a.slice(-4):a;}
+// THE DESIGN'S OWN LOOK (RAZA 2026-11-24: "the text appears bigger than it was before"). The heading, rows and empty
+// message use the search popup's own markup and classes (.sp-section-head h4 + .count, .sp-row/.sp-ico/.sp-info,
+// .sp-seaempty), so they read exactly like the page's search. Only the selected-row tint is ours.
 function css(){if(document.getElementById("lx-xsearch-css"))return;var st=document.createElement("style");st.id="lx-xsearch-css";
-  st.textContent=".lx-xs-h{padding:14px 18px 6px;font:700 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#8b90a0)}"
-  +".lx-xs-row{display:flex;align-items:center;gap:12px;padding:10px 18px;color:var(--text,#e8e8ee);text-decoration:none}"
-  +".lx-xs-row:hover,.lx-xs-row.sel{background:var(--surface-2,rgba(255,255,255,.05))}"
-  +".lx-xs-ic{flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:var(--surface-2,#24242c) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font:700 12px/1 inherit;color:var(--text-muted,#8b90a0)}"
-  +".lx-xs-t{flex:1 1 auto;min-width:0}.lx-xs-t b{display:block;font-weight:700;font-size:14px}"
-  +".lx-xs-t span{display:block;font-size:12px;color:var(--text-muted,#8b90a0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
-  +".lx-xs-r{flex:0 0 auto;font:12px 'JetBrains Mono',monospace;color:var(--text-muted,#8b90a0)}"
-  +".lx-xs-msg{padding:22px 18px;text-align:center;font-size:13px;color:var(--text-muted,#8b90a0)}";
+  st.textContent="#lxXsList .sp-row.lx-xs-sel{background:var(--surface-2,rgba(255,255,255,.05))}#lxXsList .sp-ico img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}";
   document.head.appendChild(st);}
-// OUR OWN BOX beside the page's list. The page's search watches #spAssetList and repaints its own results over anything
-// written there (Stellar's did, 15 times in 6s), so while the networks differ that list is hidden and ours is shown.
+// OUR OWN BOX beside the page's list. The page's search watches #spAssetList (and its heading count) and repaints its own
+// results over anything written there (Stellar's did, 15 times in 6s), so while the networks differ the page's heading
+// and list are hidden and ours, built from the same design markup, are shown.
+function head(){var b=document.getElementById("spAssetList");var p=b&&b.parentNode;return p?p.querySelector(".sp-section-head"):null;}
 function list(){var base=document.getElementById("spAssetList");if(!base)return null;
   var l=document.getElementById("lxXsList");
-  if(!l){l=document.createElement("div");l.id="lxXsList";l.className=base.className;l.setAttribute("data-lxnonav","");base.parentNode.insertBefore(l,base.nextSibling);}
-  base.style.display="none";l.style.display="";return l;}
-function off(){var l=document.getElementById("lxXsList"),base=document.getElementById("spAssetList");if(l)l.style.display="none";if(base)base.style.display="";}
+  if(!l){l=document.createElement("div");l.id="lxXsList";l.setAttribute("data-lxnonav","");var h=head();(h||base).parentNode.insertBefore(l,h||base);}
+  base.style.display="none";var hh=head();if(hh)hh.style.display="none";var f=document.getElementById("spFilters");if(f)f.style.display="none";l.style.display="";return l;}
+function off(){var l=document.getElementById("lxXsList"),base=document.getElementById("spAssetList"),hh=head(),f=document.getElementById("spFilters");
+  if(l)l.style.display="none";if(base)base.style.display="";if(hh)hh.style.display="";if(f)f.style.display="";}
 function paint(w,rows,msg){var l=list();if(!l)return;css();
-  var h='<div class="lx-xs-h">Assets on '+esc(NAMES[w])+' ('+rows.length+')</div>';
-  if(msg){l.innerHTML=h+'<div class="lx-xs-msg">'+esc(msg)+'</div>';return;}
-  l.innerHTML=h+rows.map(function(r,i){var ic=r.logo?' style="background-image:url('+esc(r.logo).replace(/[()]/g,"")+')"':"";
-    return '<a class="lx-xs-row'+(i===0?" sel":"")+'" href="'+esc(r.href)+'" data-lxnonav=""><span class="lx-xs-ic"'+ic+'>'+(r.logo?"":esc(String(r.code||"?").slice(0,2)))+'</span>'
-      +'<span class="lx-xs-t"><b>'+esc(r.code)+'</b><span>'+esc(r.sub||"")+'</span></span><span class="lx-xs-r">'+esc(r.right||"")+'</span></a>';}).join("");}
+  var h='<div class="sp-section-head"><h4>Assets on '+esc(NAMES[w])+' <span class="count">('+rows.length+')</span></h4></div>';
+  if(msg){l.innerHTML=h+'<div class="sp-seaempty">'+esc(msg)+'</div>';return;}
+  l.innerHTML=h+rows.map(function(r,i){
+    var ico=r.logo?'<img alt="" src="'+esc(r.logo)+'">':esc(String(r.code||"?").slice(0,2).toUpperCase());
+    return '<a class="sp-row sp-row--asset'+(i===0?" lx-xs-sel":"")+'" href="'+esc(r.href)+'" data-lxnonav=""><div class="sp-ico">'+ico+'</div>'
+      +'<div class="sp-info"><div class="sp-name-row">'+esc(r.code)+'</div><div class="sp-sub">'+esc(r.sub||"")+'</div></div>'
+      +'<div class="sp-right"><div class="sp-addr-mini">'+esc(r.right||"")+'</div></div></a>';}).join("");}
 function getJ(u){return fetch(u,{cache:"no-store"}).then(function(r){if(!r.ok){var e=new Error("http "+r.status);e.st=r.status;throw e;}return r.json();});}
 var NEARLIST=null;
 function query(w,q){var lq=q.toLowerCase();
@@ -74,9 +75,9 @@ window.addEventListener("input",function(e){if(!e.target||e.target.id!=="spSearc
 window.addEventListener("keyup",function(e){if(e.target&&e.target.id==="spSearchInput"&&on())e.stopImmediatePropagation();},true);
 window.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"&&on())setTimeout(run,60);},true);
 window.addEventListener("keydown",function(e){if(!e.target||e.target.id!=="spSearchInput"||!on())return;
-  if(e.key==="Enter"){var l=list(),a=l&&l.querySelector(".lx-xs-row.sel");if(a){e.preventDefault();e.stopImmediatePropagation();location.href=a.getAttribute("href");}}
-  else if(e.key==="ArrowDown"||e.key==="ArrowUp"){var rs=[].slice.call((list()||document).querySelectorAll(".lx-xs-row"));if(!rs.length)return;e.preventDefault();e.stopImmediatePropagation();
-    var i=rs.findIndex(function(x){return x.classList.contains("sel");});rs.forEach(function(x){x.classList.remove("sel");});i=e.key==="ArrowDown"?Math.min(rs.length-1,i+1):Math.max(0,i-1);rs[i].classList.add("sel");}},true);
+  if(e.key==="Enter"){var l=list(),a=l&&l.querySelector(".sp-row.lx-xs-sel");if(a){e.preventDefault();e.stopImmediatePropagation();location.href=a.getAttribute("href");}}
+  else if(e.key==="ArrowDown"||e.key==="ArrowUp"){var rs=[].slice.call((list()||document).querySelectorAll(".sp-row"));if(!rs.length)return;e.preventDefault();e.stopImmediatePropagation();
+    var i=rs.findIndex(function(x){return x.classList.contains("lx-xs-sel");});rs.forEach(function(x){x.classList.remove("lx-xs-sel");});i=e.key==="ArrowDown"?Math.min(rs.length-1,i+1):Math.max(0,i-1);rs[i].classList.add("lx-xs-sel");}},true);
 // The page's own search may repaint the list after ours (a late answer for the page's network): put ours back.
 setInterval(function(){if(!on()){off();return;}var l=document.getElementById("lxXsList"),base=document.getElementById("spAssetList");if(base&&base.style.display!=="none")base.style.display="none";if(!l)run();},700);
 })();
