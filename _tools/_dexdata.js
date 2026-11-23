@@ -487,6 +487,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     {code:"CETES", issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", cat:"stable", b:"#006847", logo:"https://stablebonds.s3.us-west-2.amazonaws.com/stablebond/spl-cetes.png"},
     {code:"USTRY", issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", cat:"stable", b:"#1f4e79", logo:"https://stablebonds.s3.us-west-2.amazonaws.com/stablebond/spl-ustry.png"},
     {code:"USDY", issuer:"GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6", cat:"stable", b:"#2a5bd7", logo:"https://cdn.ondo.finance/tokens/logos/usdy_160x160.png"},
+    {code:"USDe", issuer:"GDJ5BNU5NN6NQ54D7OX6NQTUYNBZ42CAT33QGM5BIQ2QIYADAC5ICH47", cat:"stable", b:"#1c1c1c", logo:"/lxapi/media?id=31950d69239bf5463aeb3639660050e8.png"},
+    {code:"SUSDE", issuer:"GDJ5BNU5NN6NQ54D7OX6NQTUYNBZ42CAT33QGM5BIQ2QIYADAC5ICH47", cat:"stable", b:"#1c1c1c", logo:"/lxapi/media?id=0992f5868235a6371f2b829695cdaaaf.png"},
     {code:"GOLD", issuer:"GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD", cat:"utility", b:"#d4af37", logo:"https://www.mintx.co/images/logo100.png"},
     {code:"SSLX", issuer:"GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR", cat:"utility", b:"#4a6cf7", logo:"https://sl8.online/assets/sslx-icon-e36e8c6134f6d93e6af1cd4d084a053c.png"},
     {code:"AFR", issuer:"GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W", cat:"utility", b:"#e8a33d", logo:"https://afreum.com/stellar/ST_Afreum.png"},
