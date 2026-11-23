@@ -2379,10 +2379,10 @@ function paintAssets(){
     // XRPL's 24h change is against XRP (RLUSD read +7.38% on a day XRP fell 7.12%), so XRP's own move is read too
     // and the column shows the change in dollars. NEAR's rows already carry a dollar change (USDC reads 0).
     function gj(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); }
-    Promise.all([gj("https://lumoscore.com/lxapi/"+(m==="xrpl"?"xrpltokens":"nearmarket")), m==="xrpl"?gj("https://lumoscore.com/lxapi/xrpltoken?id=XRP"):null])
+    Promise.all([gj("https://lumoscore.com/lxapi/"+(m==="xrpl"?"xrpltokens":"nearmarket")), m==="xrpl"?gj("https://lumoscore.com/lxapi/xrpltoken?id=XRP"):null, gj("/lxapi/netcurated?net="+m)])
       .then(function(z){ var d=z[0], b=z[1];
         if(!d||!d.ok||!Array.isArray(d.rows))NET[m]={err:"the live site did not answer"};
-        else NET[m]={rows:d.rows.filter(function(x){ return !!x.vf; }), usd:(+d.usd>0?+d.usd:null), stale:!!d.stale,
+        else NET[m]={rows:d.rows.filter(function(x){ return !!x.vf; }), usd:(+d.usd>0?+d.usd:null), stale:!!d.stale, extra:(z[2]&&z[2].ok&&Array.isArray(z[2].rows))?z[2].rows:[],
           base24:(m==="xrpl"?((b&&b.ok&&isFinite(+b.p24))?+b.p24:null):0)};
         tabs(); if(MODE===m){ render(); kpis(); } })
       .catch(function(){ NET[m]={err:"the live site did not answer"}; tabs(); if(MODE===m){ render(); kpis(); } });
@@ -2405,6 +2405,18 @@ function paintAssets(){
     fixPager(L.length);
     var sub=q(".admin-page-sub"); if(sub)sub.textContent="Curated tokens on "+(MODE==="xrpl"?"the XRP Ledger":"NEAR")+", read from the live site";
   }
+  // TOKENS ADDED FROM ADMIN (/lxapi/netcurated) get a remove button; built-in ones are changed in code.
+  function ncTk(c){ c=String(c||""); if(/^[0-9A-F]{40}$/i.test(c)){ var s=""; for(var i=0;i<40;i+=2){ var x=parseInt(c.substr(i,2),16); if(!x)break; s+=String.fromCharCode(x); } return s.toUpperCase(); } return c.toUpperCase(); }
+  function ncRm(m,r,sym){ var N=NET[m], X=(N&&N.extra)||[], id=m==="xrpl"?(String(r.i)+"|"+ncTk(r.c)):String(r.i);
+    if(!X.some(function(x){ return (m==="xrpl"?(x.issuer+"|"+x.ticker):x.i)===id; }))return "";
+    return "<button class='row-act-btn' type='button' title='Added from admin. Remove it from the curated list' data-lxncrm='"+esc(m+"~"+id)+"' data-lxncn='"+esc(sym)+"'>×</button>"; }
+  if(!document.__lxncrm){ document.__lxncrm=1; document.addEventListener("click",function(e){ var t=e.target&&e.target.closest&&e.target.closest("[data-lxncrm]"); if(!t)return;
+    e.preventDefault(); e.stopPropagation(); var v=t.getAttribute("data-lxncrm"), k=v.indexOf("~"), n=v.slice(0,k), id=v.slice(k+1);
+    if(!confirm("Remove "+(t.getAttribute("data-lxncn")||id)+" from the curated list? Trade stops listing it within a few minutes."))return;
+    t.disabled=true;
+    fetch("/lxapi/netcurated",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify({op:"remove",net:n,id:id})})
+      .then(function(r){ return r.json(); }).then(function(z){ if(!z||!z.ok){ t.disabled=false; alert((z&&z.error)||"Could not remove it."); return; } NET[n]=null; render(); netLoad(n); })
+      .catch(function(){ t.disabled=false; alert("Could not remove it."); }); },true); }
   function netRender(){
     var m=MODE, N=NET[m];
     if(!N||N.loading){ tb.innerHTML="<tr><td colspan='7' class='lxadm-empty'>Reading the "+netName()+" curated list from the live site…</td></tr>"; return; }
@@ -2435,7 +2447,7 @@ function paintAssets(){
         +"<td style='text-align:right'><span class='row-act'>"
         +"<a class='ext-link' title='Open the public trade page' target='_blank' rel='noopener' href='"+esc(pub)+"'>"+EXTICON+"</a>"
         +"<a class='ext-link' title='The token on the "+netName()+" explorer' target='_blank' rel='noopener' href='"+esc(ex)+"'>"+EXTICON+"</a>"
-        +"</span></td></tr>"; }).join("");
+        +ncRm(m,r,sym)+"</span></td></tr>"; }).join("");
   }
 
   function reqKpis(){
@@ -2906,19 +2918,46 @@ function paintAssets(){
       if(q(".lxmodal"))return;
       var m=document.createElement("div"); m.className="lxmodal";
       m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Add asset</h3>"
-        +"<p class='lxmodal-s'>A ticker is not an identity on Stellar — hundreds of assets share the code USDC, so give the issuer too. We check the asset exists, then ask its issuer’s own domain to vouch for it. Logo, description and links come next, prefilled from whatever it publishes.</p>"
-        +"<label class='lxmodal-l' for='lxaCode'>Asset code</label><input class='lxmodal-i' id='lxaCode' placeholder='USDC' maxlength='12'>"
-        +"<label class='lxmodal-l' for='lxaIss'>Issuer account</label><input class='lxmodal-i' id='lxaIss' placeholder='G…' maxlength='56'>"
+        +"<label class='lxmodal-l' for='lxaNet'>Network</label><select class='lxmodal-i' id='lxaNet'><option value='stellar'>Stellar</option><option value='xrpl'>XRPL</option><option value='near'>NEAR</option></select>"
+        +"<p class='lxmodal-s' id='lxaHelp'>A ticker is not an identity on Stellar — hundreds of assets share the code USDC, so give the issuer too. We check the asset exists, then ask its issuer’s own domain to vouch for it. Logo, description and links come next, prefilled from whatever it publishes.</p>"
+        +"<div id='lxaF1'><label class='lxmodal-l' for='lxaCode' id='lxaCodeL'>Asset code</label><input class='lxmodal-i' id='lxaCode' placeholder='USDC' maxlength='12'></div>"
+        +"<label class='lxmodal-l' for='lxaIss' id='lxaIssL'>Issuer account</label><input class='lxmodal-i' id='lxaIss' placeholder='G…' maxlength='56'>"
         +"<p class='lxmodal-e' id='lxaErr'></p>"
         +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxaCancel'>Cancel</button>"
         +"<button class='adm-btn primary' type='button' id='lxaOk'>Verify &amp; add</button></div></div>";
       document.body.appendChild(m);
       var ci=m.querySelector("#lxaCode"), ii=m.querySelector("#lxaIss"), er=m.querySelector("#lxaErr");
       ci.focus();
+      // NETWORK (RAZA 2026-11-24: "when we add asset, why isnt it showing the network selection"). Stellar keeps the
+      // flow below; XRPL and NEAR go to /lxapi/netcurated, which checks the token on its network and lists it.
+      var ni=m.querySelector("#lxaNet"), HELP0=m.querySelector("#lxaHelp").textContent;
+      function setNet(n){ var h=m.querySelector("#lxaHelp"), f1=m.querySelector("#lxaF1"), il=m.querySelector("#lxaIssL"), cl=m.querySelector("#lxaCodeL"); er.textContent=""; er.style.color="";
+        if(n==="near"){ f1.style.display="none"; il.textContent="Token contract"; ii.placeholder="token.near"; ii.maxLength=64;
+          h.textContent="A NEAR token is its contract. We read its name, symbol, decimals and logo from the contract; it is then ticked and listed on Trade within a few minutes."; return; }
+        f1.style.display=""; il.textContent="Issuer account";
+        if(n==="xrpl"){ cl.textContent="Token code"; ci.placeholder="SOLO"; ci.maxLength=40; ii.placeholder="r…"; ii.maxLength=35;
+          h.textContent="A ticker is not an identity on the XRP Ledger either, so give the issuer too. We check the token exists; it is then ticked and listed on Trade within a few minutes."; return; }
+        cl.textContent="Asset code"; ci.placeholder="USDC"; ci.maxLength=12; ii.placeholder="G…"; ii.maxLength=56; h.textContent=HELP0; }
+      ni.value=(MODE==="xrpl"||MODE==="near")?MODE:"stellar"; setNet(ni.value);
+      ni.addEventListener("change",function(){ setNet(ni.value); (ni.value==="near"?ii:ci).focus(); });
+      function ncAdd(n){ var ok=m.querySelector("#lxaOk"), body={op:"add",net:n};
+        if(n==="xrpl"){ body.code=(ci.value||"").trim(); body.issuer=(ii.value||"").trim();
+          if(!body.code){ er.textContent="Enter the token code, e.g. SOLO."; return; }
+          if(!/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(body.issuer)){ er.textContent="The issuer must be an XRPL account starting with r."; return; } }
+        else { body.contract=(ii.value||"").trim().toLowerCase(); if(!body.contract){ er.textContent="Enter the token contract, e.g. token.near."; return; }
+          var NN=NET.near; if(NN&&NN.rows&&NN.rows.some(function(r){ return String(r.i)===body.contract; })){ er.textContent="That token is already curated."; return; } }
+        ok.disabled=true; ok.textContent="Checking…"; er.textContent=""; er.style.color="";
+        fetch("/lxapi/netcurated",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+          .then(function(r){ return r.json().catch(function(){ return {ok:false,error:"The server answered "+r.status+"."}; }); })
+          .then(function(z){ if(!z||!z.ok){ ok.disabled=false; ok.textContent="Verify & add"; er.textContent=(z&&z.error)||"Could not add."; return; }
+            er.style.color="var(--green,#22c55e)"; er.textContent="Added "+((z.row&&(z.row.s||z.row.ticker))||"it")+". Trade lists it within a few minutes.";
+            NET[n]=null; setTimeout(function(){ close(); MODE=n; tabs(); render(); kpis(); netLoad(n); },1400); })
+          .catch(function(e){ ok.disabled=false; ok.textContent="Verify & add"; er.textContent=e.message; }); }
       function close(){ m.remove(); }
       m.addEventListener("click",function(e){ if(e.target===m)close(); });
       m.querySelector("#lxaCancel").addEventListener("click",close);
       m.querySelector("#lxaOk").addEventListener("click",function(){
+        if(ni.value!=="stellar"){ ncAdd(ni.value); return; }
         var code=(ci.value||"").trim(), iss=(ii.value||"").trim().toUpperCase();
         if(!/^[A-Za-z0-9]{1,12}$/.test(code)){ er.textContent="Asset code must be 1–12 letters or digits."; return; }
         if(!/^G[A-Z2-7]{55}$/.test(iss)){ er.textContent="Issuer must be a 56-character Stellar account starting with G."; return; }
