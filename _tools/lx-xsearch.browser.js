@@ -23,7 +23,7 @@ function short(a){a=String(a||"");return a.length>14?a.slice(0,5)+"…"+a.slice(
 // message use the search popup's own markup and classes (.sp-section-head h4 + .count, .sp-row/.sp-ico/.sp-info,
 // .sp-seaempty), so they read exactly like the page's search. Only the selected-row tint is ours.
 function css(){if(document.getElementById("lx-xsearch-css"))return;var st=document.createElement("style");st.id="lx-xsearch-css";
-  st.textContent="#lxXsList .sp-row.lx-xs-sel{background:var(--surface-2,rgba(255,255,255,.05))}#lxXsList .sp-ico img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}";
+  st.textContent="#lxXsList .sp-row.lx-xs-sel{background:var(--surface-2,rgba(255,255,255,.05))}#lxXsList .sp-ico img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}#lxXsList a.sp-row,#lxXsList a.sp-row:hover{color:inherit;text-decoration:none}#lxXsList .sp-info{min-width:0}#lxXsList .sp-name-row{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}#lxXsList .lx-vtick,#lxXsList .lx-unsafetag{flex-shrink:0}#lxXsList .sp-domain{min-width:0;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}";
   document.head.appendChild(st);}
 // OUR OWN BOX beside the page's list. The page's search watches #spAssetList (and its heading count) and repaints its own
 // results over anything written there (Stellar's did, 15 times in 6s), so while the networks differ the page's heading
@@ -40,27 +40,45 @@ function paint(w,rows,msg){var l=list();if(!l)return;css();
   if(msg){l.innerHTML=h+'<div class="sp-seaempty">'+esc(msg)+'</div>';return;}
   l.innerHTML=h+rows.map(function(r,i){
     var ico=r.logo?'<img alt="" src="'+esc(r.logo)+'">':esc(String(r.code||"?").slice(0,2).toUpperCase());
+    // Same badges as the page's own search: the verified tick, the "Not the real X" warning on a look-alike of a
+    // verified asset, and the domain chip; under it the name and holders.
+    var badges=(r.verified?TICK:"")+(r.fake?'<span class="lx-unsafetag" title="A verified '+esc(r.code)+' exists with a different issuer. This one is not it.">'+WARN+'Not the real '+esc(r.code)+'</span>':"")
+      +(r.domain?'<span class="sp-domain">'+esc(r.domain)+'</span>':"");
+    var sub=[r.sub||"",r.holders>0?(abbr(r.holders)+" holders"):""].filter(Boolean).join(" · ");
     return '<a class="sp-row sp-row--asset'+(i===0?" lx-xs-sel":"")+'" href="'+esc(r.href)+'" data-lxnonav=""><div class="sp-ico">'+ico+'</div>'
-      +'<div class="sp-info"><div class="sp-name-row">'+esc(r.code)+'</div><div class="sp-sub">'+esc(r.sub||"")+'</div></div>'
+      +'<div class="sp-info"><div class="sp-name-row">'+esc(r.code)+badges+'</div><div class="sp-sub">'+esc(sub)+'</div></div>'
       +'<div class="sp-right"><div class="sp-addr-mini">'+esc(r.right||"")+'</div></div></a>';}).join("");}
+var TICK='<span class="lx-vtick" title="Verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+var WARN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+function abbr(n){n=+n||0;if(n>=1e6)return (n/1e6).toFixed(1)+"M";if(n>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
+function host(u){var m=/^https?:[/][/]([^/?#]+)/i.exec(String(u||""));return m?m[1].replace(/^www[.]/,""):"";}
+// A look-alike: not verified itself, while a VERIFIED asset with the same code (and another issuer) exists.
+function markFakes(out,verifiedCodes){out.forEach(function(r){if(!r.verified&&r.code&&verifiedCodes[String(r.code).toUpperCase()])r.fake=1;});return out;}
+var VMAP=null;
+function stellarVerified(){return VMAP?Promise.resolve(VMAP):getJ("/lxapi/assetmeta").then(function(d){VMAP=(d&&d.verified)||{};return VMAP;},function(){return {};});}
 function getJ(u){return fetch(u,{cache:"no-store"}).then(function(r){if(!r.ok){var e=new Error("http "+r.status);e.st=r.status;throw e;}return r.json();});}
 var NEARLIST=null;
 function query(w,q){var lq=q.toLowerCase();
   if(w==="stellar"){var qs="search="+encodeURIComponent(q)+"&limit=12";
-    return getJ("/lxapi/assetsearch?"+qs).catch(function(e){if(e&&e.st===400)throw e;return getJ("https://api.stellar.expert/explorer/public/asset?"+qs);}).then(function(d){
-      var out=[];if(/^xlm|^lumen|^stellar/.test(lq))out.push({code:"XLM",sub:"Stellar native",href:"/trade/stellar",right:"native"});
-      ((d&&d._embedded&&d._embedded.records)||[]).forEach(function(x){var p=String(x.asset||"").split("-");if(p.length<2||!p[1])return;var t=x.tomlInfo||{};
-        out.push({code:p[0],sub:t.name||t.orgName||x.domain||"",logo:t.image||"",href:"/trade/stellar/"+encodeURIComponent(p[0]+"-"+p[1]),right:short(p[1])});});
-      return out;});}
+    var found=getJ("/lxapi/assetsearch?"+qs).catch(function(e){if(e&&e.st===400)throw e;return getJ("https://api.stellar.expert/explorer/public/asset?"+qs);});
+    return Promise.all([found,stellarVerified()]).then(function(a){var d=a[0],V=a[1]||{},vcodes={};
+      Object.keys(V).forEach(function(k){if(V[k]&&V[k].v)vcodes[k.split("-")[0].toUpperCase()]=1;});
+      var out=[];if(/^xlm|^lumen|^stellar/.test(lq))out.push({code:"XLM",sub:"Stellar native",href:"/trade/stellar",right:"native",verified:1});
+      ((d&&d._embedded&&d._embedded.records)||[]).forEach(function(x){var p=String(x.asset||"").split("-");if(p.length<2||!p[1])return;var t=x.tomlInfo||{},key=p[0]+"-"+p[1];
+        out.push({code:p[0],sub:t.name||t.orgName||"",logo:t.image||"",href:"/trade/stellar/"+encodeURIComponent(key),right:short(p[1]),
+          verified:!!(V[key]&&V[key].v),domain:x.domain||"",holders:x.trustlines&&x.trustlines.funded});});
+      return markFakes(out,vcodes);});}
   if(w==="xrpl")return getJ("/lxapi/xrplsearch?q="+encodeURIComponent(q)).then(function(d){
-      var out=[];if(/^xrp/.test(lq))out.push({code:"XRP",sub:"XRP Ledger native",href:"/trade/xrpl",right:"native"});
-      ((d&&d.rows)||[]).slice(0,12).forEach(function(x){if(!x.i)return;out.push({code:x.n,sub:x.u||x.d||"",href:"/trade/xrpl/"+encodeURIComponent(x.n+"-"+x.i),right:x.d||short(x.i)});});
-      return out;});
+      var out=[],vcodes={};if(/^xrp/.test(lq))out.push({code:"XRP",sub:"XRP Ledger native",href:"/trade/xrpl",right:"native",verified:1});
+      ((d&&d.rows)||[]).slice(0,12).forEach(function(x){if(!x.i)return;if(x.vf)vcodes[String(x.n).toUpperCase()]=1;
+        out.push({code:x.n,sub:x.u||"",href:"/trade/xrpl/"+encodeURIComponent(x.n+"-"+x.i),right:short(x.i),verified:!!x.vf,domain:x.d||"",holders:x.h});});
+      return markFakes(out,vcodes);});
   return (NEARLIST?Promise.resolve(NEARLIST):getJ("/lxapi/nearmarket").then(function(d){NEARLIST=(d&&d.rows)||[];return NEARLIST;})).then(function(rows){
-      var out=[];if(/^w?near/.test(lq))out.push({code:"NEAR",sub:"NEAR native",href:"/trade/near",right:"native"});
+      var out=[];if(/^w?near/.test(lq))out.push({code:"NEAR",sub:"NEAR native",href:"/trade/near",right:"native",verified:1});
       rows.filter(function(x){return [x.n,x.nm,x.i].some(function(v){return String(v||"").toLowerCase().indexOf(lq)>=0;});})
         .sort(function(a,b){return (String(b.n).toLowerCase()===lq)-(String(a.n).toLowerCase()===lq);}).slice(0,12)
-        .forEach(function(x){out.push({code:x.n,sub:x.nm||"",logo:/^https?:|^data:image/.test(String(x.logo||""))?x.logo:"",href:"/trade/near/"+encodeURIComponent(x.i),right:short(x.i)});});
+        .forEach(function(x){out.push({code:x.n,sub:x.nm&&x.nm!==x.n?x.nm:"",logo:/^https?:|^data:image/.test(String(x.logo||""))?x.logo:"",href:"/trade/near/"+encodeURIComponent(x.i),
+          right:short(x.i),verified:!!x.vf,domain:host(x.w),holders:x.hc});});
       return out;});}
 var tmr=0,seq=0;
 function run(){var w=on();if(!w)return;var inp=document.getElementById("spSearchInput");if(!inp)return;var q=String(inp.value||"").trim();var my=++seq;
