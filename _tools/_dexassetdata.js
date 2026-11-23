@@ -2535,7 +2535,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       renderExchanges();
     }).catch(function(e){
       // Horizon 404 on /trades = this pair has never traded (USDe, 2026-11-24): an empty list, not a failure.
-      if(String(e&&e.message)==="HTTP404"&&!window.__lxDXAtrades){ window.__lxDXAtrades=[]; EX_SCANNED=0; EX_CURSOR=null; EX_NEVER=1; renderExchanges(); }
+      if(String(e&&e.message)==="HTTP404"&&!window.__lxDXAtrades){ window.__lxDXAtrades=[]; EX_SCANNED=0; EX_CURSOR=null; EX_NEVER=1; renderExchanges(); try{ chartEmpty(); }catch(_){} }
     });
   }
   var EX_NEVER=0;
