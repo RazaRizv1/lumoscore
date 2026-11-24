@@ -204,10 +204,18 @@ function applyOverrides(toml, meta) {
     const m = meta[cur + '-' + iss] || meta[String(cur).toUpperCase() + '-' + iss];
     if (m) {
       const img = safeImage(m.image);
-      const has = (k) => buf.some((l) => new RegExp('^\\s*' + k + '\\s*=').test(l));
-      if (m.name && !has('name')) buf.push('name = "' + esc(m.name) + '"');
-      if (m.desc && !has('desc')) buf.push('desc = "' + esc(m.desc) + '"');
-      if (img && !has('icon')) buf.push('icon = "' + img + '"');
+      // AN ADMIN EDIT REPLACES THE HAND-WRITTEN LINE (RAZA 2026-11-24, aligning XRPL with the Stellar fix the same
+      // day). The six hand-written blocks all carry name= and desc=, so "add only when missing" meant an admin edit
+      // to one of them never reached this document. syncXrplToml() writes the admin record into this map, so a
+      // non-empty value here is the most recent thing a human set: it replaces the line, or is added when absent.
+      const setKey = (k, line) => {
+        const re = new RegExp('^\\s*' + k + '\\s*=');
+        const i = buf.findIndex((l) => re.test(l));
+        if (i >= 0) buf[i] = line; else buf.push(line);
+      };
+      if (m.name) setKey('name', 'name = "' + esc(m.name) + '"');
+      if (m.desc) setKey('desc', 'desc = "' + esc(m.desc) + '"');
+      if (img) setKey('icon', 'icon = "' + img + '"');
     }
     out.push(...buf);
     buf = null; iss = ''; cur = '';
