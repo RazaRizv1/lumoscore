@@ -2714,6 +2714,8 @@ export async function onRequest(context){
   head.push('<script id="lx-xsearch" src="/assets/js/lx-xsearch.js?v=4"></scr' + 'ipt>');
   // MY EARNINGS on Trade (RAZA 2026-11-24): _tools/lx-earnings.browser.js, emitted as /assets/js/lx-earnings.js.
   head.push('<script id="lx-earnings" src="/assets/js/lx-earnings.js?v=4" defer></scr' + 'ipt>');   // v2: redesigned panel
+  // RECENT MINTS on the Trade main page (RAZA 2026-11-24): _tools/lx-recentmints.browser.js -> /assets/js/lx-recentmints.js.
+  head.push('<script id="lx-recentmints" src="/assets/js/lx-recentmints.js?v=1" defer></scr' + 'ipt>');
   head.push('<script id="lx-kbdblur">(function(){if(window.__lxKbd)return;window.__lxKbd=1;function off(){var a=document.activeElement;if(a&&a!==document.body&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable)){try{a.blur();}catch(e){}}}document.addEventListener("visibilitychange",function(){if(document.hidden)off();});window.addEventListener("pagehide",off);})();</scr' + 'ipt>');
   head.push('<script type="application/ld+json" id="lx-ld-core">'
     // THIS ESCAPE WAS A NO-OP AND THAT WAS AN INJECTION. It used to read .join('<\\/'), which this
@@ -3244,6 +3246,7 @@ for(const c of list){
     fs.mkdirSync(path.join(outRoot, 'assets', 'js'), { recursive: true });
     fs.copyFileSync(path.join(__dirname, 'lx-xsearch.browser.js'), path.join(outRoot, 'assets', 'js', 'lx-xsearch.js'));
     fs.copyFileSync(path.join(__dirname, 'lx-earnings.browser.js'), path.join(outRoot, 'assets', 'js', 'lx-earnings.js'));
+    fs.copyFileSync(path.join(__dirname, 'lx-recentmints.browser.js'), path.join(outRoot, 'assets', 'js', 'lx-recentmints.js'));
   } catch (e) { console.error('            lx-xsearch.js NOT emitted: ' + e.message); }
   try {
     const emitted = require('./_ogkit.js').emitBrowser();
