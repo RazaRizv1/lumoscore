@@ -24,6 +24,11 @@
   function pagePath(id) { return '/trade/' + NET + '/' + encodeURIComponent(id); }
   function walletPath(a) { return '/account/' + NET + '/' + encodeURIComponent(a); }
   function xcur(c) { if (c.length <= 3) return c; var h = ''; for (var i = 0; i < c.length; i++) h += c.charCodeAt(i).toString(16).toUpperCase(); while (h.length < 40) h += '0'; return h; }
+  // v11 (RAZA 2026-11-24 "the green light is too AI"): a small flame in the logo's colours, gently flickering.
+  var FLAME = '<svg class="lx-rm-flame" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lxrmFg" x1="0" y1="1" x2="0" y2="0">'
+    + '<stop offset="0" stop-color="#e8452c"/><stop offset=".55" stop-color="#ff7a1a"/><stop offset="1" stop-color="#ffd166"/></linearGradient></defs>'
+    + '<path fill="url(#lxrmFg)" d="M12 2.5c.6 2.9 2.4 4.9 4.1 6.7 1.6 1.7 2.9 3.4 2.9 5.9A7 7 0 0 1 12 22a7 7 0 0 1-7-6.9c0-2.1.9-3.9 2.3-5.2.2 1.6.9 2.8 2.1 3.4-.4-3.9.9-7.6 2.6-10.8z"/>'
+    + '<path fill="#ffe9a8" opacity=".85" d="M12.2 12.2c.9 1.3 2.3 2.4 2.3 4.3A2.6 2.6 0 0 1 12 19.2a2.6 2.6 0 0 1-2.6-2.6c0-1.6 1.2-2.9 2.8-4.4z"/></svg>';
   var ROCKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>';
   function css() {
     if (document.getElementById('lx-rm-css')) return;
@@ -163,6 +168,20 @@
       + '.lx-rm-row .lx-rm-chg{font-size:14.5px}.lx-rm-row .lx-rm-new{margin-left:2px}'
       // the wallet in the minted line: normal font (the mono one cut "GA7N…F4ZD" short), underline only on hover
       + '.lx-rm-acts{display:none}'
+      // v11 look: the flame, a proper Launch Token button, and My Earnings in the bar
+      + '.lx-rm-flame{width:17px;height:17px;flex:none;transform-origin:50% 90%;filter:drop-shadow(0 0 4px rgba(255,122,26,.45));animation:lxrmFlick 2.4s ease-in-out infinite}'
+      + '@keyframes lxrmFlick{0%,100%{transform:scale(1,1) rotate(0)}30%{transform:scale(.96,1.06) rotate(-2deg)}60%{transform:scale(1.03,.97) rotate(1.5deg)}}'
+      + '@media (prefers-reduced-motion:reduce){.lx-rm-flame{animation:none}}'
+      + '.lx-rm-h h3{gap:7px}'
+      + '.lx-rm-go{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(180deg,#ff8f52 0%,#f26b2a 52%,#e2561b 100%);border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.12),0 8px 18px -10px rgba(234,106,44,.75);font-weight:650;letter-spacing:.005em;text-shadow:0 1px 0 rgba(0,0,0,.12)}'
+      + '.lx-rm-go::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.32) 50%,transparent 70%);transform:translateX(-120%);transition:transform .75s ease}'
+      + '.lx-rm-go:hover{filter:brightness(1.05);box-shadow:inset 0 1px 0 rgba(255,255,255,.36),inset 0 -1px 0 rgba(0,0,0,.12),0 10px 22px -10px rgba(234,106,44,.9)}'
+      + '.lx-rm-go:hover::after{transform:translateX(120%)}'
+      + '.lx-rm-go:active{transform:translateY(1px)}'
+      + '.lx-rm-go svg{width:15px;height:15px;transform:rotate(-8deg);transition:transform .3s}.lx-rm-go:hover svg{transform:rotate(-8deg) translate(1px,-1px)}'
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{gap:8px;padding:0 14px 0 8px;border-radius:10px;font-weight:650;background:var(--surface,transparent);border:1px solid ' + B + ';transition:border-color .2s,background .2s}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn svg{box-sizing:border-box;width:24px;height:24px;padding:5px;border-radius:50%;background:var(--accent-pale,rgba(234,106,44,.14));box-shadow:inset 0 0 0 1px rgba(234,106,44,.28)}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn:hover{border-color:rgba(234,106,44,.55);background:var(--surface-2,' + S2 + ')}}'
       + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;gap:10px;margin-bottom:var(--lxrm-actsgap,16px)}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;padding:0 16px;font-size:14px;border-radius:10px}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{box-sizing:border-box;margin:0}}'
@@ -248,7 +267,7 @@
       + (m ? '<div class="m">' + esc(m) + '</div>' : '') + (b ? '<div class="m">' + b + '</div>' : '') + '</a>';
   }
   function head(mob) {
-    return '<div class="lx-rm-h"><div><h3><span class="lx-rm-live" title="Updates live"></span>Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
+    return '<div class="lx-rm-h"><div><h3>' + FLAME + 'Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
       + (mob ? '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a>' : '') + '</div>';
   }
   function paint(box, mob) {
