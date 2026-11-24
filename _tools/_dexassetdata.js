@@ -1586,7 +1586,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     "1W":{res:3600000,span:604800000},
     "1M":{res:86400000,span:2592000000},
     "1Y":{res:604800000,span:31536000000}}; return m[tf]||m["1D"]; }
-  function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1D")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
+  function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1D")return (d.getHours()<10?"0":"")+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes(); if(tf==="1Y")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
   // Label the axis from the DATA span, not the selected timeframe. While a new range loads, the chart
   // guardian keeps redrawing the PREVIOUS points, and keying the labels off chartTF stamped a fresh "1Y"
   // format onto one month of data — the axis read "Jul '26, Jul '26, Jul '26" while the line was still 1M.
@@ -1796,7 +1796,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var sorted=pts.map(function(p){return p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=sorted[Math.floor(sorted.length*0.05)]||sorted[0], hi=sorted[Math.ceil(sorted.length*0.95)-1]||sorted[sorted.length-1];
     var cl=pts.map(function(p){return Math.max(lo,Math.min(hi,p.v));});
-    var mn=Math.min.apply(null,cl),mx=Math.max.apply(null,cl),rg=(mx-mn)||(mx||1);
+    var mn=Math.min.apply(null,cl),mx=Math.max.apply(null,cl),rg=(mx-mn)||(mx||1); if(mx===mn&&mx>0){ mn=mx*0.5; mx=mx*1.5; rg=mx-mn; }
     var iw=W-PADL-PADR, ih=HT-PADT-PADB;
     // Split the plot: price on top, a volume band underneath. The volume was already on every point --
     // loadChart carries it and the hover tooltip has always printed it -- it simply was never drawn, so
@@ -1835,7 +1835,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var l=svg.querySelector(".lxda-line"); if(l){l.setAttribute("fill","none");l.setAttribute("stroke",lxCC);l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-linecap","round");l.setAttribute("stroke-linejoin","round");}
     // x-axis date row (absolute HTML)
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
-    var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
+    var NL=Math.min(5,n),h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co;
     try{ applyChangePill(); }catch(_){}
     priceAxis(pc,mn,mx, PADT/HT*100, (HT-(PADT+vol.priceH))/HT*100);
@@ -1923,6 +1923,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
   function chartFromTrades(tf){
     if(chartTF!==tf)return;   // the reader moved on while this was being assembled
     var rows=window.__lxDXAtrades;
+    // Trades not loaded YET is not "no trades": JENSEN called this at ~2 s, before its one trade landed, and the
+    // empty message was final. Wait for them (up to ~12 s) before deciding (newtoken 2026-11-24).
+    if(!rows){ chartFromTrades.__w=(chartFromTrades.__w||0)+1; if(chartFromTrades.__w<=12){ setTimeout(function(){ chartFromTrades(tf); },1000); return; } }
+    // ONE trade is a price history too: draw it to the current price (newtoken 2026-11-24, JENSEN).
+    if(rows&&rows.length===1&&rows[0].px>0){ var _r0=rows[0]; rows=[_r0,{ts:Math.max(Date.now(),(_r0.ts||0)+60000),px:(assetXlm>0?assetXlm:_r0.px),xlm:0}]; }
     if(!rows||rows.length<2){ chartEmpty(); return; }
     var cfg=tfCfg(tf), cut=Date.now()-cfg.span;
     var src=rows.slice().filter(function(r){ return r.px>0; });
@@ -3461,6 +3466,14 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       return (v!=null&&isFinite(v)&&v>=0)?v:null;
     }catch(_){ return null; }
   }
+  // FUNDED HOLDERS FOR A TOKEN stellar.expert HAS NOT INDEXED YET (newtoken 2026-11-24, JENSEN "Holders —").
+  setTimeout(function(){ if(holdersFunded!=null||NATIVE||!ISSUER||!CODE)return;
+    j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200").then(function(d){
+      if(holdersFunded!=null)return; var r=(d&&d._embedded&&d._embedded.records)||[];
+      if(r.length>=200||(d&&d._links&&d._links.next&&d._links.next.href))return;   // incomplete: leave it to stellar.expert
+      holdersFunded=r.filter(function(x){ return +x.balance>0; }).length; try{ guardApply(); }catch(_){}
+    }).catch(function(){});
+  },2500);
   function dxaSetFunded(mx){
     var v=dxaFunded(mx);
     if(v!=null&&holdersFunded!==v){ holdersFunded=v; try{ guardApply(); }catch(_){} }
