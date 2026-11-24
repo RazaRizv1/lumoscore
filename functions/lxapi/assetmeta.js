@@ -33,7 +33,12 @@ const CATS = 'assets:cats';
 // code or a 40-character hex blob — "LUMOS" travels as 4C554D4F53 padded to 40, so the 12-character
 // Stellar limit would have rejected the very tokens this is for. The two forms are kept as separate
 // alternatives rather than one loosened pattern, so a Stellar id is still held to Stellar's rules.
-const ASSET_RE = /^(?:[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}|[A-Za-z0-9]{1,40}-r[1-9A-HJ-NP-Za-km-z]{24,34})$/;
+// NEAR Launchpad tokens join as SYMBOL-contract, e.g. LUMOS-lumos.lumoscore.near (RAZA 2026-11-24, NEAR mints in admin).
+// SYMBOL is the contract's first label upper-cased with anything but A-Z0-9 dropped, so it never holds a "-" and the
+// admin's parse() (split at the first "-") gets SYMBOL and contract back. Only our own factory's sub-accounts.
+const ASSET_RE = /^(?:[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}|[A-Za-z0-9]{1,40}-r[1-9A-HJ-NP-Za-km-z]{24,34}|[A-Z0-9]{1,40}-[a-z0-9_-]{1,64}\.lumoscore\.near)$/;
+const NEAR_MINTS = 'mints:near';           // ["SYMBOL-contract", ...] -- written by minters.js near-record at each launch
+function isNearMint(a) { return /\.lumoscore\.near$/.test(String(a || '')); }
 // SPLIT_RE stays STELLAR-ONLY on purpose. Its only callers verify against a stellar.toml, and both
 // already treat a non-match as "nothing to verify" — so an XRPL id flows through them untouched
 // instead of being handed to a Stellar handshake that cannot mean anything for it.
@@ -285,6 +290,17 @@ export async function onRequestGet({ request, env }) {
       if (add.length) mints = mints.concat(add);
     }
   } catch (_) { /* the Stellar mints still answer; one store failing is not the whole list failing */ }
+  // NEAR LAUNCHPAD TOKENS join the same mints list (RAZA 2026-11-24, "Yes, build it": admin edits and the $ payout
+  // button for NEAR mints). minters.js adds each one when its launch is proven on chain. Consumers that only want
+  // Stellar ids (the public search) already filter on a G-issuer, as they do for the XRPL ids above.
+  try {
+    const near = (await kv.get(NEAR_MINTS, 'json')) || [];
+    if (Array.isArray(near) && near.length) {
+      const seen = new Set(mints);
+      const add = near.filter((k) => ASSET_RE.test(k) && isNearMint(k) && !seen.has(k));
+      if (add.length) mints = mints.concat(add);
+    }
+  } catch (_) { /* the other networks' mints still answer */ }
   // `list` stays an array of plain ids so existing callers keep working; the rest rides alongside.
   //
   // NEVER CACHED, and this is the bug that ate an asset. The admin panel reads this list and can then
@@ -387,13 +403,15 @@ export async function onRequestPut({ request, env }) {
   // round trip and an edit can never land on an asset that is not listed.
   let list = [];
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
-  const isNew = list.indexOf(asset) < 0;
+  // A NEAR mint is edited, never curated from here: the curated list is the Stellar Trade list, and its tick
+  // check is a Stellar handshake. So editing one only stores the edit (RAZA 2026-11-24, NEAR mints in admin).
+  const isNew = !isNearMint(asset) && list.indexOf(asset) < 0;
   if (isNew) list = [asset].concat(list);
 
   // Listing an asset verifies it in the same call, so the tick is never a separate step the admin has
   // to remember -- and never a claim the client got to make.
   let stamp = null;
-  if (isNew || b.reverify) { stamp = await stampVerified(kv, asset); }
+  if ((isNew || b.reverify) && !isNearMint(asset)) { stamp = await stampVerified(kv, asset); }
 
   // The Stablecoin flag (see CATS). Only 'stable' is stored; anything else clears it.
   if (b.category != null) {

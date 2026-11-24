@@ -1902,7 +1902,7 @@ function paintUsers(){
 // function in the same script -- threw "isXA is not defined" on its first draw, which killed the whole
 // list and left it reading "Loading…" for ever. Nothing above it in that call stack catches, so one
 // missing name takes the page with it.
-+'function isXA(k){ return /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(k||"")); }'
++'function isXA(k){ return /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(k||"")); }function isNA(k){ return String(k||"").slice(-15)===".lumoscore.near"; }function nInfo(code,iss,cb){ nearPrice(code,iss,function(p){ cb({code:code,iss:iss,price:(p>0?p:null),d1:null,d7:null,vol7d:null,trust:null,funded:null,domain:"lumoscore.com",img:"",name:""}); }); }'
 +'function xInfo(code,iss,cb){ j("/lxapi/xrpltoken?id="+encodeURIComponent(iss+"-"+xCur(code))).then(function(d){'
 +'    if(!d||!d.ok){ cb(null); return; }'
 // price is USD here because the table's column is USD, matching what stellar.expert returns for the
@@ -1944,7 +1944,7 @@ function minterEdit(k,net){
 }
 function editAsset(k){
   if(q(".lxmodal"))return;
-  var i=k.lastIndexOf("-"), code=k.slice(0,i);
+  var i=k.indexOf("-"), code=k.slice(0,i);
   var m=document.createElement("div"); m.className="lxmodal";
   function row(id,label,hint,type){
     return "<label class='lxmodal-l' for='"+id+"'>"+esc(label)+(hint?(" <span style='font-weight:600;text-transform:none;letter-spacing:0;opacity:.7'>"+esc(hint)+"</span>"):"")+"</label>"
@@ -2041,7 +2041,8 @@ function editAsset(k){
     // Says which of the three situations this asset is in, because "empty because they publish
     // nothing" and "empty because their domain is unreachable" call for different action from you.
     if(src){
-      if(!vr.domain) src.textContent="This issuer publishes no home domain, so nothing could be prefilled. Whatever you enter here is what the asset page will show.";
+      if(isNA(k)) src.textContent="NEAR Launchpad token. Whatever you enter here is what its page on LumosCore shows.";
+      else if(!vr.domain) src.textContent="This issuer publishes no home domain, so nothing could be prefilled. Whatever you enter here is what the asset page will show.";
       else if(!t.name&&!t.description&&!t.image) src.textContent="No usable stellar.toml at "+vr.domain+" — nothing to prefill. Whatever you enter here is what the asset page will show.";
       else src.textContent=(vr.verified?"Verified · ":"Not verified · ")+"prefilled from "+vr.domain+"’s stellar.toml. Edited fields override it.";
     }
@@ -2052,7 +2053,7 @@ function editAsset(k){
   // is the point: the reader of the public site cannot tell an earned tick from a granted one, so the
   // person granting it should be told exactly what they are asserting.
   function paintVouch(vr){
-    var b=m.querySelector("#lxeVouch"); if(!b)return;
+    var b=m.querySelector("#lxeVouch"); if(!b)return; if(isNA(k)){ b.style.display="none"; return; }
     var VERx=window.__lxVER||{}; var rec=VERx[k]||null;
     // A CURATED TICK ON A MINT IS WITHDRAWABLE TOO (RAZA 2026-11-07, on LFQP: "you cant just get a
     // curated tick automatically just because you're minted on LumosCore"). This read only "manual",
@@ -2212,7 +2213,7 @@ function paintAssets(){
   function isNet(){ return MODE==="xrpl"||MODE==="near"; }
   function rows(){ return (MODE==="requests"||isNet())?[]:(MODE==="mints"?MINTS:CUR); }
   function key(a){ return a.code+"-"+a.iss; }
-  function parse(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; }
+  function parse(s){ var i=s.indexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; }
 
   var head=q(".admin-page-head");
   if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";
@@ -2248,7 +2249,7 @@ function paintAssets(){
     // /lxapi/assetlogo resolves a Stellar toml and knows nothing about r-addresses, so asking it
     // about an XRPL mint just burns a request. The mint's own artwork is already in hand: the
     // launchpad stored it in mintmeta:xrpl and assetmeta now returns it alongside the ids.
-    if(isXA(k)){ var mm=MM[k]; return (mm&&mm.image)||avatar(a.code); }
+    if(isXA(k)||isNA(k)){ var mm=MM[k]; return (mm&&mm.image)||avatar(a.code); }
     if(LOGO[k]===undefined){ LOGO[k]=null;
       j("/lxapi/assetlogo?asset="+encodeURIComponent(k)).then(function(d){
         var u=d&&d.image; if(u){ LOGO[k]=u; render(); } else delete LOGO[k]; }); }
@@ -2812,7 +2813,7 @@ function paintAssets(){
         +"<div><div class='asset-name'>"+esc(a.code)+tickFor(k)+((v&&v.name&&v.name!==a.code)?" <span style='font-weight:500;color:var(--text-muted);font-size:13.5px'>"+esc(v.name)+"</span>":"")+"</div>"
         // The ledger is named beside the issuer. Two chains in one table, and a G-address next to an
         // r-address is only obvious to someone who already knows which is which.
-        +"<div class='asset-sub mono'>"+esc(shortG(a.iss))+"<span style='opacity:.55;font-size:11px;margin-left:6px;font-family:inherit'>"+(xa?"XRPL":"Stellar")+"</span></div></div></div></td>"
+        +"<div class='asset-sub mono'>"+esc(shortG(a.iss))+"<span style='opacity:.55;font-size:11px;margin-left:6px;font-family:inherit'>"+(xa?"XRPL":(isNA(k)?"NEAR":"Stellar"))+"</span></div></div></div></td>"
         +"<td>"+cell(v&&v.domain?("<a class='lxadm-link' target='_blank' rel='noopener' href='https://"+esc(v.domain)+"'>"+esc(v.domain)+"</a>"):"<span style='color:var(--text-muted)'>no home domain</span>")+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+cell(v&&v.price?esc(usd(v.price)):"<span style='color:var(--text-muted)'>—</span>")+"</td>"
         +"<td style='text-align:right'>"+cell(pct(v&&v.d1))+"</td>"
@@ -2825,12 +2826,12 @@ function paintAssets(){
         // ABSOLUTE, AND CHAIN-CORRECT. This was a relative link to lumoscore-dex-asset.html, a page
         // the admin build does not contain -- so it 404'd on the admin origin for every row, on both
         // chains. The public site serves these at /trade/<chain>/<asset>, both verified 200.
-        +"<a class='ext-link' title='Open the public asset page' target='_blank' rel='noopener' href='https://lumoscore.com/trade/"+(xa?"xrpl":"stellar")+"/"+encodeURIComponent(k)+"'>"+EXTICON+"</a>"
+        +"<a class='ext-link' title='Open the public asset page' target='_blank' rel='noopener' href='https://lumoscore.com/trade/"+(xa?"xrpl":(isNA(k)?"near":"stellar"))+"/"+encodeURIComponent(isNA(k)?a.iss:k)+"'>"+EXTICON+"</a>"
         +"<button class='row-act-btn' type='button' title='Edit description, logo and links' data-lxed='"+esc(k)+"'>✎</button>"
         // A mint is a record of what was issued, not a curation choice, and there is nowhere to
         // persist its removal -- it would simply reappear on the next load. So the tab does not
         // offer a button that cannot keep its promise.
-        +(MODE==="mints"?("<button class='row-act-btn' type='button' title='Minter payout wallet — gets 30% of LumosCore’s fee on this token' data-lxmint='"+esc(k)+"' data-lxmnet='"+(xa?"xrpl":"stellar")+"'>$</button>"):("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
+        +(MODE==="mints"?("<button class='row-act-btn' type='button' title='Minter payout wallet — gets 30% of LumosCore’s fee on this token' data-lxmint='"+esc(isNA(k)?a.iss:k)+"' data-lxmnet='"+(xa?"xrpl":(isNA(k)?"near":"stellar"))+"'>$</button>"):("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
         +"</span></td></tr>"; }).join("");
     qa("[data-lxrm]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
       b.addEventListener("click",function(){ var k=b.getAttribute("data-lxrm");
@@ -2844,7 +2845,7 @@ function paintAssets(){
       b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }
 
   function load(a){ var k=key(a); if(DATA[k]!==undefined)return;
-    (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ DATA[k]=v; soonRender(); }); }
+    (isNA(k)?nInfo:(isXA(k)?xInfo:aInfo))(a.code,a.iss,function(v){ DATA[k]=v; soonRender(); }); }
   var _lxSoon=0; function soonRender(){ if(_lxSoon)return; _lxSoon=setTimeout(function(){ _lxSoon=0; render(); kpis(); },60); }
 
   // Our own trades, over three windows, from the ledger the Revenue page already reconstructs.
@@ -3115,17 +3116,17 @@ function paintAssets(){
 +'      setT(q("#lxmaN"),String(L.length)); fixPager(L.length);'
 +'      var sub2=q(".mob-page-sub"); if(sub2)sub2.innerHTML="<span class=\\"mono\\">"+L.length+"</span> "+(MMODE==="mints"?"tokens issued through our launchpad":"listed assets"); }'
 +'    function mload(a){ var k=a.code+"-"+a.iss; if(D[k]!==undefined)return;'
-+'      (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ D[k]=v; draw(); }); }'
++'      (isNA(k)?nInfo:(isXA(k)?xInfo:aInfo))(a.code,a.iss,function(v){ D[k]=v; draw(); }); }'
 +'    function draw(){ var L=mrows();'
 +'      if(!L.length){ abox.innerHTML="<div class=\\"lxadm-empty\\">"+(MMODE==="mints"?"No token has been issued through the launchpad yet.":"Nothing listed yet.")+"</div>"; return; }'
 +'      abox.innerHTML=L.map(function(a){ var k=a.code+"-"+a.iss, v=D[k], ld=(v===undefined), xa=isXA(k);'
 // An XRPL mint's artwork comes from mintmeta, because /lxapi/assetlogo resolves a Stellar toml.
-+'      var img=(xa?((MMM[k]&&MMM[k].image)||""):((v&&v.img)||""))||avatar(a.code);'
++'      var img=((xa||isNA(k))?((MMM[k]&&MMM[k].image)||""):((v&&v.img)||""))||avatar(a.code);'
 // Absolute and chain-correct, for the same reason as the desktop table: lumoscore-dex-asset-mobile.html
 // is not in the admin build, so this link 404'd on every card.
-+'      return "<a class=\\"lxm-card\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://lumoscore.com/trade/"+(xa?"xrpl":"stellar")+"/"+encodeURIComponent(k)+"\\">"'
++'      return "<a class=\\"lxm-card\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://lumoscore.com/trade/"+(xa?"xrpl":(isNA(k)?"near":"stellar"))+"/"+encodeURIComponent(isNA(k)?a.iss:k)+"\\">"'
 +'        +"<div class=\\"lxm-top\\"><img class=\\"lxm-av\\" data-lxc=\\""+esc(a.code)+"\\" alt=\\"\\" src=\\""+esc(img)+"\\">"'
-+'        +"<div><div class=\\"lxm-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:6px;font-weight:500\\">"+(xa?"XRPL":"Stellar")+"</span></div>"'
++'        +"<div><div class=\\"lxm-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:6px;font-weight:500\\">"+(xa?"XRPL":(isNA(k)?"NEAR":"Stellar"))+"</span></div>"'
 +'        +"<div class=\\"lxm-sub\\">"+(ld?"\u2026":esc((v&&v.domain)||"no home domain"))+"</div></div>"'
 +'        +"<div class=\\"lxm-right\\">"+(ld?"\u2026":((v&&v.price)?esc(usd(v.price)):"\u2014"))+"</div></div>"'
 +'        +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">24h</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":pct(v&&v.d1))+"</div></div>"'

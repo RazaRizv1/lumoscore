@@ -165,6 +165,12 @@ async function nearRecord(kv, b) {
   if (!ok) return { status: 403, error: 'that launch could not be confirmed on NEAR' };
   const chain = await getMap(kv, CHAIN), key = 'near|' + token;
   if (!chain[key]) { chain[key] = signer; await kv.put(CHAIN, JSON.stringify(chain)); }
+  // ...and the launch joins the admin's mints list, as SYMBOL-contract (see assetmeta.js ASSET_RE).
+  try {
+    const sym = token.split('.')[0].toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40);
+    const id = sym + '-' + token, list = (await kv.get('mints:near', 'json')) || [];
+    if (sym && Array.isArray(list) && list.indexOf(id) < 0) { list.push(id); await kv.put('mints:near', JSON.stringify(list)); }
+  } catch (e) { /* the minter is recorded either way */ }
   return { status: 200, minter: chain[key] };
 }
 
