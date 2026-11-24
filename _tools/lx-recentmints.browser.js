@@ -33,7 +33,7 @@
       // desktop: two columns on the existing section; the table scrolls sideways inside its own wrap
       + 'section.dex-markets.lx-rm-on{display:grid!important;grid-template-columns:minmax(0,1fr) 340px;column-gap:20px;align-items:start}'
       + 'section.dex-markets.lx-rm-on>*:not(.lx-rm){grid-column:1;min-width:0}'
-      + 'section.dex-markets.lx-rm-on>.lx-rm{grid-column:2;grid-row:1/span 40;position:sticky;top:84px}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm{grid-column:2;grid-row:var(--lxrm-row,1)/span 40;position:sticky;top:84px}'
       + 'section.dex-markets.lx-rm-on .dex-mk-table-wrap{overflow-x:auto!important;scrollbar-width:thin}'
       + '@media (max-width:1180px){section.dex-markets.lx-rm-on{grid-template-columns:minmax(0,1fr)}section.dex-markets.lx-rm-on>.lx-rm{grid-column:1;grid-row:auto;position:static;order:-1;margin-bottom:18px}}'
       + '.lx-rm{border:1px solid ' + B + ';border-radius:16px;background:var(--surface,transparent);overflow:hidden}'
@@ -102,6 +102,32 @@
       + '.lx-rm-card .cap{margin-top:9px;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:14px}'
       + '.lx-rm-card .m{margin-top:3px;font-size:11px;color:' + MU + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '.lx-rm-card .lx-rm-tri{margin-left:0;margin-top:5px}';
+    // v3 (RAZA 2026-11-24 "follows different colors ... header not aligned"): the panel now wears the pairs table's own
+    // card -- same surface, border, 14px radius; its header is the table's 47px header band (surface-2, uppercase
+    // 13.8px soft labels); numbers are plain coloured mono text like the table's 24H CHANGE; no tinted gradient, no
+    // pills, no glow. On desktop it starts level with the table (see mount), not with the "All Trading Pairs" heading.
+    var SO = 'var(--text-soft,' + MU + ')';
+    s.textContent += ''
+      + '.lx-rm{border-radius:14px;background:var(--surface,transparent);border:1px solid ' + B + '}'
+      + '.lx-rm-h{min-height:47px;box-sizing:border-box;padding:6px 8px 6px 15px;background:var(--surface-2,transparent);gap:8px}'
+      + '.lx-rm-h h3{font-size:13.8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:' + SO + ';gap:8px}'
+      + '.lx-rm-sub{display:none}'
+      + '.lx-rm-live{width:6px;height:6px}'
+      + '.lx-rm-go{padding:7px 12px;border-radius:8px;font-size:13.5px;box-shadow:none;gap:6px}'
+      + '.lx-rm-go:hover{transform:none;box-shadow:none;filter:brightness(1.08)}'
+      + '.lx-rm-go svg{width:14px;height:14px}'
+      + '.lx-rm-row{min-height:72px;box-sizing:border-box;padding:12px 15px;gap:2px 12px}'
+      + '.lx-rm-t{font-size:16px}'
+      + '.lx-rm-act{font-size:12.5px;color:' + SO + '}'
+      + '.lx-rm-new{font-size:10px;padding:1px 6px}'
+      + '.lx-rm-chg,.lx-rm-chg.up,.lx-rm-chg.down,.lx-rm-chg.flat{background:none;padding:0;border-radius:0;font-size:16px}'
+      + '.lx-rm-chg.flat{color:' + SO + '}'
+      + '.lx-rm-card{border-radius:12px;background:var(--surface,transparent)}'
+      + '.lx-rm-card .cap .lx-rm-chg{font-size:16px;padding:0}'
+      + '.lx-rm-mob .lx-rm-h{padding:6px 8px 6px 14px}'
+      + '.lx-rm-mob .lx-rm-h h3{font-size:12.5px}'
+      + '.lx-rm-mob .lx-rm-go{padding:7px 11px;font-size:13px}'
+      + '.lx-rm-strip{padding:12px}';
     document.head.appendChild(s);
   }
   function logo(r) {
@@ -191,6 +217,13 @@
     if (mob) host.parentNode.insertBefore(box, host);
     else {
       host.classList.add('lx-rm-on'); host.appendChild(box);
+      // start level with the table card, not with the heading: the panel's first grid row = the row of the section
+      // child that holds the table (each child of the section is one row of the single left column)
+      var tw = host.querySelector('.dex-mk-table-wrap'), kid = tw;
+      while (kid && kid.parentNode !== host) kid = kid.parentNode;
+      var kids = [].filter.call(host.children, function (k) { return k !== box; });
+      var at = kid ? kids.indexOf(kid) : -1;
+      if (at > 0) host.style.setProperty('--lxrm-row', String(at + 1));
       // narrow desktops stack the panel above the table: there it is the card row too, not a 10-row list
       var narrow = function () { return innerWidth <= 1180; };
       mob = narrow(); box.classList.toggle('lx-rm-mob', mob);
@@ -211,13 +244,24 @@
   function load() {
     fetch('/lxapi/recentmints?net=' + NET).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       if (!d || !d.ok) return;
-      DATA = d; if (mounted) paint(mounted.box, mounted.mob);
+      DATA = d; ensure(); if (mounted) paint(mounted.box, mounted.mob);
     }).catch(function () {});
   }
   // The phone page can show its desktop markup for a moment before switching layouts: a panel mounted into the
   // desktop section then sits hidden. Checked for the first 20 s; a hidden panel is taken out and mounted again.
+  function pairsHead() {
+    var h2 = [].filter.call(document.querySelectorAll('h1,h2'), function (x) { return /All Trading Pairs/.test(x.textContent || '') && x.offsetParent; })[0];
+    return h2 ? (h2.closest('.mdx-section-head') || h2.parentNode) : null;
+  }
   function ensure() {
-    if (!mounted || mounted.box.offsetParent) return;
+    if (!mounted) return;
+    // Phones: the page re-orders its sections after load, which moved "All Trading Pairs" and its list ABOVE the panel
+    // and left the panel at the very bottom (v1 + v2 shipped that way). Put it back right above the heading.
+    if (mounted.mob && mounted.box.offsetParent && !document.querySelector('section.dex-markets.lx-rm-on')) {
+      var ph = pairsHead();
+      if (ph && ph.previousElementSibling !== mounted.box && ph.parentNode) ph.parentNode.insertBefore(mounted.box, ph);
+    }
+    if (mounted.box.offsetParent) return;
     mounted.box.remove(); var s = document.querySelector('section.dex-markets.lx-rm-on'); if (s) s.classList.remove('lx-rm-on');
     mounted = false; mount();
   }
