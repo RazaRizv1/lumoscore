@@ -2002,8 +2002,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null&&Math.abs(_cu)>=0.005?(up?" up":" down"):""); setTxt(chg,_cu!=null?(Math.abs(_cu)<0.005?"0.00":(up?"+":"")+_cu.toFixed(2))+"%":"\\u2014"); }
       setHTML(q(".dex-mk-vol",tr),(a.vol!=null?fmtAmt(a.vol)+" XLM":"\\u2014")+'<span class="sub">'+(vu!=null?lcm(vu):"")+'</span>');
       setTxt(q(".dex-mk-trades",tr),a.trades!=null?num(a.trades):"\\u2014");
-      setHTML(q(".dex-mk-tvl",tr),a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014");
-      setTxt(q(".v-h",tr),hi>0?fmtPrice(hi):String.fromCharCode(8212)); setTxt(q(".v-l",tr),lo>0?fmtPrice(lo):String.fromCharCode(8212));   // no "H 0 L 0": bug S25
+      setHTML(q(".dex-mk-tvl",tr),a.tvlUsd!=null?lcm(a.tvlUsd):((!a.poolsRaw&&(function(){ if(!window.__lxLiqT0){ window.__lxLiqT0=Date.now(); setTimeout(function(){ try{ touch(); }catch(_){} },25500); } return Date.now()-window.__lxLiqT0<25000; })())?'<span class="lx-liq-wait" title="Loading liquidity" style="display:inline-block;width:56px;height:11px;border-radius:6px;background:var(--surface-2,rgba(128,128,140,.12));opacity:.9;vertical-align:middle"></span>':"\\u2014"));
+      if(denom()==="usd"&&xlmUsd>0){ setHTML(q(".v-h",tr),hi>0?lcmExact(hi*xlmUsd):String.fromCharCode(8212)); setHTML(q(".v-l",tr),lo>0?lcmExact(lo*xlmUsd):String.fromCharCode(8212)); } else { setTxt(q(".v-h",tr),hi>0?fmtPrice(hi):String.fromCharCode(8212)); setTxt(q(".v-l",tr),lo>0?fmtPrice(lo):String.fromCharCode(8212)); }   // no "H 0 L 0": bug S25
       fillSpark(tr,a.spark,up); paintIcons(tr);
     });
   }
@@ -2209,8 +2209,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         else if(t.textContent.trim()!==want)t.textContent=want;
       };
       _setTh(".dex-mk-table thead th.th-price","LAST PRICE ("+(d==="xlm"?"XLM":"$")+")");
-      // High/low is quoted against XLM in BOTH views, so this label does not follow the toggle.
-      _setTh(".dex-mk-table thead th.th-hl","DAY HIGH / LOW (XLM)");
+      // High/low follows the toggle like every other column (RAZA 2026-11-24: in $ mode USDC read "$1" beside "H 8.17 L 7.52").
+      _setTh(".dex-mk-table thead th.th-hl","DAY HIGH / LOW ("+(d==="xlm"?"XLM":"$")+")");
     }catch(_){}
     qa(".lx-dnsw button[data-dn]").forEach(function(b){
       var on=b.getAttribute("data-dn")===d;

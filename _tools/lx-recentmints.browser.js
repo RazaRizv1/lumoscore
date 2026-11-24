@@ -162,7 +162,15 @@
       + '.lx-rm-row .lx-rm-by{line-height:20px;height:20px}.lx-rm-row .lx-rm-act{display:inline;font-size:12px}'
       + '.lx-rm-row .lx-rm-chg{font-size:14.5px}.lx-rm-row .lx-rm-new{margin-left:2px}'
       // the wallet in the minted line: normal font (the mono one cut "GA7N…F4ZD" short), underline only on hover
-      + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}';
+      + '.lx-rm-acts{display:none}'
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;gap:10px;margin-bottom:var(--lxrm-actsgap,16px)}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;padding:0 16px;font-size:14px;border-radius:10px}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{box-sizing:border-box;margin:0}}'
+      + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}'
+      // MORE COLUMNS TO THE RIGHT (RAZA 2026-11-24 "stray H / L"): with this panel beside it the pairs table scrolls
+      // sideways, and DAY HIGH / LOW sat half-hidden at the edge showing only its "H" and "L" labels. While columns are
+      // hidden to the right, the table's right edge fades out, the usual hint that it scrolls.
+      + 'section.dex-markets.lx-rm-on .dex-mk-table-wrap.lx-rm-more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent)}';
     document.head.appendChild(s);
   }
   // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
@@ -240,7 +248,7 @@
   }
   function head(mob) {
     return '<div class="lx-rm-h"><div><h3><span class="lx-rm-live" title="Updates live"></span>Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
-      + '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a></div>';
+      + (mob ? '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a>' : '') + '</div>';
   }
   function paint(box, mob) {
     var all = (DATA && DATA.rows) || [];
@@ -280,19 +288,30 @@
     if (mob) host.parentNode.insertBefore(box, host);
     else {
       host.classList.add('lx-rm-on'); host.appendChild(box);
+      // ACTION BAR (RAZA 2026-11-24 mockup): Launch Token and My Earnings sit above the panel, level with the filter
+      // row, and the panel header is just "RECENT MINTS". The My Earnings button (lx-earnings.js) is created once and
+      // then left wherever it is, so it is simply moved in here (see ensure). Narrow desktops and phones keep the
+      // button in the panel header: the bar is hidden there.
+      var acts = document.createElement('div'); acts.className = 'lx-rm-acts';
+      acts.innerHTML = '<a class="lx-rm-go lx-rm-go-bar" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a>';
+      host.appendChild(acts);
       // start level with the table card, not with the heading: the panel's first grid row = the row of the section
       // child that holds the table (each child of the section is one row of the single left column)
       var tw = host.querySelector('.dex-mk-table-wrap'), kid = tw;
+      if (tw) {
+        var edge = function () { var w = host.querySelector('.dex-mk-table-wrap'); if (w) w.classList.toggle('lx-rm-more', w.scrollLeft + w.clientWidth < w.scrollWidth - 4); };
+        host.addEventListener('scroll', edge, true); window.addEventListener('resize', edge); setInterval(edge, 1500); edge();
+      }
       while (kid && kid.parentNode !== host) kid = kid.parentNode;
       var kids = [].filter.call(host.children, function (k) { return k !== box; });
       var at = kid ? kids.indexOf(kid) : -1;
-      if (at > 0) host.style.setProperty('--lxrm-row', String(at + 1));
+      if (at > 0) { host.style.setProperty('--lxrm-row', String(at + 1)); acts.style.gridRow = String(at); }   // the bar: the row just above the table
       // narrow desktops stack the panel above the table: there it is the card row too, not a 10-row list
       var narrow = function () { return innerWidth <= 1180; };
       mob = narrow(); box.classList.toggle('lx-rm-mob', mob);
       window.addEventListener('resize', function () {
         var m = narrow(); if (!mounted || m === mounted.mob) return;
-        mounted.mob = m; box.classList.toggle('lx-rm-mob', m); paint(box, m);
+        mounted.mob = m; box.classList.toggle('lx-rm-mob', m); paint(box, m); ensure();
       });
     }
     // EVERY CLICK IN THE PANEL WAS SWALLOWED (RAZA 2026-11-24 "the minters wallet should be linked"). The design's
@@ -328,6 +347,23 @@
     return h2 ? (h2.closest('.mdx-section-head') || h2.parentNode) : null;
   }
   function ensure() {
+    var acts = document.querySelector('.lx-rm-acts');
+    if (acts) {
+      var eb = document.getElementById('lxEarnBtn');
+      // only while the bar is showing (wide desktop); otherwise it goes back to the filter row, where lx-earnings put it
+      var shown = getComputedStyle(acts).display !== 'none', home = document.querySelector('.dex-section-head .dex-mk-controls');
+      if (eb && !eb.classList.contains('lx-earn-mob')) {
+        if (shown && eb.parentNode !== acts) acts.appendChild(eb);
+        else if (!shown && eb.parentNode === acts && home) home.insertBefore(eb, home.firstChild);
+      }
+      var ref = document.querySelector('.dex-section-head .dex-mk-controls input, .dex-section-head .dex-mk-controls button:not(#lxEarnBtn)');
+      if (ref && ref.offsetHeight) { var h = ref.offsetHeight + 'px'; [].forEach.call(acts.children, function (c) { if (c.style.height !== h) c.style.height = h; }); }
+      // bottom level with the filter row: the same gap the filter row keeps above the table
+      var ctl = document.querySelector('.dex-section-head .dex-mk-controls'), tw2 = document.querySelector('.dex-mk-table-wrap');
+      // measured against the search box itself (the row's container is taller than the boxes in it)
+      var pill = ref && ref.tagName === 'INPUT' ? (ref.closest('.dex-mk-search, [class*=search]') || ref.parentNode) : ref;
+      if (pill && tw2 && pill.offsetParent) { var pb = pill.getBoundingClientRect(), g = Math.round(tw2.getBoundingClientRect().top - pb.bottom); if (g >= 0 && g < 80) acts.style.marginBottom = g + 'px'; var hh = Math.round(pb.height) + 'px'; [].forEach.call(acts.children, function (c) { if (c.style.height !== hh) c.style.height = hh; }); }
+    }
     if (!mounted) return;
     // Phones: the page re-orders its sections after load, which moved "All Trading Pairs" and its list ABOVE the panel
     // and left the panel at the very bottom (v1 + v2 shipped that way). Put it back right above the heading.
