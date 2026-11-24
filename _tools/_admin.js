@@ -1916,6 +1916,32 @@ function paintUsers(){
 // Per-asset overrides for the public Trade-Asset page. Everything there normally comes from the
 // issuer's own stellar.toml, which we cannot edit -- so when a project asks us to fix their
 // description, logo or links, this is the only place that can answer. Saved values beat the toml.
+// MINTER PAYOUT WALLET (RAZA 2026-11-24) -- see functions/lxapi/minters.js.
+function minterEdit(k,net){
+  if(q(".lxmodal"))return;
+  var m=document.createElement("div"); m.className="lxmodal";
+  m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Minter of "+esc(k.split("-")[0])+"</h3>"
+    +"<p class='lxmodal-s'>This wallet receives 30% of LumosCore’s fee on every LumosCore trade of this token, paid inside the trade. Keep the wallet read from the chain, or enter the one the team gave you.</p>"
+    +"<p class='lxmodal-s' id='lxmSrc' style='opacity:.8'>Looking up the minter…</p>"
+    +"<label class='lxmodal-l' for='lxmAddr'>Payout wallet</label><input class='lxmodal-i' id='lxmAddr' spellcheck='false' style='font-family:JetBrains Mono,monospace;font-size:13px'>"
+    +"<p class='lxmodal-e' id='lxmErr'></p>"
+    +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxmClear' style='display:none'>Use the chain’s answer</button>"
+    +"<button class='adm-btn ghost' type='button' id='lxmCancel'>Cancel</button><button class='adm-btn primary' type='button' id='lxmOk'>Save</button></div></div>";
+  document.body.appendChild(m);
+  function close(){ m.remove(); }
+  m.addEventListener("click",function(e){ if(e.target===m)close(); });
+  m.querySelector("#lxmCancel").addEventListener("click",close);
+  var inp=m.querySelector("#lxmAddr"), er=m.querySelector("#lxmErr"), src=m.querySelector("#lxmSrc"), clr=m.querySelector("#lxmClear");
+  fetch("/lxapi/minters?net="+net+"&id="+encodeURIComponent(k)+"&cb="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
+    inp.value=(d&&d.minter)||"";
+    src.textContent=(d&&d.source==="admin")?"Entered by hand in admin.":((d&&d.minter)?"Read from the chain: the wallet that signed the mint.":"Not found on the chain. Enter the team’s wallet to start paying them.");
+    clr.style.display=(d&&d.source==="admin")?"":"none";
+  }).catch(function(){ src.textContent="Could not look it up right now."; });
+  function post(body){ return fetch("/lxapi/minters",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+  m.querySelector("#lxmOk").addEventListener("click",function(){ var a=(inp.value||"").trim(); if(!a){ er.textContent="Enter a wallet address."; return; }
+    post({op:"set",net:net,id:k,addr:a}).then(function(z){ if(!z||!z.ok){ er.textContent=(z&&z.error)||"Could not save."; return; } close(); },function(e){ er.textContent=e.message; }); });
+  clr.addEventListener("click",function(){ post({op:"clear",net:net,id:k}).then(function(z){ if(!z||!z.ok){ er.textContent=(z&&z.error)||"Could not clear."; return; } close(); }); });
+}
 function editAsset(k){
   if(q(".lxmodal"))return;
   var i=k.lastIndexOf("-"), code=k.slice(0,i);
@@ -2804,7 +2830,7 @@ function paintAssets(){
         // A mint is a record of what was issued, not a curation choice, and there is nowhere to
         // persist its removal -- it would simply reappear on the next load. So the tab does not
         // offer a button that cannot keep its promise.
-        +(MODE==="mints"?"":("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
+        +(MODE==="mints"?("<button class='row-act-btn' type='button' title='Minter payout wallet — gets 30% of LumosCore’s fee on this token' data-lxmint='"+esc(k)+"' data-lxmnet='"+(xa?"xrpl":"stellar")+"'>$</button>"):("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
         +"</span></td></tr>"; }).join("");
     qa("[data-lxrm]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
       b.addEventListener("click",function(){ var k=b.getAttribute("data-lxrm");
@@ -2812,6 +2838,8 @@ function paintAssets(){
         if(MODE==="mints")MINTS=MINTS.filter(function(a){ return key(a)!==k; });
         else { CUR=CUR.filter(function(a){ return key(a)!==k; }); aSave(CUR); }
         tabs(); render(); kpis(); }); });
+    qa("[data-lxmint]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ minterEdit(b.getAttribute("data-lxmint"),b.getAttribute("data-lxmnet")); }); });
     qa("[data-lxed]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
       b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }
 
