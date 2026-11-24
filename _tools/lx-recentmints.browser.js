@@ -141,7 +141,7 @@
       + '.lx-rm-spark{display:block;overflow:visible}.lx-rm-spark.none{display:inline-block}'
       + '.lx-rm-spark .l{fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;transition:stroke-width .18s}'
       + '.lx-rm-spark.up .l{stroke:var(--green,#22c55e)}.lx-rm-spark.down .l{stroke:var(--red,#ef4444)}.lx-rm-spark.flat .l{stroke:' + SO + ';opacity:.7}'
-      + '.lx-rm-spark .a{stroke:none;opacity:.16}.lx-rm-spark.up .a{fill:var(--green,#22c55e)}.lx-rm-spark.down .a{fill:var(--red,#ef4444)}.lx-rm-spark.flat .a{fill:' + SO + ';opacity:.07}'
+      + '.lx-rm-spark .a{stroke:none;opacity:.16}.lx-rm-spark.up .a{fill:var(--green,#22c55e)}.lx-rm-spark.down .a{fill:var(--red,#ef4444)}.lx-rm-spark.flat .a{display:none}'
       + '.lx-rm-spark .d{stroke:var(--surface,#131317);stroke-width:1.4}.lx-rm-spark .d.buy,.lx-rm-spark .d.up{fill:var(--green,#22c55e)}.lx-rm-spark .d.sell,.lx-rm-spark .d.down{fill:var(--red,#ef4444)}.lx-rm-spark .d.flat{fill:' + SO + '}'
       + '.lx-rm-spark.lx-rm-pop .d{animation:lxrmDot 1.4s ease-out}'
       + '@keyframes lxrmDot{0%{r:6}100%{r:2.6}}'
@@ -224,7 +224,8 @@
     var c = r.change24, tone = c > 0.005 ? 'up' : (c < -0.005 ? 'down' : 'flat');
     var line = pts.map(function (p) { return p.join(','); }).join(' ');
     var area = 'M' + pts[0][0] + ',' + H + ' L' + pts.map(function (p) { return p.join(','); }).join(' L') + ' L' + pts[pts.length - 1][0] + ',' + H + ' Z';
-    var e = pts[pts.length - 1], side = r.last ? (r.last.side === 'buy' ? 'buy' : 'sell') : tone;
+    // the dot shows the latest trade's side only when that trade is inside the line's 24h; older = the line's own tone
+    var e = pts[pts.length - 1], side = r.last && Date.now() - r.last.t < 86400000 ? (r.last.side === 'buy' ? 'buy' : 'sell') : tone;
     var tip = r.last ? 'Latest trade: ' + (r.last.side === 'buy' ? 'buy' : 'sell') + ' ' + ago(r.last.t) + (ago(r.last.t) === 'now' ? '' : ' ago') : '';
     return '<svg class="lx-rm-spark ' + tone + (pop ? ' lx-rm-pop' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' + (tip ? '<title>' + esc(tip) + '</title>' : '')
       + '<path class="a" d="' + area + '"/><polyline class="l" points="' + line + '"/>'

@@ -66,13 +66,17 @@ async function launchPx(net, id) {
   }
   return 0;
 }
-// SPARKLINE (RAZA 2026-11-24 "not at all attractive"): a small price line per row, oldest -> newest, in the native coin.
-// The last 24h of trades when there are 2+ of them, else the last 20 trades whatever their age (a quiet token still
-// draws its shape, flat or not). At most 24 points, evenly picked; 5 significant digits are plenty for a 64px line.
+// SPARKLINE = THE SAME 24 HOURS AS THE % (RAZA 2026-11-24: "with 0% change, the line should have been straight").
+// Oldest -> newest: the last price from before the window, then the window's own trades. No trade in 24h = a flat
+// line at the last price (it used to draw the last 20 trades whatever their age, so a 0% token wiggled). A token
+// launched inside the window gets its launch price in front (see the caller). At most 24 points, evenly picked.
 function spark(list, now) {
-  const p = list.filter((x) => x.px > 0 && x.t > 0);
-  let w = p.filter((x) => now - x.t <= DAY); if (w.length < 2) w = p.slice(0, 20);
-  w = w.slice().reverse();
+  const p = list.filter((x) => x.px > 0 && x.t > 0);           // newest first
+  if (!p.length) return [];
+  const inWin = p.filter((x) => now - x.t <= DAY).reverse();
+  const before = p.find((x) => now - x.t > DAY);
+  let w = (before ? [before] : []).concat(inWin);
+  if (w.length === 1) w = [w[0], w[0]];
   if (w.length > 24) { const k = []; for (let i = 0; i < 24; i++) k.push(w[Math.round(i * (w.length - 1) / 23)]); w = k; }
   return w.map((x) => +x.px.toPrecision(5));
 }
