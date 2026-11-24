@@ -4440,8 +4440,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         }
         var path=recs.length?recs[0].path.map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}):[];
         var feeXlmP=pa.native?Promise.resolve(null):j(H+"/paths/strict-send?"+srcP+"&source_amount="+fee.toFixed(7)+"&destination_assets=native").catch(function(){return null;});
-        return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP]).then(function(res){
+        var mintP=NATIVE?Promise.resolve(""):Promise.race([fetch("/lxapi/minters?net=stellar&id="+encodeURIComponent(CODE+"-"+ISSUER)).then(function(r){return r.ok?r.json():null;}).then(function(d){ var m=d&&d.minter; if(!m||m===addr)return ""; return fetch(H+"/accounts/"+m).then(function(r){return r.ok?m:"";}); }).catch(function(){return "";}),new Promise(function(rs){setTimeout(function(){rs("");},2500);})]);
+        return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP, mintP]).then(function(res){
           var acc=res[0], collExists=!!res[1], feePd=res[2];
+          var mnt=res[3]||"", feeM=mnt?+(fee*0.3).toFixed(7):0, feeC=+(fee-feeM).toFixed(7);
           /* THE FLOOR NOW MATCHES THE PROMISE. The panel advertises "0.5% slippage" and shows a minimum
                        received of best*(1-SLIP/100), but destMin was freshOut*(1-fr-0.01) -- which is wrong twice over.
                        The daily health bot measured the gap on 2026-10-12: destMin 23374.58 against 23635 shown, 1.10% below
@@ -4458,7 +4460,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
           var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB});
           if(needTrust)tb.addOperation(S.Operation.changeTrust({asset:dest}));
           tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:net.toFixed(7),destination:addr,destAsset:dest,destMin:dm,path:path}));
-          if(fee>0&&collExists){ if(pa.native){ tb.addOperation(S.Operation.payment({destination:FEE_COLLECTOR,asset:send,amount:fee.toFixed(7)})); } else { var frr=(feePd&&feePd._embedded&&feePd._embedded.records)||[]; if(frr.length){ var fpath=(frr[0].path||[]).map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}); tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:fee.toFixed(7),destination:FEE_COLLECTOR,destAsset:S.Asset.native(),destMin:"0.0000001",path:fpath})); } } }
+          if(fee>0&&collExists){ if(pa.native){ tb.addOperation(S.Operation.payment({destination:FEE_COLLECTOR,asset:send,amount:feeC.toFixed(7)})); if(mnt&&feeM>0)tb.addOperation(S.Operation.payment({destination:mnt,asset:send,amount:feeM.toFixed(7)})); } else { var frr=(feePd&&feePd._embedded&&feePd._embedded.records)||[]; if(frr.length){ var fpath=(frr[0].path||[]).map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}); tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:feeC.toFixed(7),destination:FEE_COLLECTOR,destAsset:S.Asset.native(),destMin:"0.0000001",path:fpath})); if(mnt&&feeM>0)tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:feeM.toFixed(7),destination:mnt,destAsset:S.Asset.native(),destMin:"0.0000001",path:fpath})); } } }
           return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again");
         });
       });
