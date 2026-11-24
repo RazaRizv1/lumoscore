@@ -1942,6 +1942,7 @@ function editAsset(k){
     +row("lxeSite","Website","https://…")
     +row("lxeX","X / Twitter","handle or full URL")
     +row("lxeTg","Telegram","handle or full URL")
+    +"<label style='display:flex;align-items:center;gap:9px;margin:14px 0 2px;font-size:13.5px;font-weight:600;cursor:pointer'><input type='checkbox' id='lxeStable' style='width:16px;height:16px;margin:0'> Stablecoin <span style='font-weight:500;opacity:.7'>— list it under Curated — Stables on Trade</span></label>"
     +"<p class='lxmodal-e' id='lxeErr'></p>"
     +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxeClear'>Clear overrides</button>"
     +"<button class='adm-btn ghost' type='button' id='lxeCancel'>Cancel</button>"
@@ -2008,6 +2009,7 @@ function editAsset(k){
     put("#lxeSite",v.website,TOMLV.website);
     put("#lxeX",v.twitter,TOMLV.twitter);
     put("#lxeTg",v.telegram,TOMLV.telegram);
+    var _sc=m.querySelector("#lxeStable"); if(_sc){ _sc.checked=((z[0]&&z[0].category)==="stable"); m.__lxCat=1; }
     showPrev();
     var src=m.querySelector("#lxeSrc");
     // Says which of the three situations this asset is in, because "empty because they publish
@@ -2081,7 +2083,7 @@ function editAsset(k){
       // rather than being frozen as our copy of today's wording.
       body:JSON.stringify({asset:k,name:same("#lxeName","name"),description:same("#lxeDesc","description"),
         image:same("#lxeImg","image"),website:same("#lxeSite","website"),
-        twitter:same("#lxeX","twitter"),telegram:same("#lxeTg","telegram")})})
+        twitter:same("#lxeX","twitter"),telegram:same("#lxeTg","telegram"),category:(m.__lxCat?((m.querySelector("#lxeStable")||{}).checked?"stable":""):undefined)})})
       .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
       .then(function(z){
         ok.disabled=false; ok.textContent="Save";

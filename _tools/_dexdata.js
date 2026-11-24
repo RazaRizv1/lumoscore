@@ -2307,7 +2307,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         if(byId[code+"|"+iss])return;                    // already baked in
         var tkr=byCode[code]?code+"~"+iss.slice(0,4):code;
         if(byCode[tkr])return;
-        var a={code:code,issuer:iss,cat:"utility",tkr:tkr,b:"#3d4351",
+        var a={code:code,issuer:iss,cat:((d.cats&&d.cats[id]==="stable")?"stable":"utility"),tkr:tkr,b:"#3d4351",
           logo:"",domain:(vf[id]&&vf[id].d)||"",
           px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,
           holders:null,supply:null,spark:null,img:null,trades:null};
@@ -2340,6 +2340,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // ASSETS is not touched, allAssets() dedupes on code|issuer, and NATIVE holds the SAME object
       // once. nativePurge() leaves it alone too -- it only considers entries whose cat is "native",
       // which is now exactly the ones it was always meant to police.
+      Object.keys(d.cats||{}).forEach(function(id){ if(d.cats[id]!=="stable")return; var i=id.lastIndexOf("-"); if(i<0)return;
+        var a=byId[id.slice(0,i)+"|"+id.slice(i+1)]; if(a&&a.cat!=="native")a.cat="stable"; });
       (d.mints||[]).forEach(function(id){
         var i=id.lastIndexOf("-"); if(i<0)return;
         var held=byId[id.slice(0,i)+"|"+id.slice(i+1)];

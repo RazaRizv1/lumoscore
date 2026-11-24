@@ -21,6 +21,10 @@ const META = 'asset:';
 // rebuilds it -- so keeping it beside the list rather than inside each record costs one read to paint
 // the table instead of one per asset.
 const VMAP = 'assets:verified';
+// CATEGORY (RAZA 2026-11-24: an asset curated from admin never reached "Curated — Stables" -- only the stablecoins
+// baked into the Trade page did). One small map {CODE-ISSUER: 'stable'}, set from admin's asset edit window and
+// returned with the list, so the Trade page files an admin-curated stablecoin under Stables.
+const CATS = 'assets:cats';
 // AN ASSET ID ON EITHER LEDGER (RAZA 2026-10-07: "Just integrate XRPL on admin. dont reinvent
 // anything"). The XRPL side gets no second endpoint and no second page: this is CRUD over an id, the
 // admin UI already does it, and the only thing that was Stellar-shaped was this check.
@@ -213,10 +217,14 @@ export async function onRequestGet({ request, env }) {
     if (!ASSET_RE.test(asset)) return json({ error: 'bad asset' }, 400, 0);
     let meta = null;
     try { meta = await kv.get(META + asset, 'json'); } catch (_) {}
-    return json({ asset, meta: meta || null }, 200, 60);
+    let cats1 = {};
+    try { cats1 = (await kv.get(CATS, 'json')) || {}; } catch (_) {}
+    return json({ asset, meta: meta || null, category: cats1[asset] || '' }, 200, 60);
   }
   let list = [];
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
+  let cats = {};
+  try { cats = (await kv.get(CATS, 'json')) || {}; } catch (_) {}
   let verified = {};
   try { verified = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
   // Two different things, kept apart. CURATED is what LumosCore chooses to list -- the same set Trade
@@ -284,7 +292,7 @@ export async function onRequestGet({ request, env }) {
   // returned the list WITHOUT it -- and the next save wrote that stale copy back, deleting the asset
   // from KV for good. The verification record survived under its own key, which is how it was traced.
   // A read that can be written back must never be stale.
-  return json({ list, mints, mintmeta, verified }, 200, 0);
+  return json({ list, mints, mintmeta, verified, cats }, 200, 0);
 }
 
 export async function onRequestPut({ request, env }) {
@@ -386,6 +394,14 @@ export async function onRequestPut({ request, env }) {
   // to remember -- and never a claim the client got to make.
   let stamp = null;
   if (isNew || b.reverify) { stamp = await stampVerified(kv, asset); }
+
+  // The Stablecoin flag (see CATS). Only 'stable' is stored; anything else clears it.
+  if (b.category != null) {
+    let cats = {};
+    try { cats = (await kv.get(CATS, 'json')) || {}; } catch (_) {}
+    if (String(b.category) === 'stable') cats[asset] = 'stable'; else delete cats[asset];
+    await kv.put(CATS, JSON.stringify(cats));
+  }
 
   const hasMeta = b.description != null || b.image != null || b.website != null
     || b.twitter != null || b.telegram != null || b.discord != null || b.name != null;
