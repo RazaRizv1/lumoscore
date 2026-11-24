@@ -100,13 +100,73 @@ export async function onRequestGet({ request, env }) {
   return json({ ok: true, minter: null, source: null }, 200, 120);
 }
 
+// NEAR LAUNCH RECORD (RAZA 2026-11-24). The factory keeps a launch's owner only in its token_created log line, so the
+// launch page reports {token, signer, txHash} after a successful launch and this proves it on chain before storing
+// anything -- the caller is not trusted:
+//   1. the token is a sub-account of the factory and on its get_tokens list;
+//   2. the transaction was signed by `signer`, sent to the factory, and logged token_created for this token with
+//      owner_id = signer -- or, with no hash, `signer` holds the token's WHOLE supply (true right after a launch).
+// A minter already on record is never replaced from here (admin entries live separately and always win).
+const NEAR_RPC = 'https://free.rpc.fastnear.com';
+const NEAR_FACTORY = 'lumoscore.near';
+async function nearRpc(method, params) {
+  const r = await fetch(NEAR_RPC, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 'lx', method, params }) });
+  if (!r.ok) throw new Error('near rpc ' + r.status);
+  const j = await r.json();
+  if (j.error) throw new Error('near rpc error');
+  return j.result;
+}
+async function nearView(account, method, args) {
+  const res = await nearRpc('query', { request_type: 'call_function', finality: 'final', account_id: account, method_name: method,
+    args_base64: btoa(JSON.stringify(args || {})) });
+  return JSON.parse(String.fromCharCode.apply(null, res.result));
+}
+async function nearRecord(kv, b) {
+  const token = String(b.token || '').trim(), signer = String(b.signer || '').trim(), hash = String(b.txHash || '').trim();
+  if (!/^[a-z0-9_-]+\.lumoscore\.near$/.test(token) || !validAddr('near', signer)) return { status: 400, error: 'bad request' };
+  const tokens = await nearView(NEAR_FACTORY, 'get_tokens', {});
+  if (!Array.isArray(tokens) || tokens.indexOf(token) < 0) return { status: 404, error: 'not a LumosCore launch' };
+  let ok = false;
+  if (/^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(hash)) {
+    try {
+      const st = await nearRpc('EXPERIMENTAL_tx_status', { tx_hash: hash, sender_account_id: signer, wait_until: 'FINAL' });
+      const tx = st.transaction || {};
+      if (tx.signer_id === signer && tx.receiver_id === NEAR_FACTORY) {
+        for (const ro of (st.receipts_outcome || [])) {
+          for (const line of ((ro.outcome || {}).logs || [])) {
+            if (line.indexOf('EVENT_JSON:') !== 0) continue;
+            try {
+              const ev = JSON.parse(line.slice(11));
+              if (ev.event === 'token_created' && (ev.data || []).some((d) => d.token_id === token && d.owner_id === signer)) ok = true;
+            } catch (e) { /* not ours */ }
+          }
+        }
+      }
+    } catch (e) { /* fall through to the supply check */ }
+  }
+  if (!ok) {
+    const [supply, bal] = await Promise.all([nearView(token, 'ft_total_supply', {}), nearView(token, 'ft_balance_of', { account_id: signer })]);
+    ok = String(supply) !== '0' && String(bal) === String(supply);
+  }
+  if (!ok) return { status: 403, error: 'that launch could not be confirmed on NEAR' };
+  const chain = await getMap(kv, CHAIN), key = 'near|' + token;
+  if (!chain[key]) { chain[key] = signer; await kv.put(CHAIN, JSON.stringify(chain)); }
+  return { status: 200, minter: chain[key] };
+}
+
 export async function onRequestPost({ request, env }) {
-  const bad = await requireAdmin(request);
-  if (bad) return bad;
   const kv = env && env.CONTENT_KV;
   if (!kv) return json({ ok: false, error: 'no kv' }, 500);
   let b = {};
   try { b = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
+  // Public, but proven on chain (see nearRecord). Everything else below is admin only.
+  if (b && b.op === 'near-record') {
+    try { const r = await nearRecord(kv, b); return json(r.status === 200 ? { ok: true, minter: r.minter } : { ok: false, error: r.error }, r.status); }
+    catch (e) { return json({ ok: false, error: 'could not reach NEAR; try again' }, 502); }
+  }
+  const bad = await requireAdmin(request);
+  if (bad) return bad;
   const net = String(b.net || ''), id = String(b.id || '').trim();
   if (!NETS[net] || !id || id.length > 120) return json({ ok: false, error: 'Pick a network and give the token.' }, 400);
   const map = await getMap(kv, ADMIN), key = net + '|' + id;
