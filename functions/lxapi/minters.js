@@ -97,7 +97,8 @@ async function xrplReceivable(addr) {
 //            token and its XLM side are read from the same transaction.
 //   XRPL     the collector's LumosCore-memo payments; the swap is the payer's next transaction(s) in the following ledgers
 //            and names the token's issuer. Trade value = (fee to us + fee to the minter) / the memo's fee rate.
-//   NEAR     no community Launchpad token yet: every NEAR token answers the $0 tier until one exists.
+//   NEAR     /lxapi/nearfees receipts -> each transaction from FastNEAR -> the NEAR mint named in it and the amount sent
+//            into the exchange (wNEAR, or the token at its NEAR price). See refreshNear().
 // It advances at most once a minute, in the background of a minters lookup (every swap makes one), a bounded number of
 // receipts per run (the 10 ms CPU plan), with a cursor per network in KV. Dollar values use the coin's price at the time
 // the receipt is processed -- within a minute or two of the trade.
@@ -221,6 +222,63 @@ async function refreshXrpl(kv, st, origin) {
   if (done < PER_RUN && txs.length < 20) st.xl = last + (txs.length ? 1 : 0); else st.xl = Math.max(st.xl, last);
 }
 
+// NEAR (RAZA 2026-11-24, "Yes, build it"). The fee receipts come from our own decoder (/lxapi/nearfees: every payment into
+// fees-lumoscore.near, already decoded and cached). Each receipt's transaction is read from FastNEAR -- the same source
+// that decoder uses -- to find (a) the Launchpad token: any NEAR mint contract named in the transaction, and (b) the
+// trade's size: what was sent into the exchange (ft_transfer_call to Ref / Ref DCL / our router), in wNEAR directly or in
+// the token valued at its NEAR price. Counting starts the first time this runs (st.nr); earlier receipts never count.
+const NR_FTX = 'https://tx.main.fastnear.com/v0/';
+const NR_DEX = { 'dclv2.ref-labs.near': 1, 'v2.ref-finance.near': 1, 'router.lumoscore.near': 1 };
+function nrArgs(b64) { try { return JSON.parse(atob(b64 || '')); } catch (e) { return null; } }
+async function refreshNear(kv, st, origin) {
+  if (!st.nr) { st.nr = Date.now(); st.nrSeen = []; return; }
+  let mints = []; try { mints = (await kv.get('mints:near', 'json')) || []; } catch (e) { mints = []; }
+  const contracts = mints.map((k) => String(k).slice(String(k).indexOf('-') + 1)).filter((c) => /\.lumoscore\.near$/.test(c));
+  if (!contracts.length) return;                                   // no Launchpad token on NEAR: nothing can count yet
+  const d = await getJ(origin + '/lxapi/nearfees');
+  if (!d || !d.ok) return;
+  const todo = (d.rows || []).filter((r) => r.to === 'fees-lumoscore.near' && Date.parse(r.created_at) >= st.nr && (st.nrSeen || []).indexOf(r.transaction_hash) < 0)
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+  const hashes = []; for (const r of todo) if (hashes.indexOf(r.transaction_hash) < 0) hashes.push(r.transaction_hash);
+  const batch = hashes.slice(0, PER_RUN);
+  if (!batch.length) return;
+  const g = await getJ(NR_FTX + 'transactions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tx_hashes: batch }) });
+  let nearUsd = null;
+  for (const T of ((g && g.transactions) || [])) {
+    const tx = T.transaction || {}, h = tx.hash;
+    if (!h) continue;
+    st.nrSeen = (st.nrSeen || []).concat([h]).slice(-300);
+    // every FunctionCall in the transaction and its receipts, with the contract it ran on
+    const calls = [];
+    for (const a of (tx.actions || [])) if (a && a.FunctionCall) calls.push({ on: tx.receiver_id, f: a.FunctionCall });
+    for (const R of (T.receipts || [])) { const r = R.receipt || {}, A = r.receipt && r.receipt.Action; for (const a of ((A && A.actions) || [])) if (a && a.FunctionCall) calls.push({ on: r.receiver_id, f: a.FunctionCall }); }
+    let tok = '';
+    for (const c of calls) { const s = c.on + ' ' + atobSafe(c.f.args); for (const k of contracts) if (!tok && s.indexOf(k) >= 0) tok = k; }
+    if (!tok) continue;
+    const wallets = await minterWallets(kv, 'near', tok);
+    if (wallets.has(tx.signer_id)) continue;
+    let near = 0;
+    for (const c of calls) {
+      if (c.f.method_name !== 'ft_transfer_call') continue;
+      const a = nrArgs(c.f.args); if (!a || !NR_DEX[a.receiver_id]) continue;
+      // Only an instant SWAP is a trade of that size: DCL {"Swap":...} or Ref v2 {"actions":[...]}. A limit order
+      // ({"LimitOrderWithSwap":...}) sends the whole order and fills later, if ever; a deposit is liquidity, not volume.
+      let mg = null; try { mg = JSON.parse(String(a.msg || '')); } catch (e) { mg = null; }
+      if (!mg || !(mg.Swap || Array.isArray(mg.actions))) continue;
+      if (c.on === 'wrap.near') { near = Number(BigInt(String(a.amount || '0')) / BigInt('1000000000000000000')) / 1e6; break; }
+      if (c.on === tok) {
+        try { const q = await getJ(origin + '/lxapi/neartoken?i=' + encodeURIComponent(tok)); if (q && q.ok && q.price > 0) near = Number(BigInt(String(a.amount || '0')) / (BigInt(10) ** BigInt(Math.max(0, (+q.decimals || 18) - 6)))) / 1e6 * q.price; } catch (e) {}
+        break;
+      }
+    }
+    if (!(near > 0)) continue;
+    if (nearUsd == null) { try { nearUsd = +(await getJ(origin + '/lxapi/neartoken?i=wrap.near')).usd || 0; } catch (e) { nearUsd = 0; } }
+    if (!(nearUsd > 0)) { st.nrSeen = st.nrSeen.filter((x) => x !== h); return; }   // no price: retry next run
+    await addVol(kv, 'near', tok, near * nearUsd);
+  }
+}
+function atobSafe(b) { try { return atob(b || ''); } catch (e) { return ''; } }
+
 async function refreshVolumes(kv, origin) {
   let st = {}; try { st = (await kv.get(VSTATE, 'json')) || {}; } catch (e) { st = {}; }
   if (st.lock && Date.now() - st.lock < 55000) return;
@@ -228,6 +286,7 @@ async function refreshVolumes(kv, origin) {
   await kv.put(VSTATE, JSON.stringify(st));
   try { await refreshStellar(kv, st, origin); } catch (e) { /* next run retries from the same cursor */ }
   try { await refreshXrpl(kv, st, origin); } catch (e) { /* next run retries from the same ledger */ }
+  try { await refreshNear(kv, st, origin); } catch (e) { /* next run retries the same receipts */ }
   await kv.put(VSTATE, JSON.stringify(st));
 }
 
