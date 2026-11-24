@@ -182,8 +182,8 @@
       + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{gap:8px;padding:0 14px 0 8px;border-radius:10px;font-weight:650;background:var(--surface,transparent);border:1px solid ' + B + ';transition:border-color .2s,background .2s}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn svg{box-sizing:border-box;width:24px;height:24px;padding:5px;border-radius:50%;background:var(--accent-pale,rgba(234,106,44,.14));box-shadow:inset 0 0 0 1px rgba(234,106,44,.28)}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn:hover{border-color:rgba(234,106,44,.55);background:var(--surface-2,' + S2 + ')}}'
-      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;gap:10px;margin-bottom:var(--lxrm-actsgap,16px)}'
-      + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;padding:0 16px;font-size:14px;border-radius:10px}'
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;gap:10px;margin-bottom:20px}'
+      + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;height:36px;padding:0 16px;font-size:14px;border-radius:10px}'   // FLASH (RAZA 2026-11-25): right size from the first frame
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{box-sizing:border-box;margin:0}}'
       + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}'
       // MORE COLUMNS TO THE RIGHT (RAZA 2026-11-24 "stray H / L"): with this panel beside it the pairs table scrolls
@@ -275,7 +275,7 @@
     all.forEach(logo);
     var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 5);   // RAZA 2026-11-24: 5, not 10
     var checking = all.some(function (r) { return LOGO[r.id] === undefined; });
-    var SK = mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>';
+    var SK = mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>';
     // hold the skeleton until the logo checks are in, so rows do not pop in one by one on first load
     var body = (!DATA || (checking && !box.__lxrmDone)) ? SK
       : (!rows.length ? '<div class="lx-rm-empty">No token has been launched on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + ' yet. Be the first.</div>'
@@ -305,7 +305,16 @@
     // the small "+ Launch Token" link beside "All Trading Pairs" repeats the panel's button; the page adds it late,
     // so a CSS rule hides it rather than a one-off hide
     document.documentElement.classList.add('lx-rm-page');
-    if (mob) host.parentNode.insertBefore(box, host);
+    if (mob) {
+      host.parentNode.insertBefore(box, host);
+      // FLASH (RAZA 2026-11-25 phone screenshot): the page re-orders its sections after load and the panel showed under
+      // the pairs list until ensure() moved it ~1 s later. An observer re-places it before the next paint instead.
+      try {
+        var mo = new MutationObserver(function () { var ph = pairsHead(); if (ph && ph.parentNode && ph.previousElementSibling !== box) ph.parentNode.insertBefore(box, ph); });
+        mo.observe(host.parentNode, { childList: true });
+        setTimeout(function () { mo.disconnect(); }, 30000);
+      } catch (e) {}
+    }
     else {
       host.classList.add('lx-rm-on'); host.appendChild(box);
       // ACTION BAR (RAZA 2026-11-24 mockup): Launch Token and My Earnings sit above the panel, level with the filter

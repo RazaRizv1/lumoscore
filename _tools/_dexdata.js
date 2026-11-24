@@ -508,7 +508,19 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // In dollars now, like the asset page and the dashboard: the asset against XLM, times XLM against
   // USD. Null when XLM's own move is unknown, because printing the raw XLM figure under a dollar
   // heading is the bug itself and a dash is the honest alternative.
+  // YOUNG TOKENS (youngchg 2026-11-25): see bugshots/pairs/youngchg-pairs.js for the why.
+  var lxYoung=null, lxYoungAt=0;
+  function lxYoungApply(a){
+    if(Date.now()-lxYoungAt>60000){ lxYoungAt=Date.now();
+      fetch("/lxapi/recentmints?net=stellar").then(function(r){ return r.ok?r.json():null; }).then(function(d){
+        var m={}; ((d&&d.rows)||[]).forEach(function(r){ if(r&&r.born>1e12&&Date.now()-r.born<864e5&&r.change24!=null)m[r.id]=+r.change24; });
+        lxYoung=m; try{ touch(); }catch(_){}
+      }).catch(function(){});
+    }
+    if(a&&lxYoung&&a.code&&a.issuer){ var v=lxYoung[a.code+"-"+a.issuer]; if(v!=null)a.chg=v; }
+  }
   function chgU(a){
+    lxYoungApply(a);
     if(!a||a.chg==null||xlmChg==null)return null;
     return ((1+a.chg/100)*(1+xlmChg/100)-1)*100;
   }
@@ -528,7 +540,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function setDenom(v){ window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){}
     try{ window.dispatchEvent(new CustomEvent("lx-denom",{detail:v})); }catch(_){} }
   // XLM is the raw pair move Horizon reports; USD folds in what XLM itself did.
-  function chgShown(a){ return denom()==="xlm" ? (a&&a.chg!=null?a.chg:null) : chgU(a); }
+  function chgShown(a){ lxYoungApply(a); return denom()==="xlm" ? (a&&a.chg!=null?a.chg:null) : chgU(a); }
   // Which figure leads. On "$" the dollar price is the headline and the XLM price becomes the sub-line;
   // on "XLM" it is the other way round, which is how it has always rendered. Nothing is hidden either
   // way -- both numbers are always present, only their order changes.
