@@ -598,17 +598,33 @@ export async function onRequestGet(ctx) {
       + ' could be verified in this request; the rest are omitted rather than listed unchecked.', '');
   }
 
+  // ADMIN EDITS WIN (RAZA 2026-11-24, JENSEN: "I mistakenly wrote Billion instead of Million. I edited it from the
+  // admin token edit description but doesnt work"). The admin Edit dialog writes KV asset:<CODE-ISSUER> and says
+  // "Edited fields override it" -- but this document never read that key, so a launch typo stayed published here for
+  // every wallet, explorer and our own asset page (which reads this file directly and overwrote the corrected line).
+  // An admin-edited name / description / same-origin logo now wins over the launch record and the manifest.
+  const adminMeta = {};
+  if (kvb) {
+    await Promise.all(ours.map(async (a) => {
+      const k = a.code + '-' + a.issuer;
+      try { const m = await kvb.get('asset:' + k, 'json'); if (m && typeof m === 'object' && !Array.isArray(m)) adminMeta[k] = m; } catch (e) { /* the launch record still answers */ }
+    }));
+  }
   for (const a of ours) {
     const c = ['[[CURRENCIES]]', 'code=' + q(a.code), 'issuer=' + q(a.issuer), 'display_decimals=7'];
+    const ad = adminMeta[a.code + '-' + a.issuer] || {};
+    const adName = typeof ad.name === 'string' ? ad.name.trim() : '';
+    const adDesc = typeof ad.description === 'string' ? ad.description.trim() : '';
+    const adImg = (typeof ad.image === 'string' && ad.image.charAt(0) === '/' && ad.image.indexOf('//') !== 0) ? origin + ad.image : '';
     // Our own manifest wins for BOTH fields. a.name/a.image (stellar.expert's tomlInfo) stay as the
     // fallback: correct for an asset that publishes through some other domain, and empty for our mints.
     // Reviewed mint metadata first, then the build-time manifest, then stellar.expert's tomlInfo. The
     // order is deliberate: an approved submission is the most recent thing a human looked at.
     const ok = approved[a.code + '-' + a.issuer] || {};
     const mine = icons[a.code + '-' + a.issuer] || {};
-    const name = ok.name || mine.name || a.name;
-    const img = ok.image || mine.image || a.image;
-    const desc = ok.desc || a.desc;
+    const name = adName || ok.name || mine.name || a.name;
+    const img = adImg || ok.image || mine.image || a.image;
+    const desc = adDesc || ok.desc || a.desc;
     if (name) c.push('name=' + q(name));
     if (desc) c.push('desc=' + q(desc));
     if (img) c.push('image=' + q(img));
