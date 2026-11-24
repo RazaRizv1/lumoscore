@@ -85,7 +85,154 @@ async function xrplReceivable(addr) {
   } catch (e) { return false; }
 }
 
-export async function onRequestGet({ request, env }) {
+// ---- MINTER TIERS (RAZA 2026-11-24) ---------------------------------------------------------------------------------
+// The minter's share of LumosCore's fee rises with the token's LIFETIME LumosCore volume, counted in USD from the moment
+// this shipped (nothing traded before counts):
+//     $0 30% · $100K 40% · $1M 50% · $10M 60% · $100M+ 70%
+// Trades from the minter's own wallets (the launch wallet and any admin payout wallet) are not counted. The minter's own
+// swaps get the tier as a discount (pages: "_pa[3]===ME" etc.). A tier never goes down: the total only grows.
+//
+// THE COUNTER is rebuilt from the chain, never reported by a page: every LumosCore trade pays our fee collector.
+//   Stellar  the collector's payments; each one's transaction holds the swap (path payment to the payer itself), so the
+//            token and its XLM side are read from the same transaction.
+//   XRPL     the collector's LumosCore-memo payments; the swap is the payer's next transaction(s) in the following ledgers
+//            and names the token's issuer. Trade value = (fee to us + fee to the minter) / the memo's fee rate.
+//   NEAR     no community Launchpad token yet: every NEAR token answers the $0 tier until one exists.
+// It advances at most once a minute, in the background of a minters lookup (every swap makes one), a bounded number of
+// receipts per run (the 10 ms CPU plan), with a cursor per network in KV. Dollar values use the coin's price at the time
+// the receipt is processed -- within a minute or two of the trade.
+const TIERS = [[0, 0.30], [1e5, 0.40], [1e6, 0.50], [1e7, 0.60], [1e8, 0.70]];
+function tierOf(usd) {
+  let i = 0; for (let k = 0; k < TIERS.length; k++) if ((+usd || 0) >= TIERS[k][0]) i = k;
+  const nx = TIERS[i + 1];
+  return { share: TIERS[i][1], tier: i + 1, next: nx ? { at: nx[0], share: nx[1] } : null };
+}
+const VOL = 'minvol:';             // minvol:<net>|<id> -> { usd, n, at }
+const VSTATE = 'minvol:state';     // { start, lock, st: cursor, stSeen: [hash], xl: ledger, xlSeen: [hash] }
+const ST_FEE = 'GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
+const XR_FEE = 'rBDV4nwHzg5ByAYJtPWrbBZnuUXSUtFr94';
+const PER_RUN = 5;                 // receipts per network per run: each costs 1-2 upstream calls (Pages: 50 per request)
+async function volOf(kv, net, id) { try { return (await kv.get(VOL + net + '|' + id, 'json')) || { usd: 0, n: 0, at: 0 }; } catch (e) { return { usd: 0, n: 0, at: 0 }; } }
+async function addVol(kv, net, id, usd) {
+  const k = VOL + net + '|' + id, v = await volOf(kv, net, id);
+  v.usd = (+v.usd || 0) + usd; v.n = (+v.n || 0) + 1; v.at = Date.now();
+  await kv.put(k, JSON.stringify(v));
+}
+async function getJ(url, init) { const r = await fetch(url, init); if (!r.ok) throw new Error('http ' + r.status); return r.json(); }
+// The minter's wallets for a token: what this file answers (admin payout or the chain's launch wallet) plus the chain
+// answer itself, so neither a payout change nor an admin entry lets the launch wallet's trades count.
+async function minterWallets(kv, net, id) {
+  const key = net + '|' + id, out = new Set();
+  const adm = await getMap(kv, ADMIN), chain = await getMap(kv, CHAIN);
+  if (adm[key]) out.add(adm[key]);
+  let c = chain[key];
+  if (!c) { try { c = net === 'stellar' ? await stellarMinter(kv, id) : (net === 'xrpl' ? await xrplMinter(kv, id) : null); } catch (e) { c = null; } }
+  if (c) out.add(c);
+  return out;
+}
+async function stellarMints(kv) { try { return new Set(((await kv.get('assets:mints', 'json')) || []).filter((x) => /-G[A-Z2-7]{55}$/.test(x))); } catch (e) { return new Set(); } }
+async function xrplMintIssuers(kv) {
+  const out = {};   // issuer -> CODE-issuer
+  try { const m = (await kv.get('mintmeta:xrpl', 'json')) || {}; for (const k of Object.keys(m)) { const i = k.lastIndexOf('-'); out[k.slice(i + 1)] = k; } } catch (e) {}
+  return out;
+}
+function hexText(h) { let s = ''; for (let i = 0; i + 1 < String(h || '').length; i += 2) s += String.fromCharCode(parseInt(h.slice(i, i + 2), 16)); return s; }
+function lxMemo(t) {
+  const ms = (t && t.Memos) || [];
+  for (const m of ms) { const x = m.Memo || {}; if (hexText(x.MemoType) === 'LumosCore') return hexText(x.MemoData); }
+  return null;
+}
+
+async function refreshStellar(kv, st, origin) {
+  if (!st.st) {   // first run: start at the newest payment, so only what comes after counts
+    const d = await getJ(H + '/accounts/' + ST_FEE + '/payments?order=desc&limit=1');
+    const r = ((d._embedded || {}).records || [])[0]; st.st = r ? r.paging_token : 'now'; return;
+  }
+  const d = await getJ(H + '/accounts/' + ST_FEE + '/payments?order=asc&limit=50&cursor=' + encodeURIComponent(st.st));
+  const recs = (d._embedded || {}).records || [];
+  if (!recs.length) return;
+  const mints = await stellarMints(kv);
+  let px = null, done = 0;
+  for (const p of recs) {
+    if (done >= PER_RUN) break;
+    const prev = st.st;
+    st.st = p.paging_token;
+    if (p.to !== ST_FEE || p.from === ST_FEE) continue;
+    const h = p.transaction_hash; if ((st.stSeen || []).indexOf(h) >= 0) continue;
+    st.stSeen = (st.stSeen || []).concat([h]).slice(-300); done++;
+    const ops = ((await getJ(H + '/transactions/' + h + '/operations?limit=50'))._embedded || {}).records || [];
+    const swap = ops.find((o) => /^path_payment_strict_(send|receive)$/.test(o.type) && o.to === p.from);
+    if (!swap) continue;
+    const sid = swap.source_asset_type === 'native' ? '' : swap.source_asset_code + '-' + swap.source_asset_issuer;
+    const did = swap.asset_type === 'native' ? '' : swap.asset_code + '-' + swap.asset_issuer;
+    const tok = mints.has(sid) ? sid : (mints.has(did) ? did : '');
+    if (!tok) continue;
+    const xlm = swap.source_asset_type === 'native' ? +swap.source_amount : (swap.asset_type === 'native' ? +swap.amount : 0);
+    if (!(xlm > 0)) continue;                                   // token-for-token: no XLM side to value it by
+    if ((await minterWallets(kv, 'stellar', tok)).has(p.from)) continue;
+    if (px == null) { try { px = +(await getJ(origin + '/lxapi/xlm')).usd || 0; } catch (e) { px = 0; } }
+    if (!(px > 0)) { st.st = prev; st.stSeen = st.stSeen.filter((x) => x !== h); break; }   // no price: retry this receipt next run
+    await addVol(kv, 'stellar', tok, xlm * px);
+  }
+}
+
+async function refreshXrpl(kv, st, origin) {
+  if (!st.xl) { const r = await rpc('ledger', { ledger_index: 'validated' }); st.xl = +((r.ledger || {}).ledger_index || r.ledger_index) || 0; return; }
+  const r = await rpc('account_tx', { account: XR_FEE, forward: true, limit: 20, ledger_index_min: st.xl, ledger_index_max: -1 });
+  const txs = r.transactions || [];
+  const iss = await xrplMintIssuers(kv);
+  let px = null, done = 0, last = st.xl;
+  for (const row of txs) {
+    const t = row.tx || row.tx_json || {}, h = t.hash || row.hash, L = +(t.ledger_index || row.ledger_index) || 0;
+    if (done >= PER_RUN) break;
+    last = Math.max(last, L);
+    if (t.TransactionType !== 'Payment' || t.Destination !== XR_FEE || typeof t.Amount !== 'string') continue;
+    if ((st.xlSeen || []).indexOf(h) >= 0) continue;
+    const memo = lxMemo(t); if (!memo) continue;
+    const pm = /fee ([0-9.]+)%/.exec(memo); if (!pm || !(+pm[1] > 0)) continue;
+    st.xlSeen = (st.xlSeen || []).concat([h]).slice(-300); done++;
+    // The payer's transactions around it: the swap (names the issuer) and a minter payment (part of the same fee).
+    const w = await rpc('account_tx', { account: t.Account, forward: true, limit: 12, ledger_index_min: L, ledger_index_max: L + 8 });
+    let tok = '', minterPaid = 0, mintWallet = '';
+    const amts = (x) => (x && typeof x === 'object' && x.issuer) ? [x] : [];
+    for (const r2 of (w.transactions || [])) {
+      const u = r2.tx || r2.tx_json || {};
+      const parts = [].concat(amts(u.Amount), amts(u.SendMax), amts(u.TakerGets), amts(u.TakerPays), amts(u.DeliverMax));
+      for (const a of parts) if (!tok && iss[a.issuer]) tok = iss[a.issuer];
+      if (u.TransactionType === 'Payment' && typeof u.Amount === 'string' && u.Destination !== XR_FEE && lxMemo(u)) { minterPaid += (+u.Amount || 0); mintWallet = u.Destination; }
+      // Batch: the inner transactions ride in the outer one.
+      for (const inner of ((u.RawTransactions || []).map((x) => x.RawTransaction || {}))) {
+        const ip = [].concat(amts(inner.Amount), amts(inner.SendMax), amts(inner.TakerGets), amts(inner.TakerPays));
+        for (const a of ip) if (!tok && iss[a.issuer]) tok = iss[a.issuer];
+        if (inner.TransactionType === 'Payment' && typeof inner.Amount === 'string' && inner.Destination !== XR_FEE && lxMemo(inner) && inner.Account === t.Account) { minterPaid += (+inner.Amount || 0); mintWallet = inner.Destination; }
+      }
+    }
+    if (!tok) continue;
+    const wallets = await minterWallets(kv, 'xrpl', tok);
+    if (wallets.has(t.Account)) continue;
+    if (mintWallet && !wallets.has(mintWallet)) minterPaid = 0;      // only the token's own minter is part of the fee
+    const xrp = ((+t.Amount || 0) + minterPaid) / 1e6 / (+pm[1] / 100);
+    if (!(xrp > 0)) continue;
+    if (px == null) { try { const q = await getJ(origin + '/lxapi/xrpltoken?id=XRP'); px = +q.usd || 0; } catch (e) { px = 0; } }
+    if (!(px > 0)) { st.xlSeen = st.xlSeen.slice(0, -1); return; }   // no price: retry this receipt next run
+    await addVol(kv, 'xrpl', tok, xrp * px);
+  }
+  // Only move past ledgers whose receipts were all looked at; a capped run resumes inside the same ledger (seen-list).
+  if (done < PER_RUN && txs.length < 20) st.xl = last + (txs.length ? 1 : 0); else st.xl = Math.max(st.xl, last);
+}
+
+async function refreshVolumes(kv, origin) {
+  let st = {}; try { st = (await kv.get(VSTATE, 'json')) || {}; } catch (e) { st = {}; }
+  if (st.lock && Date.now() - st.lock < 55000) return;
+  st.lock = Date.now(); if (!st.start) st.start = Date.now();
+  await kv.put(VSTATE, JSON.stringify(st));
+  try { await refreshStellar(kv, st, origin); } catch (e) { /* next run retries from the same cursor */ }
+  try { await refreshXrpl(kv, st, origin); } catch (e) { /* next run retries from the same ledger */ }
+  await kv.put(VSTATE, JSON.stringify(st));
+}
+
+export async function onRequestGet(ctx) {
+  const { request, env } = ctx;
   const kv = env && env.CONTENT_KV;
   if (!kv) return json({ ok: false, error: 'no kv' }, 500);
   const u = new URL(request.url);
@@ -93,11 +240,14 @@ export async function onRequestGet({ request, env }) {
   const net = u.searchParams.get('net') || '', id = normId(net, String(u.searchParams.get('id') || '').trim());
   if (!NETS[net] || !id || id.length > 120) return json({ ok: false, error: 'bad request' }, 400);
   const key = net + '|' + id;
+  // Every lookup nudges the counter forward (at most once a minute, in the background).
+  try { if (ctx.waitUntil) ctx.waitUntil(refreshVolumes(kv, u.origin).catch(() => {})); } catch (e) {}
+  const vol = await volOf(kv, net, id), tr = tierOf(vol.usd);
   const adm = await getMap(kv, ADMIN);
   const answer = async (m, source) => {
-    const body = { ok: true, minter: m, source };
+    const body = { ok: true, minter: m, source, share: tr.share, tier: tr.tier, volume: Math.round((+vol.usd || 0) * 100) / 100, next: tr.next };
     if (net === 'xrpl' && m) body.receivable = await xrplReceivable(m);
-    return json(body, 200, 300);
+    return json(body, 200, 120);
   };
   if (adm[key]) return answer(adm[key], 'admin');
   const chain = await getMap(kv, CHAIN);

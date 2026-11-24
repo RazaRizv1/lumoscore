@@ -2713,7 +2713,7 @@ export async function onRequest(context){
   // ?v= IS THE VERSION: /assets/ is served immutable for a year, so a changed file needs a new number here.
   head.push('<script id="lx-xsearch" src="/assets/js/lx-xsearch.js?v=4"></scr' + 'ipt>');
   // MY EARNINGS on Trade (RAZA 2026-11-24): _tools/lx-earnings.browser.js, emitted as /assets/js/lx-earnings.js.
-  head.push('<script id="lx-earnings" src="/assets/js/lx-earnings.js?v=2" defer></scr' + 'ipt>');   // v2: redesigned panel
+  head.push('<script id="lx-earnings" src="/assets/js/lx-earnings.js?v=3" defer></scr' + 'ipt>');   // v2: redesigned panel
   head.push('<script id="lx-kbdblur">(function(){if(window.__lxKbd)return;window.__lxKbd=1;function off(){var a=document.activeElement;if(a&&a!==document.body&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable)){try{a.blur();}catch(e){}}}document.addEventListener("visibilitychange",function(){if(document.hidden)off();});window.addEventListener("pagehide",off);})();</scr' + 'ipt>');
   head.push('<script type="application/ld+json" id="lx-ld-core">'
     // THIS ESCAPE WAS A NO-OP AND THAT WAS AN INJECTION. It used to read .join('<\\/'), which this

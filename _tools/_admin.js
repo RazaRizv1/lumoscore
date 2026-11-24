@@ -1921,7 +1921,7 @@ function minterEdit(k,net){
   if(q(".lxmodal"))return;
   var m=document.createElement("div"); m.className="lxmodal";
   m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Minter of "+esc(k.split("-")[0])+"</h3>"
-    +"<p class='lxmodal-s'>This wallet receives 30% of LumosCore’s fee on every LumosCore trade of this token, paid inside the trade. Keep the wallet read from the chain, or enter the one the team gave you.</p>"
+    +"<p class='lxmodal-s'>This wallet receives the token’s share of LumosCore’s fee on every LumosCore trade of this token, paid inside the trade: 30%, rising to 70% with the token’s lifetime LumosCore volume. Keep the wallet read from the chain, or enter the one the team gave you.</p>"
     +"<p class='lxmodal-s' id='lxmSrc' style='opacity:.8'>Looking up the minter…</p>"
     +"<label class='lxmodal-l' for='lxmAddr'>Payout wallet</label><input class='lxmodal-i' id='lxmAddr' spellcheck='false' style='font-family:JetBrains Mono,monospace;font-size:13px'>"
     +"<p class='lxmodal-e' id='lxmErr'></p>"
@@ -1936,6 +1936,7 @@ function minterEdit(k,net){
     inp.value=(d&&d.minter)||"";
     src.textContent=(d&&d.source==="admin")?"Entered by hand in admin.":((d&&d.minter)?"Read from the chain: the wallet that signed the mint.":"Not found on the chain. Enter the team’s wallet to start paying them.");
     clr.style.display=(d&&d.source==="admin")?"":"none";
+    if(d&&d.share){ var _tl=document.createElement("p"); _tl.className="lxmodal-s"; _tl.style.opacity=".8"; _tl.textContent="Share "+Math.round(d.share*100)+"% · lifetime LumosCore volume "+"$"+(+d.volume||0).toLocaleString(undefined,{maximumFractionDigits:2})+(d.next?(" · "+Math.round(d.next.share*100)+"% from "+"$"+(+d.next.at).toLocaleString()):" · top tier")+"."; src.parentNode.insertBefore(_tl,src.nextSibling); }
   }).catch(function(){ src.textContent="Could not look it up right now."; });
   function post(body){ return fetch("/lxapi/minters",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
   m.querySelector("#lxmOk").addEventListener("click",function(){ var a=(inp.value||"").trim(); if(!a){ er.textContent="Enter a wallet address."; return; }
@@ -2831,7 +2832,7 @@ function paintAssets(){
         // A mint is a record of what was issued, not a curation choice, and there is nowhere to
         // persist its removal -- it would simply reappear on the next load. So the tab does not
         // offer a button that cannot keep its promise.
-        +(MODE==="mints"?("<button class='row-act-btn' type='button' title='Minter payout wallet — gets 30% of LumosCore’s fee on this token' data-lxmint='"+esc(isNA(k)?a.iss:k)+"' data-lxmnet='"+(xa?"xrpl":(isNA(k)?"near":"stellar"))+"'>$</button>"):("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
+        +(MODE==="mints"?("<button class='row-act-btn' type='button' title='Minter payout wallet — gets 30–70% of LumosCore’s fee on this token, by its volume' data-lxmint='"+esc(isNA(k)?a.iss:k)+"' data-lxmnet='"+(xa?"xrpl":(isNA(k)?"near":"stellar"))+"'>$</button>"):("<button class='row-act-btn' type='button' title='Remove from the curated list' data-lxrm='"+esc(k)+"'>×</button>"))
         +"</span></td></tr>"; }).join("");
     qa("[data-lxrm]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
       b.addEventListener("click",function(){ var k=b.getAttribute("data-lxrm");

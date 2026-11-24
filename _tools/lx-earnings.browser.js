@@ -83,6 +83,10 @@
       + '.lxe-more{display:block;width:100%;margin-top:6px;padding:8px;border:1px solid ' + B + ';border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;cursor:pointer}'
       + '.lxe-empty{padding:14px;border:1px dashed ' + B + ';border-radius:12px;color:' + MU + ';font-size:13px;line-height:1.5;text-align:center}'
       + '.lxe-foot{margin-top:16px;font-size:12px;color:' + MU + ';line-height:1.55}'
+      + '.lxe-tier{margin-top:6px;font-size:11.5px;color:' + MU + ';display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px}'
+      + '.lxe-pct{padding:1px 7px;border-radius:999px;background:var(--accent-pale,rgba(234,106,44,.12));color:var(--accent,#ea6a2c);font-weight:700;font-size:11px}'
+      + '.lxe-bar{margin-top:6px;height:4px;border-radius:999px;background:' + S2 + ';overflow:hidden;max-width:220px}'
+      + '.lxe-bar i{display:block;height:100%;border-radius:999px;background:var(--accent,#ea6a2c)}'
       + '.lxe-skel{height:14px;border-radius:6px;background:' + S2 + ';margin:8px 0}'
       + '@media (max-width:480px){.lx-earn-ov{align-items:flex-end;padding:0}.lx-earn-box{max-width:none;border-radius:16px 16px 0 0;max-height:90vh}.lxe-hero .v b{font-size:22px}.lxe-scroll{padding:14px 16px 18px}.lxe-head{padding:16px 16px 0}}';
     document.head.appendChild(s);
@@ -141,6 +145,23 @@
       return getJ('/lxapi/neartoken?i=' + encodeURIComponent(c)).then(function (d) { out[id] = { logo: (d && d.ok && d.logo) || '', name: (d && d.ok && d.name) || '' }; });
     })).then(function () { return out; });
   }
+  // MINTER TIERS (RAZA 2026-11-24): each token's share comes from its lifetime LumosCore volume (/lxapi/minters answers
+  // share, tier, volume and the next step). Shown as fact, never as a promise.
+  function tierInfo(net, ids) {
+    var out = {};
+    return Promise.all(ids.map(function (id) {
+      var q = net === 'near' ? (id.indexOf('-') > 0 ? id.slice(id.indexOf('-') + 1) : id) : id;
+      return getJ('/lxapi/minters?net=' + net + '&id=' + encodeURIComponent(q)).then(function (d) { if (d && d.ok && d.share) out[id] = d; });
+    })).then(function () { return out; });
+  }
+  function money(n) { n = +n || 0; return n >= 1e6 ? '$' + (n / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 }) + 'M' : (n >= 1e3 ? '$' + (n / 1e3).toLocaleString(undefined, { maximumFractionDigits: 1 }) + 'K' : '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 })); }
+  function tierLine(t) {
+    if (!t) return '';
+    var pct = Math.round(t.share * 100);
+    return '<div class="lxe-tier"><span class="lxe-pct">' + pct + '% share</span>' + esc(money(t.volume)) + ' lifetime volume'
+      + (t.next ? ' · ' + Math.round(t.next.share * 100) + '% from ' + esc(money(t.next.at)) : ' · top tier') + '</div>'
+      + (t.next ? '<div class="lxe-bar"><i style="width:' + Math.max(1.5, Math.min(100, (t.volume / t.next.at) * 100)).toFixed(1) + '%"></i></div>' : '');
+  }
   function logoHtml(meta, code) {
     if (meta && meta.logo) return '<img class="lxe-logo" alt="" src="' + esc(meta.logo) + '" onerror="this.outerHTML=\'<span class=&quot;lxe-av&quot;>' + esc(String(code).slice(0, 2)) + '</span>\'">';
     return '<span class="lxe-av">' + esc(String(code || '?').slice(0, 2)) + '</span>';
@@ -180,8 +201,8 @@
       rows.forEach(function (x) { var id = byCode[String(x.token || '')]; if (!id) return; var p = per[id]; p.amt += +x.amount || 0; p.n++; var t = Date.parse(x.at || 0) || 0; if (t > p.last) p.last = t; });
       // Earning tokens first, biggest first; then the rest by name.
       ids.sort(function (x, y) { return (per[y].amt - per[x].amt) || codeOf(x).localeCompare(codeOf(y)); });
-      return Promise.all([tokenMeta(net, ids), coinUsd(net)]).then(function (z) {
-        var meta = z[0] || {}, px = z[1], unit = d.unit || (rows[0] && rows[0].unit) || '';
+      return Promise.all([tokenMeta(net, ids), coinUsd(net), tierInfo(net, ids)]).then(function (z) {
+        var meta = z[0] || {}, px = z[1], tiers = z[2] || {}, unit = d.unit || (rows[0] && rows[0].unit) || '';
         var last = rows.length ? Date.parse(rows[0].at || 0) : 0;
         var h = '<div class="lxe-hero"><div class="l">Total received</div>'
           + '<div class="v"><b>' + esc(fmt(d.total)) + ' ' + esc(unit) + '</b>' + (px && d.total > 0 ? '<span>' + esc(usd(d.total * px)) + '</span>' : '') + '</div>'
@@ -198,7 +219,8 @@
             var p = per[id], c = codeOf(id), m = meta[id] || {};
             return '<a class="lxe-tok" href="' + esc(pagePath(net, id)) + '">' + logoHtml(m, c)
               + '<div class="t"><div><span class="c">' + esc(c) + '</span>' + (m.name && m.name.toUpperCase() !== c ? '<span class="nm">' + esc(m.name) + '</span>' : '') + '</div>'
-              + '<div class="s">' + (p.n ? p.n + ' payment' + (p.n === 1 ? '' : 's') + ' · last ' + esc(ago(p.last)) : 'No payments yet') + '</div></div>'
+              + '<div class="s">' + (p.n ? p.n + ' payment' + (p.n === 1 ? '' : 's') + ' · last ' + esc(ago(p.last)) : 'No payments yet') + '</div>'
+              + tierLine(tiers[id]) + '</div>'
               + '<div class="r"><b>' + esc(fmt(p.amt)) + ' ' + esc(unit) + '</b>' + (px && p.amt > 0 ? '<span>' + esc(usd(p.amt * px)) + '</span>' : '') + '</div>'
               + '<span class="ch">›</span></a>';
           }).join('');
@@ -220,7 +242,7 @@
           ov.__lxAll = rows.map(pay).join('');
         }
         if (d.partial) h += '<div class="lxe-foot">Part of the history could not be read just now, so this list may be incomplete.</div>';
-        h += '<div class="lxe-foot">Each payment is 30% of LumosCore’s fee on a LumosCore trade of your token worth 1 ' + esc(unit || 'coin') + ' or more, sent to this wallet inside that trade.</div>';
+        h += '<div class="lxe-foot">Each payment is your token’s share of LumosCore’s fee on a LumosCore trade of the token worth 1 ' + esc(unit || 'coin') + ' or more, sent to this wallet inside that trade. The share rises with the token’s lifetime volume on LumosCore: 30%, then 40% from $100K, 50% from $1M, 60% from $10M and 70% from $100M. Trades from your own wallets are not counted.</div>';
         body.innerHTML = h;
         var more = body.querySelector('.lxe-more');
         if (more) more.addEventListener('click', function () { body.querySelector('.lxe-pays').innerHTML = ov.__lxAll; more.remove(); });

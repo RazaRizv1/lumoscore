@@ -4479,12 +4479,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         }
         var path=recs.length?recs[0].path.map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}):[];
         var feeXlmP=pa.native?Promise.resolve(null):j(H+"/paths/strict-send?"+srcP+"&source_amount="+fee.toFixed(7)+"&destination_assets=native").catch(function(){return null;});
-        var mintP=NATIVE?Promise.resolve(""):Promise.race([fetch("/lxapi/minters?net=stellar&id="+encodeURIComponent(CODE+"-"+ISSUER)).then(function(r){return r.ok?r.json():null;}).then(function(d){ var m=d&&d.minter; if(!m)return ""; if(m===addr)return "=self"; return fetch(H+"/accounts/"+m).then(function(r){return r.ok?m:"";}); }).catch(function(){return "";}),new Promise(function(rs){setTimeout(function(){rs("");},2500);})]);
+        var mintP=NATIVE?Promise.resolve(""):Promise.race([fetch("/lxapi/minters?net=stellar&id="+encodeURIComponent(CODE+"-"+ISSUER)).then(function(r){return r.ok?r.json():null;}).then(function(d){ var m=d&&d.minter; if(!m)return ""; window.__lxMS=+(d&&d.share)||0.3; if(m===addr)return "=self"; return fetch(H+"/accounts/"+m).then(function(r){return r.ok?m:"";}); }).catch(function(){return "";}),new Promise(function(rs){setTimeout(function(){rs("");},2500);})]);
         return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP, mintP]).then(function(res){
           var acc=res[0], collExists=!!res[1], feePd=res[2];
           /* MINTER SHARE ONLY ON SWAPS WORTH 1+ (RAZA 2026-11-24) */ var xv=pa.native?amt:(ra.native?freshOut:NaN); if(xv<1)res[3]="";
-          if(res[3]==="=self"){ res[3]=""; fee=+(fee*0.7).toFixed(7); }
-          var mnt=res[3]||"", feeM=mnt?+(fee*0.3).toFixed(7):0, feeC=+(fee-feeM).toFixed(7);
+          if(res[3]==="=self"){ res[3]=""; fee=+(fee*(1-Math.min(0.7,Math.max(0.3,+window.__lxMS||0.3)))).toFixed(7); }
+          var mnt=res[3]||"", feeM=mnt?+(fee*Math.min(0.7,Math.max(0.3,+window.__lxMS||0.3))).toFixed(7):0, feeC=+(fee-feeM).toFixed(7);
           /* THE FLOOR NOW MATCHES THE PROMISE. The panel advertises "0.5% slippage" and shows a minimum
                        received of best*(1-SLIP/100), but destMin was freshOut*(1-fr-0.01) -- which is wrong twice over.
                        The daily health bot measured the gap on 2026-10-12: destMin 23374.58 against 23635 shown, 1.10% below
