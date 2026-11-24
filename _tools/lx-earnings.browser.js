@@ -136,7 +136,14 @@
     if (net === 'xrpl') {
       return getJ('/lxapi/assetmeta').then(function (d) {
         var mm = (d && d.mintmeta) || {};
-        ids.forEach(function (id) { var m = mm[id] || {}; out[id] = { logo: m.image || '', name: m.name && m.name !== codeOf(id) ? m.name : '' }; });
+        // No launch artwork on record (true of every XRPL mint so far): the same thumbnail the XRPL token page shows,
+        // via /lxapi/xrplthumb (xrpl.to's image, fetched with our key server-side). A token with none falls to letters.
+        var xcur = function (c) { if (c.length <= 3) return c; var h = ''; for (var i = 0; i < c.length; i++) h += c.charCodeAt(i).toString(16).toUpperCase(); while (h.length < 40) h += '0'; return h; };
+        ids.forEach(function (id) {
+          var m = mm[id] || {}, i = id.lastIndexOf('-'), code = id.slice(0, i), iss = id.slice(i + 1);
+          var thumb = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(iss) ? '/lxapi/xrplthumb?iss=' + encodeURIComponent(iss) + '&cur=' + encodeURIComponent(xcur(code)) + '&w=64' : '';
+          out[id] = { logo: m.image || thumb, name: m.name && m.name !== codeOf(id) ? m.name : '' };
+        });
         return out;
       });
     }
