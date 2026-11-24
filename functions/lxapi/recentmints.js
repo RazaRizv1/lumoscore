@@ -66,6 +66,16 @@ async function launchPx(net, id) {
   }
   return 0;
 }
+// SPARKLINE (RAZA 2026-11-24 "not at all attractive"): a small price line per row, oldest -> newest, in the native coin.
+// The last 24h of trades when there are 2+ of them, else the last 20 trades whatever their age (a quiet token still
+// draws its shape, flat or not). At most 24 points, evenly picked; 5 significant digits are plenty for a 64px line.
+function spark(list, now) {
+  const p = list.filter((x) => x.px > 0 && x.t > 0);
+  let w = p.filter((x) => now - x.t <= DAY); if (w.length < 2) w = p.slice(0, 20);
+  w = w.slice().reverse();
+  if (w.length > 24) { const k = []; for (let i = 0; i < 24; i++) k.push(w[Math.round(i * (w.length - 1) / 23)]); w = k; }
+  return w.map((x) => +x.px.toPrecision(5));
+}
 // 24h price change from trades listed NEWEST FIRST as {t, px}: the latest price against the last price from before the
 // window (or, for a token whose whole history fits in it, its first trade). No trade in the window = unchanged (0).
 function change24(list, now) {
@@ -112,7 +122,7 @@ async function stellarRow(id, xlmUsd) {
   }
   // 100 trades read and every one inside the day: there are more -- a floor ("100+"), and its volume is a floor too.
   const capped = trades.length >= 100 && n >= trades.length;
-  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last, change24: t ? change24(pl, now) : null, lastPx: px || null };
+  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last, change24: t ? change24(pl, now) : null, lastPx: px || null, spark: spark(pl, now) };
 }
 
 // ---- XRPL -----------------------------------------------------------------------------------------------------------
@@ -141,7 +151,7 @@ async function xrplRow(id, origin, xrpUsd) {
     if (now - (+r.t || 0) <= DAY) { n++; vol += xrp; }
   }
   const mcap = tk && tk.ok ? (+tk.marketcap > 0 ? +tk.marketcap : (+tk.usd > 0 && +tk.circulating > 0 ? +tk.usd * +tk.circulating : null)) : null;
-  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last, change24: h && h.ok ? change24(pl, now) : null, lastPx: pl.length ? pl[0].px : null };
+  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last, change24: h && h.ok ? change24(pl, now) : null, lastPx: pl.length ? pl[0].px : null, spark: spark(pl, now) };
 }
 
 // ---- NEAR -----------------------------------------------------------------------------------------------------------
@@ -154,7 +164,7 @@ async function nearRow(contract, origin) {
   const now = Date.now(); let n = 0, vol = 0, last = null;
   for (const r of rows) { if (!last) last = { side: r.side === 'sell' ? 'sell' : 'buy', t: +r.t || 0 }; if (now - (+r.t || 0) <= DAY) { n++; vol += +r.near || 0; } }
   const nearUsd = tk && tk.ok ? +tk.nearUsd || 0 : 0;
-  return { mcap: tk && tk.ok && +tk.usd > 0 && +tk.supply > 0 ? +tk.usd * +tk.supply : null, trades24: tr && tr.ok ? n : null, vol24: tr && tr.ok && nearUsd > 0 ? vol * nearUsd : null, last, change24: tr && tr.ok ? change24(rows.map((r) => ({ t: +r.t || 0, px: +r.px || 0 })), now) : null };
+  return { mcap: tk && tk.ok && +tk.usd > 0 && +tk.supply > 0 ? +tk.usd * +tk.supply : null, trades24: tr && tr.ok ? n : null, vol24: tr && tr.ok && nearUsd > 0 ? vol * nearUsd : null, last, change24: tr && tr.ok ? change24(rows.map((r) => ({ t: +r.t || 0, px: +r.px || 0 })), now) : null, spark: spark(rows.map((r) => ({ t: +r.t || 0, px: +r.px || 0 })), now) };
 }
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -216,7 +226,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     // launched inside the window: measure from the launch price (see launchPx). Looked up once per token, remembered.
     if (net !== 'near' && m.born > 1e12 && Date.now() - m.born < DAY && r.lastPx > 0) {
       if (m.lp === undefined) { try { m.lp = await launchPx(net, id); lpChanged = true; } catch (e) { /* asked again next time */ } }
-      if (m.lp > 0) r.change24 = (r.lastPx / m.lp - 1) * 100;
+      if (m.lp > 0) { r.change24 = (r.lastPx / m.lp - 1) * 100; r.spark = [+m.lp.toPrecision(5)].concat(r.spark || []); }   // the line starts at launch
     }
     delete r.lastPx;
     return Object.assign({ id, code, born: m.born, minter: who }, r);

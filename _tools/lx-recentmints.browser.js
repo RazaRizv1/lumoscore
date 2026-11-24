@@ -130,7 +130,39 @@
       + '.lx-rm-strip{padding:12px}'
       // v4: the latest-trade arrow sits beside the ticker; the second line is "Minted 2h ago · by G…"
       + '.lx-rm-t .lx-rm-tri,.lx-rm-card .top .lx-rm-tri{margin:0}.lx-rm-t .lx-rm-tri i,.lx-rm-card .top .lx-rm-tri i{font-size:10px}'
-      + '.lx-rm-act .lx-rm-wal{color:inherit}.lx-rm-card .m .lx-rm-wal{color:inherit}';
+      + '.lx-rm-act .lx-rm-wal{color:inherit}.lx-rm-card .m .lx-rm-wal{color:inherit}'
+      // v8: sparkline rows -- logo | ticker (+NEW) | line | change ; second line spans under ticker, line and change
+      + '.lx-rm-row{grid-template-columns:40px minmax(0,1fr) 64px auto;gap:4px 12px;transition:background .18s}'
+      + '.lx-rm-row>.lx-rm-logo{grid-column:1;grid-row:1/span 2}'
+      + '.lx-rm-row>.lx-rm-t{grid-column:2;grid-row:1}.lx-rm-row>.lx-rm-sp{grid-column:3;grid-row:1;display:flex;align-items:center}'
+      + '.lx-rm-row>.lx-rm-r{grid-column:4;grid-row:1;min-width:72px}.lx-rm-row>.lx-rm-by{grid-column:2/span 3;grid-row:2}'
+      + '.lx-rm-logo{width:40px;height:40px;box-shadow:0 0 0 1px ' + B + ',0 2px 8px -3px rgba(0,0,0,.35)}'
+      + '.lx-rm-row:hover{background:var(--surface-2,' + S2 + ')}.lx-rm-row:hover .lx-rm-spark .l{stroke-width:2}'
+      + '.lx-rm-spark{display:block;overflow:visible}.lx-rm-spark.none{display:inline-block}'
+      + '.lx-rm-spark .l{fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;transition:stroke-width .18s}'
+      + '.lx-rm-spark.up .l{stroke:var(--green,#22c55e)}.lx-rm-spark.down .l{stroke:var(--red,#ef4444)}.lx-rm-spark.flat .l{stroke:' + SO + ';opacity:.7}'
+      + '.lx-rm-spark .a{stroke:none;opacity:.16}.lx-rm-spark.up .a{fill:var(--green,#22c55e)}.lx-rm-spark.down .a{fill:var(--red,#ef4444)}.lx-rm-spark.flat .a{fill:' + SO + ';opacity:.07}'
+      + '.lx-rm-spark .d{stroke:var(--surface,#131317);stroke-width:1.4}.lx-rm-spark .d.buy,.lx-rm-spark .d.up{fill:var(--green,#22c55e)}.lx-rm-spark .d.sell,.lx-rm-spark .d.down{fill:var(--red,#ef4444)}.lx-rm-spark .d.flat{fill:' + SO + '}'
+      + '.lx-rm-spark.lx-rm-pop .d{animation:lxrmDot 1.4s ease-out}'
+      + '@keyframes lxrmDot{0%{r:6}100%{r:2.6}}'
+      + '.lx-rm-chg{font-size:15px}.lx-rm-by .lx-rm-new{margin-right:4px;vertical-align:1px}'
+      + '.lx-rm-card{flex-basis:178px;display:flex;flex-direction:column;gap:2px}.lx-rm-card .sp{margin:10px 0 2px}.lx-rm-card .cap{margin-top:4px}'
+      + '.lx-rm-card .lx-rm-logo{width:32px;height:32px}'
+      // v9 (RAZA 2026-11-24 "looks disorganised and not symmetrical"): every row has the SAME fixed columns now --
+      // logo 40 | ticker + NEW over the minted line | an 84px right block with the % on top and the price line under
+      // it. Before, the % column was as wide as its number, so each row's line sat somewhere else. Panel 340 -> 360.
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on{grid-template-columns:minmax(0,1fr) 360px}}'
+      + '.lx-rm-row{grid-template-columns:40px minmax(0,1fr) 76px;grid-template-rows:auto auto;gap:5px 10px;align-items:center}'
+      + '.lx-rm-row>.lx-rm-logo{grid-column:1;grid-row:1/span 2;align-self:center}'
+      + '.lx-rm-row>.lx-rm-t{grid-column:2;grid-row:1;align-self:end}'
+      + '.lx-rm-row>.lx-rm-by{grid-column:2;grid-row:2;align-self:start;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      + '.lx-rm-row>.lx-rm-r{grid-column:3;grid-row:1;align-self:end;text-align:right;min-width:0}'
+      + '.lx-rm-row>.lx-rm-sp{grid-column:3;grid-row:2;align-self:start;display:block}'
+      + '.lx-rm-row .lx-rm-t{line-height:20px;height:20px}.lx-rm-row .lx-rm-r{line-height:20px;height:20px}'
+      + '.lx-rm-row .lx-rm-by{line-height:20px;height:20px}.lx-rm-row .lx-rm-act{display:inline;font-size:12px}'
+      + '.lx-rm-row .lx-rm-chg{font-size:14.5px}.lx-rm-row .lx-rm-new{margin-left:2px}'
+      // the wallet in the minted line: normal font (the mono one cut "GA7N…F4ZD" short), underline only on hover
+      + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}';
     document.head.appendChild(s);
   }
   // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
@@ -173,17 +205,36 @@
     if (a < 0.005) return '<span class="lx-rm-chg flat">0%</span>';
     return '<span class="lx-rm-chg ' + (c > 0 ? 'up' : 'down') + '">' + (c > 0 ? '+' : '−') + t + '</span>';
   }
+  // v8 (RAZA 2026-11-24 "not at all attractive"): each row carries a small price line (the feed's spark series), coloured
+  // by the 24h change; its end dot is the latest trade (green buy / red sell) and pulses when a new one lands. The arrow
+  // that sat beside the ticker moved there.
+  function sparkSvg(r, pop, W, H) {
+    var v = (r.spark || []).filter(function (x) { return x > 0; });
+    if (v.length < 2) return '<span class="lx-rm-spark none" style="width:' + W + 'px;height:' + H + 'px"></span>';
+    var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v), span = hi - lo, P = 3;
+    var pts = v.map(function (x, i) { var X = P + i * (W - 2 * P) / (v.length - 1), Y = span > 0 ? P + (H - 2 * P) * (1 - (x - lo) / span) : H / 2; return [Math.round(X * 10) / 10, Math.round(Y * 10) / 10]; });
+    var c = r.change24, tone = c > 0.005 ? 'up' : (c < -0.005 ? 'down' : 'flat');
+    var line = pts.map(function (p) { return p.join(','); }).join(' ');
+    var area = 'M' + pts[0][0] + ',' + H + ' L' + pts.map(function (p) { return p.join(','); }).join(' L') + ' L' + pts[pts.length - 1][0] + ',' + H + ' Z';
+    var e = pts[pts.length - 1], side = r.last ? (r.last.side === 'buy' ? 'buy' : 'sell') : tone;
+    var tip = r.last ? 'Latest trade: ' + (r.last.side === 'buy' ? 'buy' : 'sell') + ' ' + ago(r.last.t) + (ago(r.last.t) === 'now' ? '' : ' ago') : '';
+    return '<svg class="lx-rm-spark ' + tone + (pop ? ' lx-rm-pop' : '') + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' + (tip ? '<title>' + esc(tip) + '</title>' : '')
+      + '<path class="a" d="' + area + '"/><polyline class="l" points="' + line + '"/>'
+      + '<circle class="d ' + side + '" cx="' + e[0] + '" cy="' + e[1] + '" r="2.6"/></svg>';
+  }
   function rowHtml(r, pop) {
     return '<a class="lx-rm-row' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '">' + imgHtml(r)
-      + '<div class="lx-rm-t"><span class="c">' + esc(r.code) + '</span>' + tri(r, pop) + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
-      + '<div class="lx-rm-r">' + chg(r) + '</div>'
+      + '<div class="lx-rm-t"><span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
+      + '<div class="lx-rm-r">' + (chg(r) || '<span class="lx-rm-chg flat">—</span>') + '</div>'
       + '<div class="lx-rm-by">' + meta2(r) + '</div>'
+      + '<div class="lx-rm-sp">' + sparkSvg(r, pop, 76, 20) + '</div>'
       + '</a>';
   }
   function cardHtml(r, pop) {
     var m = minted(r), b = byHtml(r);
     return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"><div class="top">' + imgHtml(r)
-      + '<span class="c">' + esc(r.code) + '</span>' + tri(r, pop) + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
+      + '<span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
+      + '<div class="sp">' + sparkSvg(r, pop, 150, 36) + '</div>'
       + '<div class="cap">' + chg(r) + '</div>'
       + (m ? '<div class="m">' + esc(m) + '</div>' : '') + (b ? '<div class="m">' + b + '</div>' : '') + '</a>';
   }
