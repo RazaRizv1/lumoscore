@@ -1502,7 +1502,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       var ops=(d&&d._embedded&&d._embedded.records)||[];
       for(var i=0;i<ops.length;i++){ var op=ops[i]; if(op.type!=="liquidity_pool_deposit")continue;
         var nat=0, ass=0; (op.reserves_deposited||[]).forEach(function(rv){ if(rv.asset==="native")nat=+rv.amount; else if(String(rv.asset).indexOf(CODE+":"+ISSUER)===0)ass=+rv.amount; });
-        var t=Date.parse(op.created_at); if(nat>0&&ass>0&&t>0){ lxLaunch={t:t,px:nat/ass}; try{ applyAll(); }catch(_){} } return; }
+        var t=Date.parse(op.created_at); if(nat>0&&ass>0&&t>0){ lxLaunch={t:t,px:nat/ass}; try{ applyAll(); }catch(_){} try{ loadChart(chartTF); }catch(_){} } return; }
     }).catch(function(){});
   }
   function lxSinceLaunch(key){
@@ -1949,6 +1949,8 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     // empty message was final. Wait for them (up to ~12 s) before deciding (newtoken 2026-11-24).
     if(!rows){ chartFromTrades.__w=(chartFromTrades.__w||0)+1; if(chartFromTrades.__w<=12){ setTimeout(function(){ chartFromTrades(tf); },1000); return; } }
     // ONE trade is a price history too: draw it to the current price (newtoken 2026-11-24, JENSEN).
+    if(rows&&rows.length&&lxLaunch&&lxLaunch.t>=Date.now()-tfCfg(tf).span&&lxLaunch.t<(rows[0].ts||Infinity)){ rows=[{ts:lxLaunch.t,px:lxLaunch.px,xlm:0}].concat(rows);   // launchchart: start at launch...
+      var _lt=rows[rows.length-1]; if(assetXlm>0&&Date.now()-(_lt.ts||0)>60000)rows=rows.concat([{ts:Date.now(),px:assetXlm,xlm:0}]); }   // ...and end at the price now
     if(rows&&rows.length===1&&rows[0].px>0){ var _r0=rows[0]; rows=[_r0,{ts:Math.max(Date.now(),(_r0.ts||0)+60000),px:(assetXlm>0?assetXlm:_r0.px),xlm:0}]; }
     if(!rows||rows.length<2){ chartEmpty(); return; }
     var cfg=tfCfg(tf), cut=Date.now()-cfg.span;
@@ -2100,6 +2102,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
           }
         }
       }
+      if(lxLaunch&&xlmUsd>0&&lxLaunch.t>=start&&(!pts.length||lxLaunch.t<pts[0].t)){ var _lv=lxLaunch.px*xlmUsd; pts.unshift({t:lxLaunch.t,v:_lv,vol:0,n:0,o:_lv,h:_lv,l:_lv,c:_lv}); }   // launchchart 2026-11-24
       if(pts.length>=2){ clear(); drawChart(pts); try{ applyOhlc(); }catch(_){} return; }
       if(!attempt){ again(); return; }
       clear(); chartFromTrades(tf);
