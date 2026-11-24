@@ -62,6 +62,16 @@ async function xrplMinter(kv, id) {
   return null;
 }
 
+// XRPL: can this account be paid? An account with Deposit Authorization or "destination tag required" refuses a plain
+// Payment, which would fail the trader's whole batch. Unknown counts as no: the trade goes ahead without the share.
+async function xrplReceivable(addr) {
+  try {
+    const r = await rpc('account_info', { account: addr, ledger_index: 'validated' });
+    const f = Number((r.account_data || {}).Flags) || 0;
+    return !(f & 0x01000000) && !(f & 0x00020000);
+  } catch (e) { return false; }
+}
+
 export async function onRequestGet({ request, env }) {
   const kv = env && env.CONTENT_KV;
   if (!kv) return json({ ok: false, error: 'no kv' }, 500);
@@ -71,9 +81,14 @@ export async function onRequestGet({ request, env }) {
   if (!NETS[net] || !id || id.length > 120) return json({ ok: false, error: 'bad request' }, 400);
   const key = net + '|' + id;
   const adm = await getMap(kv, ADMIN);
-  if (adm[key]) return json({ ok: true, minter: adm[key], source: 'admin' }, 200, 300);
+  const answer = async (m, source) => {
+    const body = { ok: true, minter: m, source };
+    if (net === 'xrpl' && m) body.receivable = await xrplReceivable(m);
+    return json(body, 200, 300);
+  };
+  if (adm[key]) return answer(adm[key], 'admin');
   const chain = await getMap(kv, CHAIN);
-  if (chain[key]) return json({ ok: true, minter: chain[key], source: 'chain' }, 200, 300);
+  if (chain[key]) return answer(chain[key], 'chain');
   let m = null;
   try {
     if (net === 'stellar') m = await stellarMinter(kv, id);
@@ -81,8 +96,8 @@ export async function onRequestGet({ request, env }) {
   } catch (e) {
     return json({ ok: false, error: 'could not read the chain', minter: null }, 200, 0);   // not stored: try again later
   }
-  if (m) { chain[key] = m; try { await kv.put(CHAIN, JSON.stringify(chain)); } catch (e) {} }
-  return json({ ok: true, minter: m, source: m ? 'chain' : null }, 200, m ? 300 : 120);
+  if (m) { chain[key] = m; try { await kv.put(CHAIN, JSON.stringify(chain)); } catch (e) {} return answer(m, 'chain'); }
+  return json({ ok: true, minter: null, source: null }, 200, 120);
 }
 
 export async function onRequestPost({ request, env }) {
