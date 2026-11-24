@@ -194,9 +194,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   let mc = {}, ma = {};
   try { mc = (await kv.get('minters:chain', 'json')) || {}; ma = (await kv.get('minters:admin', 'json')) || {}; } catch (e) {}
-  // RAZA 2026-11-24: the panel hides tokens without a logo, so it gets up to 16 candidates and shows the newest 10 that
+  // RAZA 2026-11-24: the panel hides tokens without a logo, so it gets up to 10 candidates and shows the newest 5 that
   // have one (the logo test is the browser's: it is the one that actually loads the image). Test mints never show.
-  const top = ids.filter((id) => meta[net + '|' + id] && !meta[net + '|' + id].none && !HIDE.test(id)).sort((a, b) => (meta[net + '|' + b].born || 0) - (meta[net + '|' + a].born || 0)).slice(0, 16);
+  const top = ids.filter((id) => meta[net + '|' + id] && !meta[net + '|' + id].none && !HIDE.test(id)).sort((a, b) => (meta[net + '|' + b].born || 0) - (meta[net + '|' + a].born || 0)).slice(0, 10);   // the panel shows 5 (RAZA 2026-11-24); the rest are spares for tokens without a logo
   let px = 0;
   try {
     if (net === 'stellar') px = +(await getJ(url.origin + '/lxapi/xlm')).usd || 0;

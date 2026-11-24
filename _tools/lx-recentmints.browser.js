@@ -135,7 +135,7 @@
   }
   // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
   // once its logo has actually LOADED in this browser; LOGO[id]: undefined = still checking, '' = none, url = shown.
-  // The feed sends up to 16 candidates so the newest 10 with a logo can still fill the list.
+  // The feed sends up to 10 candidates so the newest 5 with a logo can still fill the list.
   function logo(r) {
     if (LOGO[r.id] !== undefined || PEND[r.id]) return;
     PEND[r.id] = 1;
@@ -194,7 +194,7 @@
   function paint(box, mob) {
     var all = (DATA && DATA.rows) || [];
     all.forEach(logo);
-    var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 10);
+    var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 5);   // RAZA 2026-11-24: 5, not 10
     var checking = all.some(function (r) { return LOGO[r.id] === undefined; });
     var SK = mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>';
     // hold the skeleton until the logo checks are in, so rows do not pop in one by one on first load
