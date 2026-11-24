@@ -926,7 +926,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // _actPainted, not a DOM test, is what the net below reads: these placeholders carry data-lx-noswap
 // like every row this layer builds, so "is there a real row" can no longer be asked of the markup.
 +'var _actPainted=0;'
-+'try{ if(!list.querySelector("[data-lx-noswap]")){ var _sk="";'
++'try{ if(!list.querySelector("[data-lx-noswap]")&&!list.__lxFed){ var _sk="";'
 +'for(var _s=0;_s<8;_s++)_sk+=feedRow({when:""});'
 +'list.innerHTML=_sk; } }catch(e){}'
 +'lxActReady();'
@@ -1028,7 +1028,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'((d&&d.__acts)||[]).concat(recs).forEach(function(o){'
 +'var hh=o.transaction_hash; if(!hh||seenH[hh])return; seenH[hh]=1; merged.push(o);});'
 +'merged.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});'
-+'paint24(merged);'
++'paintChainMark();'   // the count is written once, from settled rows (actsettle 2026-11-24)
 +'var use=merged.slice(0,50);'
 // Paint what we already know immediately, then upgrade each row once its transaction is read.
 // A ROW SAYS NOTHING UNTIL IT KNOWS (RAZA 2026-09-20: "There's this flash bug on Dashboard page when it loads").
@@ -1041,6 +1041,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // dedupe above, because the fact it needs -- that two hashes are one transaction -- is not known
 // until each row's transaction has been read.
 +'var _canonSeen={};'
++'var _lxForce=0;function _lxSettled(){if(_lxForce)return true;var n=0;for(var k=0;k<rows.length&&n<8;k++){if(rows[k].hide)continue;if(!rows[k].done)return false;n++;}return true;}setTimeout(function(){_lxForce=1;_feedRender();},6000);'
 // ONE REPAINT PER BURST, NOT ONE PER ROW (RAZA 2026-09-22, Android tablet: "the dashboard kinda lags for ~5 seconds
 // until becoming smooth"). Every row that resolved rebuilt the WHOLE list and queued five more icon passes, so ~50 rows
 // arriving one by one meant ~50 rebuilds and ~250 passes -- measured at 8,000+ attribute writes in three seconds, each
@@ -1056,14 +1057,14 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // Recounted here instead, from the rows that survive, every time the list repaints. The early
 // paint24() still runs so the figure is not blank while rows are resolving; this corrects it as they
 // settle. Same 24h window, same element.
-+' var _vis=rows.filter(function(r){ return !r.hide; });'
-+' try{ var _c24=document.querySelector(".activity-card .market-head .lx-act24");'
++' if(!_lxSettled())return; var _vis=rows.filter(function(r){ return !r.hide; });'
++' try{ if(!document.querySelector(".activity-card .market-head .lx-act24"))paint24([]); var _c24=document.querySelector(".activity-card .market-head .lx-act24");'
 +'   if(_c24){ var _cut=Date.now()-864e5,_n=0; _vis.forEach(function(r){ if(r.ts>=_cut)_n++; });'
 +'     _c24.textContent=(_n>=SOURCE_CAP?(SOURCE_CAP+"+"):String(_n))+" in 24h";'
 +'     _c24.title=(_n===1?"1 transaction":_n+" transactions")+" through LumosCore in the last 24 hours"; } }catch(_){}'
-+' _actPainted=1;lxActReady();list.innerHTML=_vis.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++' _actPainted=1;lxActReady();list.__lxFed=1;list.innerHTML=_vis.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +' _frP.forEach(clearTimeout); _frP=[300,1200,3000,6000,10000].map(function(ms){ return setTimeout(paintFeedIcons,ms); }); },120); }'
-+'_actPainted=1;lxActReady();list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++'_actPainted=1;lxActReady();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
 +'var _brMap=null,_brBurn={};'
@@ -1187,7 +1188,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // replaced -- so a transaction nothing can describe lands on the honest generic label instead.
 +'if(!de)de={ic:SWAP,cls:"swap",type:"Platform activity"}; put(de);'
 +'function put(de){'
-+'if(de.skip){ rows[i].hide=1; }else{'
++'rows[i].done=1;if(de.skip){ rows[i].hide=1; }else{'
 +'rows[i].ic=de.ic||SWAP;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
 // the logo glyph: what moved, and (swap / cross-chain) what it became
 +'rows[i].via=de.via||"";rows[i].pair=de.pair||(de.acode?{a:{code:de.acode,iss:de.aiss||""},b:(de.bcode?{code:de.bcode,iss:de.biss||""}:null)}:null);'
@@ -1205,7 +1206,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // unread says so -- which is the same rule as the Orders tab's "could not load" vs "no open orders".
 // The next feed() pass is 60s away and re-reads every row, so this heals itself without a retry.
 +'}).catch(function(){ try{ rows[i].ic=UNREAD; rows[i].cls="unread"; rows[i].unread=1;'
-+'  rows[i].type="Couldn\\u2019t read this transaction"; rows[i].act=""; rows[i].pair=null; rows[i].pending=0;'
++'  rows[i].type="Couldn\\u2019t read this transaction"; rows[i].act=""; rows[i].pair=null; rows[i].pending=0; rows[i].done=1;'
 +'  _feedRender(); }catch(_){} })'
 +'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
