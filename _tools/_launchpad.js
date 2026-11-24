@@ -109,6 +109,7 @@ var LXLP_POOL_RESERVE=2.5;
 function lxLpCosts(){ var r=(window.__lxXlmUsd>0?window.__lxXlmUsd:0.11), C=window.__lxLP; if(window.__lxTestWallet)return {rate:r,createFeeXlm:0.5,liqXlm:0.5,poolFeeXlm:0,test:1}; return { rate:r, createFeeXlm:(C.createFeeUsd||5)/r, liqXlm:(C.liqUsd||10)/r, poolFeeXlm:(C.poolFeeUsd||10)/r }; }
 // Shared cost-card painter (fixed $25 total; XLM derived from the live rate). Used by BOTH step-1 (live, as
 // the user edits extra liquidity) and the review page — so the two never disagree.
+window.__lxLpPaint=function(x){ return lxLpPaintCost(x); };   // for the design's recalcCost (twcost 2026-11-24)
 function lxLpPaintCost(extra){
   extra=Math.max(0, parseFloat(String(extra||"0").replace(/,/g,""))||0);
   if(typeof lxLpSetRow!=="function") return;
