@@ -1902,7 +1902,7 @@ function paintUsers(){
 // function in the same script -- threw "isXA is not defined" on its first draw, which killed the whole
 // list and left it reading "Loading…" for ever. Nothing above it in that call stack catches, so one
 // missing name takes the page with it.
-+'function isXA(k){ return /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(k||"")); }function isNA(k){ return String(k||"").slice(-15)===".lumoscore.near"; }function nInfo(code,iss,cb){ nearPrice(code,iss,function(p){ cb({code:code,iss:iss,price:(p>0?p:null),d1:null,d7:null,vol7d:null,trust:null,funded:null,domain:"lumoscore.com",img:"",name:""}); }); }'
++'function isXA(k){ return /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(k||"")); }function isNA(k){ return String(k||"").slice(-15)===".lumoscore.near"; }function nInfo(code,iss,cb){ j("https://lumoscore.com/lxapi/neartoken?i="+encodeURIComponent(iss)).then(function(d){ if(!d||!d.ok){ cb(null); return; } cb({code:code,iss:iss,price:(d.usd>0?+d.usd:null),d1:(d.d24!=null&&isFinite(+d.d24)?+d.d24:null),d7:null,vol7d:null,trust:null,funded:null,domain:"lumoscore.com",img:"",name:(d.name&&d.name.toUpperCase()!==code?d.name:"")}); }).catch(function(){ cb(null); }); }'
 +'function xInfo(code,iss,cb){ j("/lxapi/xrpltoken?id="+encodeURIComponent(iss+"-"+xCur(code))).then(function(d){'
 +'    if(!d||!d.ok){ cb(null); return; }'
 // price is USD here because the table's column is USD, matching what stellar.expert returns for the
