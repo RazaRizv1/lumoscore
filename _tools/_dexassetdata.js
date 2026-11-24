@@ -3364,6 +3364,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         var _sig="p"+_hp+"|"+(_more?1:0)+"|"+_herr;
         if(_pgn.getAttribute("data-lxhsig")!==_sig){
           _pgn.setAttribute("data-lxhsig",_sig);
+          if(_hp<=0&&!_more&&!_herr){ _pgn.innerHTML=""; } else   // one page: no pager (holdpager 2026-11-24)
           _pgn.innerHTML='<button type="button" data-hp="prev"'+(_hp<=0?" disabled":"")+'>\\u2039 Prev</button>'
             +'<button type="button" data-hp="next"'+(_more?"":" disabled")+'>Next \\u203a</button>'
             +(_herr?' <span style="color:var(--text-muted);font-size:12px">Couldn\u2019t load the next page \u2014 try again.</span>':'');
