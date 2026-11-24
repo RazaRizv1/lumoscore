@@ -822,7 +822,7 @@ function lxLpWireReview(){
   var pfAddr=document.querySelector(".wallet-info .addr"); if(pfAddr){ if(pfReal) pfAddr.textContent=lxLpShort(pfReal); pfAddr.style.whiteSpace="nowrap"; }
   // Editing means returning to step 1 with the form intact — flag it so the token page repopulates
   // (a fresh entry via the sidebar or "Launch another" leaves no flag and starts blank).
-  [].slice.call(document.querySelectorAll('a[href*="launch-token"], a.edit-btn[href^="/launchpad"], a.btn-back[href^="/launchpad"]')).forEach(function(a){ if(a.__lxEd) return; a.__lxEd=true; a.addEventListener("click",function(){ try{ sessionStorage.setItem("lumos.launch.edit","1"); }catch(_){} }); });
+  [].slice.call(document.querySelectorAll('a[href*="launch-token"], a.edit-btn[href^="/launchpad"], a.btn-back[href^="/launchpad"], a.back-link[href^="/launchpad"]')).forEach(function(a){ if(a.__lxEd) return; a.__lxEd=true; a.addEventListener("click",function(){ try{ sessionStorage.setItem("lumos.launch.edit","1"); }catch(_){} }); });
   lxLpSetRow(/^Token Name/i, d.name);
   lxLpSetRow(/^Ticker/i, "$"+CODE);
   // Audit #8 hid the Project Type row on the FORM (.review-row/.rv-row/.lp-row). The review screen
