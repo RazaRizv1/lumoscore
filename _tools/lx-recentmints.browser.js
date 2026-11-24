@@ -243,11 +243,22 @@
         mounted.mob = m; box.classList.toggle('lx-rm-mob', m); paint(box, m);
       });
     }
-    // wallet links inside a row link: open the wallet, not the token
-    box.addEventListener('click', function (e) {
-      var w = e.target.closest && e.target.closest('.lx-rm-wal');
-      if (w) { e.preventDefault(); e.stopPropagation(); location.href = w.getAttribute('data-href'); }
-    }, true);
+    // EVERY CLICK IN THE PANEL WAS SWALLOWED (RAZA 2026-11-24 "the minters wallet should be linked"). The design's
+    // window.__lumosNav row navigator claims clicks on list rows at WINDOW capture and sent them all to /trade/<net>:
+    // token rows, the minter wallet and Launch Token all just reloaded the page. A box-level listener runs too late,
+    // so this one sits at window capture too and navigates itself. Ctrl/Cmd/Shift/middle clicks still open new tabs.
+    if (!window.__lxRMClick) {
+      window.__lxRMClick = 1;
+      window.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target : null; if (!t || !t.closest('.lx-rm')) return;
+        var w = t.closest('.lx-rm-wal'), a = t.closest('.lx-rm a[href]');
+        var go = w ? w.getAttribute('data-href') : (a ? a.getAttribute('href') : '');
+        if (!go) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (e.button === 1 || e.ctrlKey || e.metaKey || e.shiftKey) { window.open(go, '_blank', 'noopener'); return; }
+        location.href = go;
+      }, true);
+    }
     paint(box, mob);
     mounted = { box: box, mob: mob };
     return true;
