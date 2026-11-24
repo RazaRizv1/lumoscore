@@ -31,6 +31,41 @@ async function rpc(method, params) {
   }
   throw new Error('xrpl');
 }
+// LAUNCH PRICE (RAZA 2026-11-24 "isnt jensen up by 199.9%? so whys it saying 0"). For a token launched inside the 24h
+// window, the change is measured from its launch, as the token page does: JENSEN had ONE trade, and comparing that
+// trade with itself said 0% while the page said +199.90%. The launch price is the pool's first deposit:
+//   Stellar: issuer's first operation -> its transaction -> the liquidity_pool_deposit (sincelaunch-pairs.js).
+//   XRPL:    the AMM account's AMMCreate (amm_info -> account_tx forward), as xperf-pairs.js does.
+// Answer is in the native coin per token, like the trade prices it is compared with. 0 = none found (remembered).
+async function launchPx(net, id) {
+  const [code, iss] = split(id);
+  if (net === 'stellar') {
+    const d = await getJ(H + '/accounts/' + iss + '/operations?order=asc&limit=1');
+    const o = ((d._embedded || {}).records || [])[0]; if (!o || !o.transaction_hash) return 0;
+    const t = await getJ(H + '/transactions/' + o.transaction_hash + '/operations?limit=50');
+    for (const op of ((t._embedded || {}).records || [])) {
+      if (op.type !== 'liquidity_pool_deposit') continue;
+      let nat = 0, tok = 0;
+      for (const rv of (op.reserves_deposited || [])) { if (rv.asset === 'native') nat = +rv.amount; else if (String(rv.asset).indexOf(code + ':' + iss) === 0) tok = +rv.amount; }
+      if (nat > 0 && tok > 0) return nat / tok;
+    }
+    return 0;
+  }
+  if (net === 'xrpl') {
+    const a = await rpc('amm_info', { asset: { currency: 'XRP' }, asset2: { currency: xcur(code), issuer: iss } });
+    const acct = a && a.amm && a.amm.account; if (!acct) return 0;
+    const r = await rpc('account_tx', { account: acct, forward: true, limit: 5, ledger_index_min: -1, ledger_index_max: -1 });
+    for (const row of (r.transactions || [])) {
+      const tx = row.tx || row.tx_json || {};
+      if (tx.TransactionType !== 'AMMCreate') continue;
+      const amt = (v) => (typeof v === 'string' ? { xrp: +v / 1e6 } : { tok: +(v && v.value) });
+      const x = Object.assign({}, amt(tx.Amount), amt(tx.Amount2));
+      return x.xrp > 0 && x.tok > 0 ? x.xrp / x.tok : 0;
+    }
+    return 0;
+  }
+  return 0;
+}
 // 24h price change from trades listed NEWEST FIRST as {t, px}: the latest price against the last price from before the
 // window (or, for a token whose whole history fits in it, its first trade). No trade in the window = unchanged (0).
 function change24(list, now) {
@@ -77,7 +112,7 @@ async function stellarRow(id, xlmUsd) {
   }
   // 100 trades read and every one inside the day: there are more -- a floor ("100+"), and its volume is a floor too.
   const capped = trades.length >= 100 && n >= trades.length;
-  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last, change24: t ? change24(pl, now) : null };
+  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last, change24: t ? change24(pl, now) : null, lastPx: px || null };
 }
 
 // ---- XRPL -----------------------------------------------------------------------------------------------------------
@@ -106,7 +141,7 @@ async function xrplRow(id, origin, xrpUsd) {
     if (now - (+r.t || 0) <= DAY) { n++; vol += xrp; }
   }
   const mcap = tk && tk.ok ? (+tk.marketcap > 0 ? +tk.marketcap : (+tk.usd > 0 && +tk.circulating > 0 ? +tk.usd * +tk.circulating : null)) : null;
-  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last, change24: h && h.ok ? change24(pl, now) : null };
+  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last, change24: h && h.ok ? change24(pl, now) : null, lastPx: pl.length ? pl[0].px : null };
 }
 
 // ---- NEAR -----------------------------------------------------------------------------------------------------------
@@ -167,6 +202,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     if (net === 'stellar') px = +(await getJ(url.origin + '/lxapi/xlm')).usd || 0;
     else if (net === 'xrpl') px = +(await getJ(url.origin + '/lxapi/xrpltoken?id=XRP')).usd || 0;
   } catch (e) { px = 0; }
+  let lpChanged = false;
   const rows = await Promise.all(top.map(async (id) => {
     const m = meta[net + '|' + id];
     let r = { mcap: null, trades24: null, vol24: null, last: null };
@@ -177,8 +213,15 @@ export async function onRequestGet({ request, env, waitUntil }) {
     const k2 = net + '|' + id;
     let who = (mc[k2] && mc[k2] !== LAUNCHPAD_XRPL) ? mc[k2] : (ma[k2] || (net === 'stellar' ? m.minter : ''));
     if (who === LAUNCHPAD_XRPL) who = '';
+    // launched inside the window: measure from the launch price (see launchPx). Looked up once per token, remembered.
+    if (net !== 'near' && m.born > 1e12 && Date.now() - m.born < DAY && r.lastPx > 0) {
+      if (m.lp === undefined) { try { m.lp = await launchPx(net, id); lpChanged = true; } catch (e) { /* asked again next time */ } }
+      if (m.lp > 0) r.change24 = (r.lastPx / m.lp - 1) * 100;
+    }
+    delete r.lastPx;
     return Object.assign({ id, code, born: m.born, minter: who }, r);
   }));
+  if (lpChanged) { try { await kv.put(META, JSON.stringify(meta)); } catch (e) {} }
   // A list whose launch dates are not all known yet may be missing the newest token (it can sit late in the list):
   // never cache that, so the next call carries on filling it in (shipped 2026-11-24 without this: JENSEN was missing).
   const pending = ids.some((id) => !meta[net + '|' + id]);

@@ -168,7 +168,8 @@
   function chg(r) {
     var c = r.change24;
     if (c == null || !isFinite(c)) return '';
-    var a = Math.abs(c), t = (a >= 1000 ? Math.round(a).toLocaleString('en-US') : a >= 100 ? a.toFixed(0) : a.toFixed(a >= 10 ? 1 : 2)) + '%';
+    // two decimals below 1,000%, like the token page's change row (JENSEN read "+200%" here and "+199.90%" there)
+    var a = Math.abs(c), t = (a >= 1000 ? Math.round(a).toLocaleString('en-US') : a.toFixed(2)) + '%';
     if (a < 0.005) return '<span class="lx-rm-chg flat">0%</span>';
     return '<span class="lx-rm-chg ' + (c > 0 ? 'up' : 'down') + '">' + (c > 0 ? '+' : '−') + t + '</span>';
   }
