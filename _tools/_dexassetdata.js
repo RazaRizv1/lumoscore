@@ -4443,6 +4443,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         var mintP=NATIVE?Promise.resolve(""):Promise.race([fetch("/lxapi/minters?net=stellar&id="+encodeURIComponent(CODE+"-"+ISSUER)).then(function(r){return r.ok?r.json():null;}).then(function(d){ var m=d&&d.minter; if(!m||m===addr)return ""; return fetch(H+"/accounts/"+m).then(function(r){return r.ok?m:"";}); }).catch(function(){return "";}),new Promise(function(rs){setTimeout(function(){rs("");},2500);})]);
         return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP, mintP]).then(function(res){
           var acc=res[0], collExists=!!res[1], feePd=res[2];
+          /* MINTER SHARE ONLY ON SWAPS WORTH 1+ (RAZA 2026-11-24) */ var xv=pa.native?amt:(ra.native?freshOut:NaN); if(xv<1)res[3]="";
           var mnt=res[3]||"", feeM=mnt?+(fee*0.3).toFixed(7):0, feeC=+(fee-feeM).toFixed(7);
           /* THE FLOOR NOW MATCHES THE PROMISE. The panel advertises "0.5% slippage" and shows a minimum
                        received of best*(1-SLIP/100), but destMin was freshOut*(1-fr-0.01) -- which is wrong twice over.
