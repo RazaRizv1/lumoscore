@@ -1490,6 +1490,26 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // number in the wrong unit, which is the whole failure being fixed here.
   function perfUsd(x,xu){ return (x==null||xu==null)?null:((1+x/100)*(1+xu/100)-1)*100; }
   function perfPick(x,xu){ return (cDenom()==="xlm")?x:perfUsd(x,xu); }
+  // SINCE LAUNCH (sincelaunch 2026-11-24): see bugshots/pairs/sincelaunch-pairs.js for the why.
+  var lxLaunch=null, lxLaunchAsked=false, lxLaunchWant=false;
+  var LX_WIN={"1h":36e5,"24h":864e5,"7d":6048e5,"1m":2592e6,"3m":7776e6,"6m":15552e6};
+  function lxLaunchLoad(){
+    if(!lxLaunchWant||lxLaunchAsked||NATIVE||!ISSUER||!CODE)return; lxLaunchAsked=true;
+    j(H+"/accounts/"+ISSUER+"/operations?order=asc&limit=1").then(function(d){
+      var o=((d&&d._embedded&&d._embedded.records)||[])[0]; if(!o||!o.transaction_hash)return null;
+      return j(H+"/transactions/"+o.transaction_hash+"/operations?limit=50");
+    }).then(function(d){
+      var ops=(d&&d._embedded&&d._embedded.records)||[];
+      for(var i=0;i<ops.length;i++){ var op=ops[i]; if(op.type!=="liquidity_pool_deposit")continue;
+        var nat=0, ass=0; (op.reserves_deposited||[]).forEach(function(rv){ if(rv.asset==="native")nat=+rv.amount; else if(String(rv.asset).indexOf(CODE+":"+ISSUER)===0)ass=+rv.amount; });
+        var t=Date.parse(op.created_at); if(nat>0&&ass>0&&t>0){ lxLaunch={t:t,px:nat/ass}; try{ applyAll(); }catch(_){} } return; }
+    }).catch(function(){});
+  }
+  function lxSinceLaunch(key){
+    if(!lxLaunch||!(assetXlm>0)||cDenom()!=="xlm")return null;
+    var w=LX_WIN[key]; if(!w||lxLaunch.t<=Date.now()-w)return null;   // the window starts after launch: the normal figure applies
+    return ((assetXlm/lxLaunch.px)-1)*100;
+  }
   function applyPerf(){
     var g=q(".dxa-perf-grid,.mdxa-perf-grid"); if(!g)return;
     var TFS=["1h","24h","7d","1m","3m","6m"];
@@ -1511,8 +1531,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // pair does -- so it is answered before the per-window figures, not after. Without this the
       // dollar view would convert a flat XLM price into XLM's own move and the 24h cell beside it
       // would still say 0.00%, which is the contradiction this whole change exists to remove.
-      var v=null;
-      if(perfSilent[key])v=0;
+      var v=lxSinceLaunch(key), lxSL=(v!=null);
+      try{ if(lxSL)cell.title="Since launch"; else if(cell.title==="Since launch")cell.removeAttribute("title"); }catch(_){}
+      if(lxSL){}
+      else if(perfSilent[key])v=0;
       else if(key==="1h")v=perfPick(chg1h,xu1h);
       else if(key==="24h")v=((cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24);
       // 7d is the one window with a directly measured dollar figure, so in $ it is preferred over a
@@ -5054,6 +5076,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var h0=cNum(r[0],"close"), h1=cNum(r[1],"close");
       if(h0>0&&h1>0&&gap1h<=5400000)chg1h=((h0-h1)/h1)*100; applyAll(); }).catch(function(){});
     jAgg({res:86400000,order:"desc",limit:200}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+      if(!r.length||(+r[r.length-1].timestamp>Date.now()-15552e6&&r.length<200)){ lxLaunchWant=true; lxLaunchLoad(); }
       if(!r.length)return; var latest=cNum(r[0],"close"); if(!(latest>0))return;
       var now=Date.now(), newest=+r[0].timestamp;
       function back(days,key){ var start=now-days*86400000;
