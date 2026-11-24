@@ -71,11 +71,23 @@
       + '.lx-rm-tri i{font-style:normal;font-size:9px}'
       + '.lx-rm-tri.lx-rm-pop i{animation:lxrmPop .9s ease-out}'
       + '@keyframes lxrmPop{0%{transform:scale(1.9)}100%{transform:scale(1)}}'
+      + '.lx-rm-chg{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:14px;padding:4px 9px;border-radius:8px;white-space:nowrap}'
+      + '.lx-rm-chg.up{color:var(--green,#22c55e);background:var(--green-soft,rgba(34,197,94,.12))}'
+      + '.lx-rm-chg.down{color:var(--red,#ef4444);background:var(--red-soft,rgba(239,68,68,.12))}'
+      + '.lx-rm-chg.flat{color:' + MU + ';background:' + S2 + '}'
+      + '.lx-rm-act{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:' + MU + '}'
+      + '.lx-rm-act i{font-style:normal;font-size:9px}.lx-rm-act.buy i{color:var(--green,#22c55e)}.lx-rm-act.sell i{color:var(--red,#ef4444)}'
+      + '.lx-rm-act.lx-rm-pop i{display:inline-block;animation:lxrmPop .9s ease-out}'
+      + '.lx-rm-card .cap .lx-rm-chg{font-size:15px;padding:3px 8px;display:inline-block}'
+      + '.lx-rm-card{flex-basis:138px}'
       + '.lx-rm-empty{padding:22px 16px;text-align:center;color:' + MU + ';font-size:13px;line-height:1.5}'
       + '.lx-rm-skel{height:58px;margin:0 14px;border-top:1px solid ' + B + ';background:linear-gradient(90deg,transparent,' + S2 + ',transparent);background-size:200% 100%;animation:lxrmSk 1.4s infinite}'
       + '@keyframes lxrmSk{0%{background-position:100% 0}100%{background-position:-100% 0}}'
       // phone: a swipeable row of cards above "All Trading Pairs"
       + '.lx-rm.lx-rm-mob{margin:6px 0 18px;border-radius:14px}'
+      // The phone Trade page hides the design's own "New Mints" / "Market movers" run -- every sibling from that heading to
+      // the next one -- with .lx-mdgone, and this panel sits inside that run. v1 shipped invisible on phones because of it.
+      + 'aside.lx-rm.lx-mdgone.lx-mdgone{display:block!important}'
       + 'html.lx-rm-page .mdx-section-head a.mdx-hero-btn.primary,html.lx-rm-page .dex-section-head a.dex-hero-btn.primary{display:none!important}'
       + '.lx-rm-mob .lx-rm-h{padding:12px 12px 10px 14px}'
       + '.lx-rm-mob .lx-rm-h h3{font-size:15px}'
@@ -112,23 +124,36 @@
   }
   function isNew(r) { return r.born > 1e12 && Date.now() - r.born < 86400000; }
   function tradesTxt(r) { return r.trades24 == null ? '—' : (r.trades24 + (r.capped ? '+' : '')) + ' trade' + (r.trades24 === 1 && !r.capped ? '' : 's'); }
+  // v2 (RAZA 2026-11-24 "too congested"): ticker + one activity line on the left, the 24h price change on the right.
+  // Market cap, volume and the minter line are gone from view; the minter is in the row's tooltip.
+  function act(r, pop) {
+    if (r.trades24 == null && !r.last) return '<span class="lx-rm-act none">No trades yet</span>';
+    var b = r.last && r.last.side === 'buy', s = r.last ? (b ? 'buy' : 'sell') : 'none';
+    return '<span class="lx-rm-act ' + s + (pop ? ' lx-rm-pop' : '') + '"' + (r.last ? ' title="Latest trade: ' + (b ? 'buy' : 'sell') + ', ' + esc(new Date(r.last.t).toLocaleString()) + '"' : '') + '>'
+      + (r.last ? '<i>' + (b ? '▲' : '▼') + '</i>' : '') + esc(tradesTxt(r)) + (r.last ? ' · ' + esc(ago(r.last.t)) : '') + '</span>';
+  }
+  function chg(r) {
+    var c = r.change24;
+    if (c == null || !isFinite(c)) return '';   // no trade data: nothing (a lone dash read as a broken cell)
+    var a = Math.abs(c), t = (a >= 1000 ? Math.round(a).toLocaleString('en-US') : a >= 100 ? a.toFixed(0) : a.toFixed(a >= 10 ? 1 : 2)) + '%';
+    if (a < 0.005) return '<span class="lx-rm-chg flat">0%</span>';
+    return '<span class="lx-rm-chg ' + (c > 0 ? 'up' : 'down') + '">' + (c > 0 ? '+' : '−') + t + '</span>';
+  }
+  function tip(r) { return r.minter ? ' title="' + esc(r.code + ' · minted by ' + r.minter) + '"' : ''; }
   function rowHtml(r, pop) {
     logo(r);
-    return '<a class="lx-rm-row' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '">' + imgHtml(r)
+    return '<a class="lx-rm-row' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"' + tip(r) + '>' + imgHtml(r)
       + '<div class="lx-rm-t"><span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
-      + '<div class="lx-rm-r"><div class="lx-rm-cap">' + esc(money(r.mcap)) + '<span class="lx-rm-capl">MCap</span></div>'
-      + '<div class="lx-rm-m">' + esc(tradesTxt(r)) + ' · ' + esc(r.vol24 == null ? '—' : money(r.vol24)) + ' 24h' + '</div>' + '</div>'
-      + '<div class="lx-rm-by">' + (r.minter ? 'by <span data-href="' + esc(walletPath(r.minter)) + '" class="lx-rm-wal" title="Open minter wallet">' + esc(short(r.minter)) + '</span>' : '') + tri(r, pop) + '</div>'
+      + '<div class="lx-rm-r">' + chg(r) + '</div>'
+      + '<div class="lx-rm-by">' + act(r, pop) + '</div>'
       + '</a>';
   }
   function cardHtml(r, pop) {
     logo(r);
-    return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"><div class="top">' + imgHtml(r)
+    return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"' + tip(r) + '><div class="top">' + imgHtml(r)
       + '<span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
-      + '<div class="cap">' + esc(money(r.mcap)) + '</div>'
-      + '<div class="m">' + esc(tradesTxt(r)) + ' · ' + esc(r.vol24 == null ? '—' : money(r.vol24)) + ' 24h</div>'
-      + (r.minter ? '<div class="m">by <span class="lx-rm-wal" data-href="' + esc(walletPath(r.minter)) + '">' + esc(short(r.minter)) + '</span></div>' : '')
-      + tri(r, pop) + '</a>';
+      + '<div class="cap">' + chg(r) + '</div>'
+      + '<div class="m">' + act(r, pop) + '</div></a>';
   }
   function head(mob) {
     return '<div class="lx-rm-h"><div><h3><span class="lx-rm-live" title="Updates live"></span>Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
@@ -189,6 +214,17 @@
       DATA = d; if (mounted) paint(mounted.box, mounted.mob);
     }).catch(function () {});
   }
-  function boot() { if (!mount()) { setTimeout(boot, 700); return; } load(); setInterval(load, 30000); }
+  // The phone page can show its desktop markup for a moment before switching layouts: a panel mounted into the
+  // desktop section then sits hidden. Checked for the first 20 s; a hidden panel is taken out and mounted again.
+  function ensure() {
+    if (!mounted || mounted.box.offsetParent) return;
+    mounted.box.remove(); var s = document.querySelector('section.dex-markets.lx-rm-on'); if (s) s.classList.remove('lx-rm-on');
+    mounted = false; mount();
+  }
+  function boot() {
+    if (!mount()) { setTimeout(boot, 700); return; }
+    load(); setInterval(load, 30000);
+    var k = 0, iv = setInterval(function () { ensure(); if (++k >= 20) clearInterval(iv); }, 1000);
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -30,6 +30,13 @@ async function rpc(method, params) {
   }
   throw new Error('xrpl');
 }
+// 24h price change from trades listed NEWEST FIRST as {t, px}: the latest price against the last price from before the
+// window (or, for a token whose whole history fits in it, its first trade). No trade in the window = unchanged (0).
+function change24(list, now) {
+  const p = list.filter((x) => x.px > 0 && x.t > 0); if (!p.length || now - p[0].t > DAY) return p.length ? 0 : null;
+  let ref = p.find((x) => now - x.t > DAY); if (!ref) ref = p[p.length - 1];
+  return ref.px > 0 ? (p[0].px / ref.px - 1) * 100 : null;
+}
 const split = (id) => { const i = id.lastIndexOf('-'); return [id.slice(0, i), id.slice(i + 1)]; };
 function xcur(c) { if (c.length <= 3) return c; let h = ''; for (const ch of c) h += ch.charCodeAt(0).toString(16).toUpperCase(); return h.padEnd(40, '0'); }
 
@@ -54,12 +61,13 @@ async function stellarRow(id, xlmUsd) {
   const rec = a && a._embedded && a._embedded.records && a._embedded.records[0];
   const supply = rec ? ((+((rec.balances || {}).authorized) || 0) + (+rec.liquidity_pools_amount || 0) + (+rec.claimable_balances_amount || 0) + (+rec.contracts_amount || 0)) || (+rec.amount || 0) : 0;
   const trades = (t && t._embedded && t._embedded.records) || [];
-  const now = Date.now(); let n = 0, vol = 0, last = null, px = 0;
+  const now = Date.now(); let n = 0, vol = 0, last = null, px = 0; const pl = [];
   for (const r of trades) {
     const tokIsBase = r.base_asset_code === code && r.base_asset_issuer === iss;
     const tok = tokIsBase ? +r.base_amount : +r.counter_amount, xlm = tokIsBase ? +r.counter_amount : +r.base_amount;
     if (!px && tok > 0 && xlm > 0) px = xlm / tok;
     const ts = Date.parse(r.ledger_close_time) || 0;
+    if (tok > 0 && xlm > 0) pl.push({ t: ts, px: xlm / tok });
     // base_is_seller: the MAKER sold the base asset, so the trader (taker) BOUGHT it -- the rule the Trade-asset
     // Exchanges tab uses (_dexassetdata.js, measured on a live AQUA/XLM book). Token as base: true = buy; XLM as base: true = sell.
     const side = (tokIsBase === !!r.base_is_seller) ? 'buy' : 'sell';
@@ -68,7 +76,7 @@ async function stellarRow(id, xlmUsd) {
   }
   // 100 trades read and every one inside the day: there are more -- a floor ("100+"), and its volume is a floor too.
   const capped = trades.length >= 100 && n >= trades.length;
-  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last };
+  return { mcap: supply > 0 && px > 0 && xlmUsd > 0 ? supply * px * xlmUsd : null, trades24: t ? n : null, capped, vol24: t && xlmUsd > 0 ? vol * xlmUsd : null, last, change24: t ? change24(pl, now) : null };
 }
 
 // ---- XRPL -----------------------------------------------------------------------------------------------------------
@@ -88,14 +96,16 @@ async function xrplRow(id, origin, xrpUsd) {
     getJ(origin + '/lxapi/xrpltoken?id=' + encodeURIComponent(iss + '-' + cur)).catch(() => null),
   ]);
   const rows = (h && h.ok && h.rows) || [];
-  const now = Date.now(); let n = 0, vol = 0, last = null;
+  const now = Date.now(); let n = 0, vol = 0, last = null; const pl = [];
   for (const r of rows) {
     const buy = r.got && r.got.i === iss, xrp = (r.paid && r.paid.c === 'XRP') ? +r.paid.v : ((r.got && r.got.c === 'XRP') ? +r.got.v : 0);
+    const tokAmt = buy ? +(r.got && r.got.v) : +(r.paid && r.paid.v);
+    if (xrp > 0 && tokAmt > 0) pl.push({ t: +r.t || 0, px: xrp / tokAmt });
     if (!last) last = { side: buy ? 'buy' : 'sell', t: +r.t || 0 };
     if (now - (+r.t || 0) <= DAY) { n++; vol += xrp; }
   }
   const mcap = tk && tk.ok ? (+tk.marketcap > 0 ? +tk.marketcap : (+tk.usd > 0 && +tk.circulating > 0 ? +tk.usd * +tk.circulating : null)) : null;
-  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last };
+  return { mcap, trades24: h && h.ok ? n : null, capped: rows.length >= 100 && n >= rows.length, vol24: h && h.ok && xrpUsd > 0 ? vol * xrpUsd : null, last, change24: h && h.ok ? change24(pl, now) : null };
 }
 
 // ---- NEAR -----------------------------------------------------------------------------------------------------------
@@ -108,7 +118,7 @@ async function nearRow(contract, origin) {
   const now = Date.now(); let n = 0, vol = 0, last = null;
   for (const r of rows) { if (!last) last = { side: r.side === 'sell' ? 'sell' : 'buy', t: +r.t || 0 }; if (now - (+r.t || 0) <= DAY) { n++; vol += +r.near || 0; } }
   const nearUsd = tk && tk.ok ? +tk.nearUsd || 0 : 0;
-  return { mcap: tk && tk.ok && +tk.usd > 0 && +tk.supply > 0 ? +tk.usd * +tk.supply : null, trades24: tr && tr.ok ? n : null, vol24: tr && tr.ok && nearUsd > 0 ? vol * nearUsd : null, last };
+  return { mcap: tk && tk.ok && +tk.usd > 0 && +tk.supply > 0 ? +tk.usd * +tk.supply : null, trades24: tr && tr.ok ? n : null, vol24: tr && tr.ok && nearUsd > 0 ? vol * nearUsd : null, last, change24: tr && tr.ok ? change24(rows.map((r) => ({ t: +r.t || 0, px: +r.px || 0 })), now) : null };
 }
 
 export async function onRequestGet({ request, env, waitUntil }) {
