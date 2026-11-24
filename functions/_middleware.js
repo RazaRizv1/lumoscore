@@ -2391,7 +2391,8 @@ export async function onRequest(context){
     // nested inside .crumb. Both were found on 2026-10-26 by RAZA looking at the hub signed out.
     rw = rw.on('.summary-fixed', new Dropper())
            .on('#summaryFixed', new Dropper())
-           .on('.steps-mobile', new Dropper());
+           .on('.steps-mobile', new Dropper())
+           .on('.step-bar', new Dropper());   // phone launchpad: the emptied stepper bar (sweep 2026-11-24)
     // THE PHONE BAR'S LAUNCH TAB GOES TO THE LAUNCHPAD HUB HERE (RAZA 2026-11-17, signed out on /trade:
     // tapping Launch opened the Stellar launchpad, not the hub). _mobnavlaunch.js pins that tab to
     // /launchpad/stellar on every Stellar page -- right on a network page (RAZA 2026-11-16: "make stellar
