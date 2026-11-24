@@ -12,14 +12,14 @@
   var NET = (/^\/trade\/(stellar|xrpl|near)\/?$/.exec(location.pathname) || [])[1];
   if (!NET) return;
   var CUR = { stellar: 'XLM', xrpl: 'XRP', near: 'NEAR' }[NET];
-  var LAST = {}, LOGO = {}, DATA = null, mounted = false;
+  var LAST = {}, LOGO = {}, PEND = {}, DATA = null, mounted = false;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function money(n) {
     if (n == null || !isFinite(n)) return '—'; n = +n;
     if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
     if (n >= 1) return '$' + n.toFixed(2); if (n > 0) return '$' + n.toPrecision(2); return '$0';
   }
-  function ago(t) { var s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 2592000) return Math.floor(s / 86400) + 'd'; return Math.floor(s / 2592000) + 'mo'; }
+  function ago(t) { var s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 2592000) return Math.floor(s / 86400) + 'd'; if (s < 31536000) return Math.floor(s / 2592000) + 'mo'; return Math.floor(s / 31536000) + 'y'; }
   function short(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 4) + '…' + a.slice(-4) : a; }
   function pagePath(id) { return '/trade/' + NET + '/' + encodeURIComponent(id); }
   function walletPath(a) { return '/account/' + NET + '/' + encodeURIComponent(a); }
@@ -127,70 +127,81 @@
       + '.lx-rm-mob .lx-rm-h{padding:6px 8px 6px 14px}'
       + '.lx-rm-mob .lx-rm-h h3{font-size:12.5px}'
       + '.lx-rm-mob .lx-rm-go{padding:7px 11px;font-size:13px}'
-      + '.lx-rm-strip{padding:12px}';
+      + '.lx-rm-strip{padding:12px}'
+      // v4: the latest-trade arrow sits beside the ticker; the second line is "Minted 2h ago · by G…"
+      + '.lx-rm-t .lx-rm-tri,.lx-rm-card .top .lx-rm-tri{margin:0}.lx-rm-t .lx-rm-tri i,.lx-rm-card .top .lx-rm-tri i{font-size:10px}'
+      + '.lx-rm-act .lx-rm-wal{color:inherit}.lx-rm-card .m .lx-rm-wal{color:inherit}';
     document.head.appendChild(s);
   }
+  // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
+  // once its logo has actually LOADED in this browser; LOGO[id]: undefined = still checking, '' = none, url = shown.
+  // The feed sends up to 16 candidates so the newest 10 with a logo can still fill the list.
   function logo(r) {
-    if (LOGO[r.id] !== undefined) return;
-    LOGO[r.id] = '';
-    var done = function (u) { LOGO[r.id] = u || ''; if (u) document.querySelectorAll('[data-lxrm-logo="' + CSS.escape(r.id) + '"]').forEach(function (el) { el.outerHTML = imgHtml(r); }); };
-    if (NET === 'stellar') fetch('/lxapi/assetlogo?v=2&asset=' + encodeURIComponent(r.id)).then(function (x) { return x.ok ? x.json() : null; }).then(function (d) { done(d && d.image); }).catch(function () {});
+    if (LOGO[r.id] !== undefined || PEND[r.id]) return;
+    PEND[r.id] = 1;
+    var done = function (u) {
+      if (!u) { LOGO[r.id] = ''; delete PEND[r.id]; repaint(); return; }
+      var im = new Image();
+      im.onload = function () { LOGO[r.id] = im.naturalWidth > 1 ? u : ''; delete PEND[r.id]; repaint(); };
+      im.onerror = function () { LOGO[r.id] = ''; delete PEND[r.id]; repaint(); };
+      im.src = u;
+    };
+    var j = function (x) { return x.ok ? x.json() : null; }, no = function () { done(''); };
+    if (NET === 'stellar') fetch('/lxapi/assetlogo?v=2&asset=' + encodeURIComponent(r.id)).then(j).then(function (d) { done(d && d.image); }).catch(no);
     else if (NET === 'xrpl') { var i = r.id.lastIndexOf('-'); done('/lxapi/xrplthumb?iss=' + encodeURIComponent(r.id.slice(i + 1)) + '&cur=' + encodeURIComponent(xcur(r.id.slice(0, i))) + '&w=64'); }
-    else fetch('/lxapi/neartoken?i=' + encodeURIComponent(r.id)).then(function (x) { return x.ok ? x.json() : null; }).then(function (d) { done(d && d.ok && d.logo); }).catch(function () {});
+    else fetch('/lxapi/neartoken?i=' + encodeURIComponent(r.id)).then(j).then(function (d) { done(d && d.ok && d.logo); }).catch(no);
   }
-  function imgHtml(r) {
-    var u = LOGO[r.id];
-    if (u) return '<img class="lx-rm-logo" alt="" src="' + esc(u) + '" onerror="this.style.visibility=\'hidden\'">';
-    return '<span class="lx-rm-av" data-lxrm-logo="' + esc(r.id) + '">' + esc(String(r.code).slice(0, 2)) + '</span>';
-  }
+  var rpT = 0;
+  function repaint() { clearTimeout(rpT); rpT = setTimeout(function () { if (mounted) paint(mounted.box, mounted.mob); }, 60); }
+  function imgHtml(r) { return '<img class="lx-rm-logo" alt="" src="' + esc(LOGO[r.id]) + '">'; }
+  function isNew(r) { return r.born > 1e12 && Date.now() - r.born < 86400000; }
+  // v4 (RAZA 2026-11-24): "Minted 2h ago" + "by <wallet>" instead of the trade count. The latest trade stays as the small
+  // live arrow beside the ticker (green buy / red sell, flashes on a new one).
   function tri(r, pop) {
     if (!r.last) return '';
     var b = r.last.side === 'buy';
-    return '<span class="lx-rm-tri ' + (b ? 'buy' : 'sell') + (pop ? ' lx-rm-pop' : '') + '" title="Latest trade: ' + (b ? 'buy' : 'sell') + ', ' + esc(new Date(r.last.t).toLocaleString()) + '"><i>' + (b ? '▲' : '▼') + '</i>' + (b ? 'Buy' : 'Sell') + ' ' + esc(ago(r.last.t)) + '</span>';
+    return '<span class="lx-rm-tri ' + (b ? 'buy' : 'sell') + (pop ? ' lx-rm-pop' : '') + '" title="Latest trade: ' + (b ? 'buy' : 'sell') + ' ' + esc(ago(r.last.t)) + (ago(r.last.t) === 'now' ? '' : ' ago') + '"><i>' + (b ? '▲' : '▼') + '</i></span>';
   }
-  function isNew(r) { return r.born > 1e12 && Date.now() - r.born < 86400000; }
-  function tradesTxt(r) { return r.trades24 == null ? '—' : (r.trades24 + (r.capped ? '+' : '')) + ' trade' + (r.trades24 === 1 && !r.capped ? '' : 's'); }
-  // v2 (RAZA 2026-11-24 "too congested"): ticker + one activity line on the left, the 24h price change on the right.
-  // Market cap, volume and the minter line are gone from view; the minter is in the row's tooltip.
-  function act(r, pop) {
-    if (r.trades24 == null && !r.last) return '<span class="lx-rm-act none">No trades yet</span>';
-    var b = r.last && r.last.side === 'buy', s = r.last ? (b ? 'buy' : 'sell') : 'none';
-    return '<span class="lx-rm-act ' + s + (pop ? ' lx-rm-pop' : '') + '"' + (r.last ? ' title="Latest trade: ' + (b ? 'buy' : 'sell') + ', ' + esc(new Date(r.last.t).toLocaleString()) + '"' : '') + '>'
-      + (r.last ? '<i>' + (b ? '▲' : '▼') + '</i>' : '') + esc(tradesTxt(r)) + (r.last ? ' · ' + esc(ago(r.last.t)) : '') + '</span>';
-  }
+  function minted(r) { if (!(r.born > 1e12)) return ''; var a = ago(r.born); return 'Minted ' + (a === 'now' ? 'just now' : a + ' ago'); }
+  function byHtml(r) { return r.minter ? 'by <span class="lx-rm-wal" data-href="' + esc(walletPath(r.minter)) + '" title="Open the minter\'s wallet">' + esc(short(r.minter)) + '</span>' : ''; }
+  function meta2(r) { var m = minted(r), b = byHtml(r); return '<span class="lx-rm-act">' + esc(m) + (m && b ? ' · ' : '') + b + '</span>'; }
   function chg(r) {
     var c = r.change24;
-    if (c == null || !isFinite(c)) return '';   // no trade data: nothing (a lone dash read as a broken cell)
+    if (c == null || !isFinite(c)) return '';
     var a = Math.abs(c), t = (a >= 1000 ? Math.round(a).toLocaleString('en-US') : a >= 100 ? a.toFixed(0) : a.toFixed(a >= 10 ? 1 : 2)) + '%';
     if (a < 0.005) return '<span class="lx-rm-chg flat">0%</span>';
     return '<span class="lx-rm-chg ' + (c > 0 ? 'up' : 'down') + '">' + (c > 0 ? '+' : '−') + t + '</span>';
   }
-  function tip(r) { return r.minter ? ' title="' + esc(r.code + ' · minted by ' + r.minter) + '"' : ''; }
   function rowHtml(r, pop) {
-    logo(r);
-    return '<a class="lx-rm-row' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"' + tip(r) + '>' + imgHtml(r)
-      + '<div class="lx-rm-t"><span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
+    return '<a class="lx-rm-row' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '">' + imgHtml(r)
+      + '<div class="lx-rm-t"><span class="c">' + esc(r.code) + '</span>' + tri(r, pop) + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
       + '<div class="lx-rm-r">' + chg(r) + '</div>'
-      + '<div class="lx-rm-by">' + act(r, pop) + '</div>'
+      + '<div class="lx-rm-by">' + meta2(r) + '</div>'
       + '</a>';
   }
   function cardHtml(r, pop) {
-    logo(r);
-    return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"' + tip(r) + '><div class="top">' + imgHtml(r)
-      + '<span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
+    var m = minted(r), b = byHtml(r);
+    return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"><div class="top">' + imgHtml(r)
+      + '<span class="c">' + esc(r.code) + '</span>' + tri(r, pop) + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
       + '<div class="cap">' + chg(r) + '</div>'
-      + '<div class="m">' + act(r, pop) + '</div></a>';
+      + (m ? '<div class="m">' + esc(m) + '</div>' : '') + (b ? '<div class="m">' + b + '</div>' : '') + '</a>';
   }
   function head(mob) {
     return '<div class="lx-rm-h"><div><h3><span class="lx-rm-live" title="Updates live"></span>Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
       + '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a></div>';
   }
   function paint(box, mob) {
-    var rows = (DATA && DATA.rows) || [];
-    var body = !DATA ? (mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>')
+    var all = (DATA && DATA.rows) || [];
+    all.forEach(logo);
+    var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 10);
+    var checking = all.some(function (r) { return LOGO[r.id] === undefined; });
+    var SK = mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 152px;height:120px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>';
+    // hold the skeleton until the logo checks are in, so rows do not pop in one by one on first load
+    var body = (!DATA || (checking && !box.__lxrmDone)) ? SK
       : (!rows.length ? '<div class="lx-rm-empty">No token has been launched on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + ' yet. Be the first.</div>'
         : (mob ? '<div class="lx-rm-strip">' + rows.map(function (r) { var p = changed(r); return cardHtml(r, p); }).join('') + '</div>'
           : '<div class="lx-rm-list">' + rows.map(function (r) { var p = changed(r); return rowHtml(r, p); }).join('') + '</div>'));
+    if (DATA && !checking) box.__lxrmDone = 1;
     var keep = mob ? (box.querySelector('.lx-rm-strip') || {}).scrollLeft : 0;
     box.innerHTML = head(mob) + body;
     if (mob && keep) { var st = box.querySelector('.lx-rm-strip'); if (st) st.scrollLeft = keep; }

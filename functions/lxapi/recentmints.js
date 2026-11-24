@@ -18,6 +18,7 @@ const H = 'https://horizon.stellar.org';
 const XR = ['https://xrplcluster.com/', 'https://s1.ripple.com:51234/'];
 const META = 'rm:meta';   // { "<net>|<id>": { born, minter } }
 const DAY = 86400000;
+const HIDE = /^LUMOSECTEST-/;   // our own test mint (RAZA 2026-11-24: "lets not show ... lumosectest")
 const LAUNCHPAD_XRPL = 'rLgbG2dUJBvC3uifB8zcCRWUSVXFcSZ2DJ';   // funds every XRPL Launchpad issuer: never "the minter"
 
 function json(body, secs) {
@@ -158,7 +159,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   let mc = {}, ma = {};
   try { mc = (await kv.get('minters:chain', 'json')) || {}; ma = (await kv.get('minters:admin', 'json')) || {}; } catch (e) {}
-  const top = ids.filter((id) => meta[net + '|' + id] && !meta[net + '|' + id].none).sort((a, b) => (meta[net + '|' + b].born || 0) - (meta[net + '|' + a].born || 0)).slice(0, 10);
+  // RAZA 2026-11-24: the panel hides tokens without a logo, so it gets up to 16 candidates and shows the newest 10 that
+  // have one (the logo test is the browser's: it is the one that actually loads the image). Test mints never show.
+  const top = ids.filter((id) => meta[net + '|' + id] && !meta[net + '|' + id].none && !HIDE.test(id)).sort((a, b) => (meta[net + '|' + b].born || 0) - (meta[net + '|' + a].born || 0)).slice(0, 16);
   let px = 0;
   try {
     if (net === 'stellar') px = +(await getJ(url.origin + '/lxapi/xlm')).usd || 0;
