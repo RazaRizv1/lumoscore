@@ -17,6 +17,7 @@
 /bridge/stellar                           /lumoscore-bridge  200
 /bridge                                   /lumoscore-bridge  200
 /wallet                                   /lumoscore-wallet  200
+/earnings                                 /lumoscore-wallet  200
 /rewards/stellar                          /lumoscore-rewards-dark  200
 /rewards                                  /lumoscore-rewards-dark  200
 /lumos/stellar                            /lumoscore-lumos-token  200

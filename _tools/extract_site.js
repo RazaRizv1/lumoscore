@@ -505,6 +505,7 @@ const ROUTES = [
   ['/bridge/stellar',                  'lumoscore-bridge.html'],
   ['/bridge',                          'lumoscore-bridge.html', 'hub'],
   ['/wallet',                          'lumoscore-wallet.html'],
+  ['/earnings',                        'lumoscore-wallet.html'],   // My Earnings (minters only): lx-earnings.js replaces the content
   ['/rewards/stellar',                 'lumoscore-rewards-dark.html'],   // only variant that exists
   ['/rewards',                         'lumoscore-rewards-dark.html', 'hub'],
   ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
@@ -689,7 +690,7 @@ function pad(s){ return s + ' '.repeat(Math.max(1, 42 - s.length)); }
 // public, and ranking for "launch a token on Stellar" is the entire point of it.
 const SITEMAP_SKIP = new Set([
   '/signin', '/launchpad/review', '/launchpad/confirm',
-  '/dashboard', '/wallet',
+  '/dashboard', '/wallet', '/earnings',
 ]);
 
 // RETIRED, INDEXED, AND WITH NOTHING TO REDIRECT TO. From the site:lumoscore.com results RAZA sent on
@@ -2713,7 +2714,9 @@ export async function onRequest(context){
   // ?v= IS THE VERSION: /assets/ is served immutable for a year, so a changed file needs a new number here.
   head.push('<script id="lx-xsearch" src="/assets/js/lx-xsearch.js?v=4"></scr' + 'ipt>');
   // MY EARNINGS on Trade (RAZA 2026-11-24): _tools/lx-earnings.browser.js, emitted as /assets/js/lx-earnings.js.
-  head.push('<script id="lx-earnings" src="/assets/js/lx-earnings.js?v=4" defer></scr' + 'ipt>');   // v2: redesigned panel
+  head.push('<script id="lx-earnings" src="/assets/js/lx-earnings.js?v=5" defer></scr' + 'ipt>');
+  // MY EARNINGS PAGE: on /earnings the wallet content stays hidden from the first paint (lx-earnings.js replaces it).
+  head.push('<script id="lx-earnpage">if(location.pathname==="/earnings"||location.pathname==="/earnings/")document.documentElement.classList.add("lx-earn-page")</scr' + 'ipt><style id="lx-earnpage-css">html.lx-earn-page main.page>*:not(.lx-earnv),html.lx-earn-page section.lx-faq{display:none!important}</style>');   // v2: redesigned panel
   // RECENT MINTS on the Trade main page (RAZA 2026-11-24): _tools/lx-recentmints.browser.js -> /assets/js/lx-recentmints.js.
   head.push('<script id="lx-recentmints" src="/assets/js/lx-recentmints.js?v=11" defer></scr' + 'ipt>');
   head.push('<script id="lx-kbdblur">(function(){if(window.__lxKbd)return;window.__lxKbd=1;function off(){var a=document.activeElement;if(a&&a!==document.body&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable)){try{a.blur();}catch(e){}}}document.addEventListener("visibilitychange",function(){if(document.hidden)off();});window.addEventListener("pagehide",off);})();</scr' + 'ipt>');
