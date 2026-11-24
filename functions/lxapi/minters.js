@@ -28,6 +28,19 @@ function json(body, status, secs) {
     'cache-control': secs ? 'public, max-age=' + secs : 'no-store', 'access-control-allow-origin': '*' } });
 }
 async function getMap(kv, k) { try { return (await kv.get(k, 'json')) || {}; } catch (e) { return {}; } }
+// ONE SPELLING PER XRPL TOKEN (2026-11-24). The ledger carries a code longer than 3 characters as 40 hex digits, and
+// that is what the XRPL trade pages ask with ("4E50454E4755...-r4TH..."), while admin, the toml and mintmeta:xrpl
+// write the plain word ("NPENGU-r4TH..."). Both spellings fold to the plain word, so a payout wallet entered in admin
+// is found by the trade.
+function normId(net, id) {
+  if (net !== 'xrpl') return id;
+  const i = id.lastIndexOf('-'); if (i < 1) return id;
+  const code = id.slice(0, i);
+  if (!/^[0-9A-Fa-f]{40}$/.test(code)) return id;
+  let s = '';
+  for (let k = 0; k < 40; k += 2) { const c = parseInt(code.slice(k, k + 2), 16); if (c === 0) break; if (c < 32 || c > 126) return id; s += String.fromCharCode(c); }
+  return s.length > 3 ? s + id.slice(i) : id;
+}
 
 async function stellarMinter(kv, id) {
   let rec = null;
@@ -77,7 +90,7 @@ export async function onRequestGet({ request, env }) {
   if (!kv) return json({ ok: false, error: 'no kv' }, 500);
   const u = new URL(request.url);
   if (u.searchParams.get('all')) return json({ ok: true, admin: await getMap(kv, ADMIN) }, 200);
-  const net = u.searchParams.get('net') || '', id = String(u.searchParams.get('id') || '').trim();
+  const net = u.searchParams.get('net') || '', id = normId(net, String(u.searchParams.get('id') || '').trim());
   if (!NETS[net] || !id || id.length > 120) return json({ ok: false, error: 'bad request' }, 400);
   const key = net + '|' + id;
   const adm = await getMap(kv, ADMIN);
@@ -167,7 +180,7 @@ export async function onRequestPost({ request, env }) {
   }
   const bad = await requireAdmin(request);
   if (bad) return bad;
-  const net = String(b.net || ''), id = String(b.id || '').trim();
+  const net = String(b.net || ''), id = normId(net, String(b.id || '').trim());
   if (!NETS[net] || !id || id.length > 120) return json({ ok: false, error: 'Pick a network and give the token.' }, 400);
   const map = await getMap(kv, ADMIN), key = net + '|' + id;
   if (b.op === 'clear') { delete map[key]; await kv.put(ADMIN, JSON.stringify(map)); await audit(env, request, 'minter.clear', key, {}); return json({ ok: true }); }
