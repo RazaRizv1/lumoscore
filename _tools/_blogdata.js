@@ -147,7 +147,7 @@ function fillIndex(posts){
     return "<a class='lx-bp-card' href='/blog/"+esc(p.slug)+"'>"
       +"<div class='lx-bp-cover' data-cov='"+esc(p.slug)+"'></div>"
       +"<div class='lx-bp-title'>"+esc(p.title)+"</div>"
-      +"<div class='lx-bp-when'>"+esc(when(p.publishedAt||p.createdAt))+"</div></a>";
+      +"<div class='lx-bp-when'>"+esc(when(p.publishedAt||p.createdAt))+(p.readMins>0?"<span class='lx-bp-dot'></span><span class='lx-bp-read'>"+Math.round(p.readMins)+" min read</span>":"")+"</div></a>";
   }).join("");
   posts.forEach(function(p){ coverInto(q(".lx-bp-cover[data-cov='"+p.slug+"']"),p,true); });
 }
