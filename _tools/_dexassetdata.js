@@ -2403,7 +2403,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
   function loadOrderbook(){
     if(NATIVE)return;
     var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=200";
-    j(url).then(function(d){ window.__lxDXAob=d; renderOrderbook(); }).catch(function(){});
+    j(url).then(function(d){ window.__lxDXAob=d; renderOrderbook(); }).catch(function(){ if(!window.__lxDXAob){ window.__lxDXAob={asks:[],bids:[],_lxFail:1}; try{ renderOrderbook(); }catch(_){} } });
   }
   function renderOrderbook(){
     var d=window.__lxDXAob; if(!d)return;
@@ -2420,7 +2420,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     if(!asksEl||!bidsEl)return;
     if(asksEl.__lxobd===d && asksEl.classList.contains("lxda"))return; asksEl.__lxobd=d;   // same book already rendered -> skip
     try{window.__lxDXAbook=d;}catch(_){} var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
-    if(!asks.length&&!bids.length)return;
+    if(!asks.length&&!bids.length){ var _oh=q(".dxa-ob-head")||q(".mdxa-ob-head"); if(_oh){ var _ohs=_oh.querySelectorAll("span"); if(_ohs[0])_ohs[0].textContent="Price (XLM)"; if(_ohs[1])_ohs[1].textContent="Amount ("+CODE+")"; if(_ohs[2])_ohs[2].textContent="Depth (XLM)"; } asksEl.innerHTML='<div class="lx-ob-empty">'+(d._lxFail?"Couldn’t load the order book right now.":("No open orders for "+CODE+" yet."))+'</div>'; bidsEl.innerHTML=""; var _osp=q(".dxa-ob-spread")||q(".mdxa-ob-spread"); if(_osp){ var _om=_osp.querySelectorAll(".mono"); if(_om[0])_om[0].textContent="—"; if(_om[1])_om[1].textContent=""; } asksEl.classList.add("lxda"); bidsEl.classList.add("lxda"); return; } /* RAZA 2026-11-25: an empty book is shown as empty, never as the design sample */
     // header labels: Price (XLM) / Amount (CODE) / Depth
     var head=q(".dxa-ob-head")||q(".mdxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
     function fmtN(n){ n=+n||0; return n.toLocaleString("en-US",{maximumFractionDigits:2}); }
@@ -2440,7 +2440,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     bidsEl.innerHTML=bList.map(function(r){ var w=(r.sum/maxB*100).toFixed(1);
       return '<div class="dxa-ob-row mdxa-ob-row bid"><span class="px">'+r.px.toFixed(decs(r.px))+'</span><span class="am">'+fmtN(r.am)+'</span><span class="sm">'+fmtN(r.sum)+'</span><span class="bar" style="width:'+w+'%"></span></div>'; }).join("");
     // spread
-    var sp=q(".dxa-ob-spread")||q(".mdxa-ob-spread"); if(sp&&aList.length&&bList.length){ var spread=aList[0].px-bList[0].px, mid=(aList[0].px+bList[0].px)/2; var mons=sp.querySelectorAll(".mono"); if(mons[0])mons[0].textContent=(spread>0?spread.toFixed(Math.max(4,decs(mid))):"0")+" XLM"; if(mons[1])mons[1].textContent="("+(mid>0?(spread/mid*100).toFixed(2):"0")+"%)"; }
+    var sp=q(".dxa-ob-spread")||q(".mdxa-ob-spread"); if(sp&&!(aList.length&&bList.length)){ var _om1=sp.querySelectorAll(".mono"); if(_om1[0])_om1[0].textContent="—"; if(_om1[1])_om1[1].textContent=""; } if(sp&&aList.length>0&&bList.length>0){ var spread=aList[0].px-bList[0].px, mid=(aList[0].px+bList[0].px)/2; var mons=sp.querySelectorAll(".mono"); if(mons[0])mons[0].textContent=(spread>0?spread.toFixed(Math.max(4,decs(mid))):"0")+" XLM"; if(mons[1])mons[1].textContent="("+(mid>0?(spread/mid*100).toFixed(2):"0")+"%)"; }
     asksEl.classList.add("lxda"); bidsEl.classList.add("lxda");
     pinAsks(asksEl);
   }
