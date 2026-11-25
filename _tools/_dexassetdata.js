@@ -2496,7 +2496,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
   // "No trades from this wallet in the last 200 trades" was true and useless.
   //
   // /accounts/<addr>/trades is the account's own history and has no such window. One request, cached for the page.
-  var MY_ROWS=null, MY_BUSY=false;
+  var MY_ROWS=null, MY_BUSY=false, MY_PART=false; function myFromMarket(){ var me=lxAddr(); return (window.__lxDXAtrades||[]).filter(function(r){ return !!me && (r.b===me||r.c===me); }); } function myMerge(a,b){ var seen={}, out=[]; a.concat(b).forEach(function(r){ var k=r.op+"|"+r.amount+"|"+r.xlm; if(seen[k])return; seen[k]=1; out.push(r); }); return out.sort(function(x,y){ return y.ts-x.ts; }); }
   function myTradeSide(t,which){
     // Is our page's asset this leg? Native pages compare by type, issued ones by code AND issuer -- a ticker is not an
     // identity, and USDC alone matches several issuers.
@@ -2522,9 +2522,9 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     MY_BUSY=true; try{ renderExchanges(); }catch(_){}
     j(H+"/accounts/"+addr+"/trades?order=desc&limit=200").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
-      MY_ROWS=recs.filter(function(t){ return myTradeSide(t,"base")||myTradeSide(t,"counter"); }).map(mapMyTrade);
+      MY_PART=recs.length>=200; MY_ROWS=myMerge(recs.filter(function(t){ return myTradeSide(t,"base")||myTradeSide(t,"counter"); }).map(mapMyTrade), myFromMarket());
       MY_BUSY=false; try{ renderExchanges(); }catch(_){}
-    }).catch(function(){ MY_BUSY=false; MY_ROWS=MY_ROWS||[]; try{ renderExchanges(); }catch(_){} });
+    }).catch(function(){ MY_BUSY=false; MY_PART=true; MY_ROWS=myMerge(MY_ROWS||[], myFromMarket()); try{ renderExchanges(); }catch(_){} });
   }
   var EX_PAGE=1, EX_PER_PAGE=50;
   // #20/#22: this is one narrow cell in a dense table and every row of it repeated the same word. "ago"
@@ -2694,7 +2694,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var emptyTxt = MY_TRADES
       ? (!lxAddr() ? "Connect a wallet to see your own trades in this asset."
          : MY_BUSY ? "Looking up your trades\\u2026"
-                   : "No trades from this wallet in this asset.")
+                   : (MY_PART ? ("No trades from this wallet in the last "+num(EX_SCANNED)+" market trades"+exSpan()+".") : "No trades from this wallet in this asset."))
       : TRADE_FILTER>0
       ? (_busy ? ("Looking further back for trades \\u2265 "+_sz+" \\u2026")
                : ("No trades \\u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades"+exSpan()+"."))
@@ -2711,7 +2711,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
       // MY TRADES SAYS WHOSE TRADES, AND THAT IT IS STILL LOOKING (bug S35, 2026-11-19): "Showing 0 recent trades" sat there
       // for the whole lookup and read as "you have none".
-      var _what = MY_TRADES ? " trades from this wallet" : " recent trades";
+      var _what = MY_TRADES ? (MY_PART ? " recent trades from this wallet" : " trades from this wallet") : " recent trades";
       var _it = (MY_TRADES&&MY_BUSY&&!all.length) ? ("Looking up your trades"+String.fromCharCode(8230))
         : all.length
         ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+_what+ft)
