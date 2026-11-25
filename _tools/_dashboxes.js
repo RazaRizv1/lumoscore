@@ -201,11 +201,13 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // differently from the page around them.
   + 'function xu(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");'
   + 'if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){} return 0; }'
+  // Wait for the rate (RAZA 2026-11-26): a first visit has none cached until the page fetches it ~3 s in,
+  // and the XLM-priced boxes below used to give up and print a dash. Every 0.5 s, up to 20 s.
+  + 'function xw(cb){var n=0;(function t(){var r=xu();if(r>0||n++>=40)cb(r);else setTimeout(t,500);})();}'
   // ---- Pools: one cached call carries all three figures.
   + 'j("/lxapi/poolstats").then(function(d){'
-  + 'var r=xu();'
   + 'set("ppool",num(d.pools));'
-  + 'set("ptvl", (d.tvlXlm>0&&r>0)?usd(d.tvlXlm*r):"\\u2014");'
+  + 'xw(function(r){set("ptvl", (d.tvlXlm>0&&r>0)?usd(d.tvlXlm*r):"\\u2014");});'
   + 'set("pvol", d.vol24Usd!=null?usd(d.vol24Usd):"\\u2014");'
   + '}).catch(function(){ ["ppool","ptvl","pvol"].forEach(function(k){ set(k,"\\u2014"); }); });'
   // ---- Trade: the curated list priced in batches of 16, the same size and endpoint the Trade page uses.
@@ -216,10 +218,10 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   + 'Promise.all(jobs.map(function(g){'
   + 'return j("/lxapi/dexassets?a="+encodeURIComponent(g.join(","))).catch(function(){return null;});'
   + '})).then(function(rs){'
-  + 'var r=xu(), volX=0, seen=0;'
+  + 'var volX=0, seen=0;'
   + 'rs.forEach(function(d){ if(!d||!d.a)return;'
   + 'for(var k in d.a){ var v=d.a[k]; if(v&&v.vol!=null){ volX+=+v.vol||0; seen++; } } });'
-  + 'set("tvol", (seen&&r>0)?usd(volX*r):"\\u2014");'
+  + 'xw(function(r){set("tvol", (seen&&r>0)?usd(volX*r):"\\u2014");});'
   + '}).catch(function(){ set("tvol","\\u2014"); });'
   // Liquidity across the curated list. The ranked pool rows are already cached and already sorted by
   // TVL, and Stellar's liquidity is heavily concentrated -- the first pages hold almost all of it -- so
@@ -283,7 +285,7 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   //   THREE of them (no-tokens, 6s-timeout, fetch-rejected) and leaving any behind makes the figure depend on
   //   which failure happened ([[one-formatter-two-cells]]).
   + (LZ_LIVE
-    ? 'set("cnet","16"); set("cvia","CCTP · LayerZero · NEAR Intents · Axelar");'
+    ? 'set("cnet","52"); set("cvia","CCTP · LayerZero · NEAR Intents · Axelar");'
       + 'fetch("/lxapi/oneclick?op=tokens").then(function(r){ return r.ok?r.json():null; }).then(function(d){'
       + ' var C={eth:1,arb:1,base:1,pol:1,op:1,avax:1,bera:1,monad:1,plasma:1}, seen={}, n=0;'
       + ' ((d&&d.tokens)||[]).forEach(function(t){ if(!t||!C[t.blockchain]||/DEPRECATED/i.test(t.symbol||""))return;'
