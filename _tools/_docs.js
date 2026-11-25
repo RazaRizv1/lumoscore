@@ -19,7 +19,7 @@ const PAGES = [
   ['introduction',     'Introduction',        'Start here',
     'What LumosCore is, what runs on it today, and how the non-custodial model works.'],
   ['connect-a-wallet', 'Connect a wallet',    'Start here',
-    'The five supported Stellar wallets, how connecting works, and what the site can and cannot do.'],
+    'The supported Stellar wallets, how connecting works, and what the site can and cannot do.'],
   ['fees',             'Fees',                'Start here',
     'What LumosCore charges, the LUMOS discount tier, and the costs that are the network’s.'],
 
@@ -30,7 +30,7 @@ const PAGES = [
   ['liquidity-pools',  'Liquidity pools',     'Using LumosCore',
     'Adding and withdrawing liquidity, creating a pool, and the risks of providing it.'],
   ['cross-chain',      'Cross-chain',         'Using LumosCore',
-    'Moving USDC between Stellar and eight networks over Circle’s CCTP.'],
+    'Moving assets from Stellar to 52 networks over Circle CCTP, LayerZero, NEAR Intents and Axelar.'],
   ['wallet',           'Wallet',              'Using LumosCore',
     'Balances, activity, sending and receiving — without giving up custody.'],
   ['trustlines',       'Trustlines',          'Using LumosCore',
@@ -56,7 +56,7 @@ const PAGES = [
 ];
 
 const TITLE_SUFFIX = ' | LumosCore Docs';
-const UPDATED = 'Last updated 29 August 2026';
+const UPDATED = 'Last updated 25 November 2026';
 
 // ---- shared shell helpers (same contracts as _whitepaper.js) --------------------------------------
 function replaceMain(html, inner) {

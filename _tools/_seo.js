@@ -201,7 +201,7 @@ const PAGES = {
     // and a truncated title loses the brand, not the wallet names. "how to connect a stellar wallet"
     // is also the way the question is actually typed.
     title: 'How to Connect a Stellar Wallet | ' + BRAND + ' Docs',
-    desc: 'The five supported Stellar wallets, how connecting works, and exactly what LumosCore can and cannot do once a wallet is connected to it.',
+    desc: 'The supported Stellar wallets, how connecting works, and exactly what LumosCore can and cannot do once a wallet is connected to it.',
   },
   'docs-fees': {
     title: 'Trading Fees on Stellar — 0.2% or 0.1% | ' + BRAND + ' Docs',
@@ -226,7 +226,7 @@ const PAGES = {
   // model, so as a blanket claim about all three it would be false.
   'docs-cross-chain': {
     title: 'Cross-Chain Transfers from Stellar | ' + BRAND + ' Docs',
-    desc: 'Moving assets between Stellar and other networks using Circle CCTP, LayerZero and NEAR Intents — three routes, each with its own supported chains.',
+    desc: 'Moving assets from Stellar to 52 networks using Circle CCTP, LayerZero, NEAR Intents and Axelar — four routes, each with its own chains, fees and timing.',
   },
   'docs-wallet': {
     title: 'Stellar Wallet — Balances, Send and Receive | ' + BRAND + ' Docs',

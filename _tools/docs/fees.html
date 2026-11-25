@@ -21,7 +21,7 @@
       <tr>
         <td><a href="/docs/cross-chain">Cross-chain</a></td>
         <td class="dc-num">0.2% / 0.1%</td>
-        <td>Of the amount transferred, on the same tier. Circle charges nothing for CCTP itself.</td>
+        <td>Of the amount transferred, on the same tier. The route's own cost is separate — see Cross-chain.</td>
       </tr>
       <tr>
         <td><a href="/docs/liquidity-pools">Liquidity pools</a></td>
@@ -71,9 +71,10 @@
     instead do not incur it.</li>
 </ul>
 
-<p>On a cross-chain transfer you also pay the destination network's own fee, in that network's gas
-  token, when the funds are claimed. On Ethereum mainnet that can exceed everything else on this
-  page — see <a href="/docs/cross-chain">Cross-chain</a>.</p>
+<p>A cross-chain transfer also pays its route: nothing for Circle CCTP, a delivery fee in XLM for
+  LayerZero and Axelar, and an all-in rate for NEAR Intents. On CCTP you then claim on the destination
+  and pay that network's gas, which on Ethereum mainnet can exceed everything else on this page — see
+  <a href="/docs/cross-chain">Cross-chain</a>.</p>
 
 <h2>Where fees go</h2>
 

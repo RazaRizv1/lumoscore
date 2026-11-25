@@ -2831,20 +2831,22 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 
 <h2 id="my-cross-chain-transfer-is-stuck"><a class="dc-anchor" href="#my-cross-chain-transfer-is-stuck" aria-label="Link to this section">#</a>My cross-chain transfer is stuck</h2>
 
-<p>Work out which step it is on:</p>
+<p>It depends on the route it took:</p>
 
 <ul>
-  <li><strong>Burned, not yet attested.</strong> Circle's attestation normally takes a few minutes.
-    Waiting is the only option — neither of us can speed it up.</li>
-  <li><strong>Attested, not claimed.</strong> The claim is a transaction on the destination chain and
-    you need that chain's gas token to pay for it.</li>
-  <li><strong>Tab closed part way.</strong> The funds are not lost. Reopen
-    <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is
-    listed so you can finish the claim.</li>
+  <li><strong>Circle CCTP.</strong> CCTP is the one route you finish yourself. Open
+    <a href="/bridge">Cross-chain</a> with the same wallet connected: the transfer is listed under
+    Awaiting redemption, and the claim is a transaction on the destination chain, so you need a
+    little of that chain's gas token. An unclaimed transfer does not expire.</li>
+  <li><strong>LayerZero.</strong> It takes about 30 minutes, because it waits for Stellar ledgers
+    to finalise before delivering. There is nothing to claim.</li>
+  <li><strong>NEAR Intents or Axelar.</strong> Usually seconds for NEAR Intents and about five
+    minutes for Axelar, with nothing to claim. If a NEAR Intents solver cannot complete the
+    transfer, your deposit is returned.</li>
 </ul>
 
-<p>Keep the burn transaction hash — there is a copy button for it. With that hash we can trace any
-  transfer.</p>
+<p>Keep the Stellar transaction hash — there is a copy button for it. With that hash we can trace
+  any transfer.</p>
 
 <h2 id="my-balance-or-a-price-looks-wrong"><a class="dc-anchor" href="#my-balance-or-a-price-looks-wrong" aria-label="Link to this section">#</a>My balance or a price looks wrong</h2>
 
@@ -2881,7 +2883,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 <div class="dc-note dc-warn">
   <p class="dc-note-h">Never send your seed phrase or private key</p>
   <p>Support will never ask for either, and nobody legitimate ever needs them.</p>
-</div><div class="dc-pager"><a class="dc-page" href="/docs/security"><span class="dc-page-k">Previous</span><span class="dc-page-t">Security</span></a><a class="dc-page dc-next" href="/docs/faq"><span class="dc-page-k">Next</span><span class="dc-page-t">FAQ</span></a></div><p class="dc-updated">Last updated 29 August 2026</p></div><div class="dc-toc"><p class="dc-toc-h">On this page</p><a href="#a-transaction-failed-and-i-have-enough-of-both-assets">A transaction failed and I have enough of both assets</a><a href="#someone-sent-me-a-token-and-it-is-not-in-my-wallet">Someone sent me a token and it is not in my wallet</a><a href="#i-cannot-buy-an-asset">I cannot buy an asset</a><a href="#my-swap-failed-but-the-fee-was-taken">My swap failed but the fee was taken</a><a href="#my-cross-chain-transfer-is-stuck">My cross-chain transfer is stuck</a><a href="#my-balance-or-a-price-looks-wrong">My balance or a price looks wrong</a><a href="#my-wallet-will-not-connect">My wallet will not connect</a><a href="#my-asset-is-not-showing-as-verified">My asset is not showing as verified</a><a href="#still-stuck">Still stuck</a></div></div><script id="lx-docs-js">(function(){var d=document;var links=[].slice.call(d.querySelectorAll(".dc-toc a"));if(links.length){var pairs=[];links.forEach(function(a){var h=d.getElementById(a.getAttribute("href").slice(1));if(h)pairs.push([h,a]);});var cur=null,tick=0;var spy=function(){tick=0;var line=Math.max(90,innerHeight*0.22),best=pairs.length?pairs[0][1]:null;for(var i=0;i<pairs.length;i++){if(pairs[i][0].getBoundingClientRect().top<=line)best=pairs[i][1];else break;}if(innerHeight+scrollY>=d.documentElement.scrollHeight-4&&pairs.length)best=pairs[pairs.length-1][1];if(best!==cur){if(cur)cur.classList.remove("dc-tocon");if(best)best.classList.add("dc-tocon");cur=best;}};var onScroll=function(){if(!tick)tick=requestAnimationFrame(spy);};addEventListener("scroll",onScroll,{passive:true});addEventListener("resize",onScroll,{passive:true});spy();}var box=d.querySelector(".dc-navbox");if(box){var narrow=function(){return matchMedia("(max-width:880px)").matches;};if(narrow())box.removeAttribute("open");box.addEventListener("click",function(e){if(narrow()&&e.target&&e.target.closest&&e.target.closest(".dc-nav a"))box.removeAttribute("open");});addEventListener("resize",function(){if(!narrow())box.setAttribute("open","");},{passive:true});}var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");if(f){f.addEventListener("input",function(){var q=f.value.trim().toLowerCase(),hits=0;[].forEach.call(d.querySelectorAll(".dc-nav-group"),function(g){var shown=0;[].forEach.call(g.querySelectorAll("a"),function(a){var ok=!q||a.textContent.toLowerCase().indexOf(q)>=0;a.hidden=!ok;if(ok)shown++;});g.hidden=shown===0;hits+=shown;});if(none)none.hidden=hits>0;});}})();</script></main>
+</div><div class="dc-pager"><a class="dc-page" href="/docs/security"><span class="dc-page-k">Previous</span><span class="dc-page-t">Security</span></a><a class="dc-page dc-next" href="/docs/faq"><span class="dc-page-k">Next</span><span class="dc-page-t">FAQ</span></a></div><p class="dc-updated">Last updated 25 November 2026</p></div><div class="dc-toc"><p class="dc-toc-h">On this page</p><a href="#a-transaction-failed-and-i-have-enough-of-both-assets">A transaction failed and I have enough of both assets</a><a href="#someone-sent-me-a-token-and-it-is-not-in-my-wallet">Someone sent me a token and it is not in my wallet</a><a href="#i-cannot-buy-an-asset">I cannot buy an asset</a><a href="#my-swap-failed-but-the-fee-was-taken">My swap failed but the fee was taken</a><a href="#my-cross-chain-transfer-is-stuck">My cross-chain transfer is stuck</a><a href="#my-balance-or-a-price-looks-wrong">My balance or a price looks wrong</a><a href="#my-wallet-will-not-connect">My wallet will not connect</a><a href="#my-asset-is-not-showing-as-verified">My asset is not showing as verified</a><a href="#still-stuck">Still stuck</a></div></div><script id="lx-docs-js">(function(){var d=document;var links=[].slice.call(d.querySelectorAll(".dc-toc a"));if(links.length){var pairs=[];links.forEach(function(a){var h=d.getElementById(a.getAttribute("href").slice(1));if(h)pairs.push([h,a]);});var cur=null,tick=0;var spy=function(){tick=0;var line=Math.max(90,innerHeight*0.22),best=pairs.length?pairs[0][1]:null;for(var i=0;i<pairs.length;i++){if(pairs[i][0].getBoundingClientRect().top<=line)best=pairs[i][1];else break;}if(innerHeight+scrollY>=d.documentElement.scrollHeight-4&&pairs.length)best=pairs[pairs.length-1][1];if(best!==cur){if(cur)cur.classList.remove("dc-tocon");if(best)best.classList.add("dc-tocon");cur=best;}};var onScroll=function(){if(!tick)tick=requestAnimationFrame(spy);};addEventListener("scroll",onScroll,{passive:true});addEventListener("resize",onScroll,{passive:true});spy();}var box=d.querySelector(".dc-navbox");if(box){var narrow=function(){return matchMedia("(max-width:880px)").matches;};if(narrow())box.removeAttribute("open");box.addEventListener("click",function(e){if(narrow()&&e.target&&e.target.closest&&e.target.closest(".dc-nav a"))box.removeAttribute("open");});addEventListener("resize",function(){if(!narrow())box.setAttribute("open","");},{passive:true});}var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");if(f){f.addEventListener("input",function(){var q=f.value.trim().toLowerCase(),hits=0;[].forEach.call(d.querySelectorAll(".dc-nav-group"),function(g){var shown=0;[].forEach.call(g.querySelectorAll("a"),function(a){var ok=!q||a.textContent.toLowerCase().indexOf(q)>=0;a.hidden=!ok;if(ok)shown++;});g.hidden=shown===0;hits+=shown;});if(none)none.hidden=hits>0;});}})();</script></main>
 
   <!-- Footer -->
   <footer class="site-footer">

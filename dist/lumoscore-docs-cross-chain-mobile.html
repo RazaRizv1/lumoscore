@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 <title>Cross-Chain Transfers from Stellar | LumosCore Docs</title>
-  <meta name="description" content="Moving assets between Stellar and other networks using Circle CCTP, LayerZero and NEAR Intents — three routes, each with its own supported chains.">
+  <meta name="description" content="Moving assets from Stellar to 52 networks using Circle CCTP, LayerZero, NEAR Intents and Axelar — four routes, each with its own chains, fees and timing.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
 
@@ -2791,82 +2791,106 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
     </button>
 </header>
 
-  <main class="page"><div class="lxdc"><details class="dc-navbox" open><summary class="dc-navsum"><span class="dc-navsum-k">Documentation</span><span class="dc-navsum-t">Cross-chain</span></summary><nav class="dc-nav"><input class="dc-filter" id="dcFilter" type="search" autocomplete="off" placeholder="Filter pages" aria-label="Filter documentation pages"><p class="dc-nomatch" id="dcNoMatch" hidden>No pages match.</p><div class="dc-nav-group"><p class="dc-nav-label">Start here</p><a href="/docs/introduction">Introduction</a><a href="/docs/connect-a-wallet">Connect a wallet</a><a href="/docs/fees">Fees</a></div><div class="dc-nav-group"><p class="dc-nav-label">Using LumosCore</p><a href="/docs/swaps">Swaps</a><a href="/docs/limit-orders">Limit orders</a><a href="/docs/liquidity-pools">Liquidity pools</a><a href="/docs/cross-chain" class="dc-on">Cross-chain</a><a href="/docs/wallet">Wallet</a><a href="/docs/trustlines">Trustlines</a><a href="/docs/rewards">Rewards</a></div><div class="dc-nav-group"><p class="dc-nav-label">For issuers</p><a href="/docs/launch-a-token">Launch a token</a><a href="/docs/asset-metadata">Asset metadata</a><a href="/docs/verification">Asset verification</a><a href="/docs/curated-listing">Curated listing</a></div><div class="dc-nav-group"><p class="dc-nav-label">Reference</p><a href="/docs/security">Security</a><a href="/docs/troubleshooting">Troubleshooting</a><a href="/docs/faq">FAQ</a></div></nav></details><div class="dc-main"><div class="dc-head"><h1>Cross-chain</h1><p class="dc-sub">Moving USDC between Stellar and eight networks over Circle’s CCTP.</p></div><p>Cross-chain transfers move <strong>USDC</strong> between Stellar and eight other networks.
-  LumosCore does not run a bridge and never holds your funds in transit — the transfer is carried by
-  Circle's Cross-Chain Transfer Protocol (CCTP), which burns USDC on the source chain and mints
-  native USDC on the destination.</p>
+  <main class="page"><div class="lxdc"><details class="dc-navbox" open><summary class="dc-navsum"><span class="dc-navsum-k">Documentation</span><span class="dc-navsum-t">Cross-chain</span></summary><nav class="dc-nav"><input class="dc-filter" id="dcFilter" type="search" autocomplete="off" placeholder="Filter pages" aria-label="Filter documentation pages"><p class="dc-nomatch" id="dcNoMatch" hidden>No pages match.</p><div class="dc-nav-group"><p class="dc-nav-label">Start here</p><a href="/docs/introduction">Introduction</a><a href="/docs/connect-a-wallet">Connect a wallet</a><a href="/docs/fees">Fees</a></div><div class="dc-nav-group"><p class="dc-nav-label">Using LumosCore</p><a href="/docs/swaps">Swaps</a><a href="/docs/limit-orders">Limit orders</a><a href="/docs/liquidity-pools">Liquidity pools</a><a href="/docs/cross-chain" class="dc-on">Cross-chain</a><a href="/docs/wallet">Wallet</a><a href="/docs/trustlines">Trustlines</a><a href="/docs/rewards">Rewards</a></div><div class="dc-nav-group"><p class="dc-nav-label">For issuers</p><a href="/docs/launch-a-token">Launch a token</a><a href="/docs/asset-metadata">Asset metadata</a><a href="/docs/verification">Asset verification</a><a href="/docs/curated-listing">Curated listing</a></div><div class="dc-nav-group"><p class="dc-nav-label">Reference</p><a href="/docs/security">Security</a><a href="/docs/troubleshooting">Troubleshooting</a><a href="/docs/faq">FAQ</a></div></nav></details><div class="dc-main"><div class="dc-head"><h1>Cross-chain</h1><p class="dc-sub">Moving assets from Stellar to 52 networks over Circle CCTP, LayerZero, NEAR Intents and Axelar.</p></div><p>Cross-chain transfers move value from Stellar to <strong>52 other networks</strong>. LumosCore
+  does not run a bridge and never holds your funds in transit — every transfer is carried by one of
+  four routes, and you see which one, what arrives and what it costs before you sign.</p>
 
-<h2 id="supported-networks"><a class="dc-anchor" href="#supported-networks" aria-label="Link to this section">#</a>Supported networks</h2>
+<h2 id="the-four-routes"><a class="dc-anchor" href="#the-four-routes" aria-label="Link to this section">#</a>The four routes</h2>
 
 <div class="dc-tw">
-  <table>
-    <thead><tr><th>From</th><th>To</th></tr></thead>
+  <table class="dc-routes">
+    <thead><tr><th>Route</th><th>Carries</th><th>Reaches</th><th>Arrival</th></tr></thead>
     <tbody>
       <tr>
-        <td>Stellar</td>
-        <td>Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, World Chain — and back
-          again in either direction.</td>
+        <td>Circle CCTP</td>
+        <td>USDC</td>
+        <td>17 networks, including Ethereum, Base, Arbitrum, Optimism, Polygon and Avalanche.</td>
+        <td>You claim it on the destination.</td>
+      </tr>
+      <tr>
+        <td>LayerZero</td>
+        <td>USDT0</td>
+        <td>21 networks — 14 that CCTP cannot reach, including Hyperliquid, Monad, Berachain and
+          Hedera.</td>
+        <td>Delivered for you, in about 30 minutes.</td>
+      </tr>
+      <tr>
+        <td>NEAR Intents</td>
+        <td>XLM or USDC in, the token you choose out — BTC, SOL, native XRP and more.</td>
+        <td>21 further networks, including Bitcoin, Solana, Tron, TON and the XRP Ledger.</td>
+        <td>Delivered for you, in about 30 seconds.</td>
+      </tr>
+      <tr>
+        <td>Axelar</td>
+        <td>SHX, as itself</td>
+        <td>A second way to Ethereum, Solana and the XRP Ledger.</td>
+        <td>Delivered for you, in about 5 minutes.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<p>USDC is the only asset CCTP carries. That is a real limit and we would rather state it than work
-  around it: moving one asset in a way that cannot be drained is worth more than moving every asset
-  through something that repeatedly has been.</p>
+<p>Each route carries one thing, so whatever you send is swapped into it first, at a rate shown
+  before you sign. Axelar is the exception: SHX crosses as itself.</p>
 
 <h2 id="making-a-transfer"><a class="dc-anchor" href="#making-a-transfer" aria-label="Link to this section">#</a>Making a transfer</h2>
 
 <ol class="dc-steps">
-  <li>Open <a href="/bridge">Cross-chain</a>, choose the source and destination networks, and enter
-    an amount of USDC.</li>
-  <li>Approve the burn on the source chain. Your USDC is destroyed there — this is the step that
-    commits the transfer.</li>
-  <li>Wait for attestation. Circle observes the burn and issues a signed attestation. This normally
-    takes a few minutes and is not something either of us can speed up.</li>
-  <li>Claim on the destination. Submit the attestation to mint native USDC into your address on the
-    destination chain, paying that chain's gas.</li>
+  <li>Open <a href="/bridge">Cross-chain</a>, choose the destination network, then the asset and the
+    amount.</li>
+  <li>Review the route, what will arrive, the fees and the timing. Where more than one route reaches
+    a network, you choose which to use.</li>
+  <li>Approve in your wallet. How many signatures depends on the route: a swap into the route's asset
+    is its own signature, and so is the platform fee.</li>
+  <li>Wait for it to arrive — or, on CCTP, claim it on the destination.</li>
 </ol>
 
 <div class="dc-note">
-  <p class="dc-note-h">You claim it yourself</p>
-  <p>The final mint is a transaction on the destination chain and you pay its gas. On Ethereum
-    mainnet at a busy moment that can cost more than the transfer fee — check gas before you start,
-    and consider a cheaper destination such as Base or Arbitrum if you have the choice.</p>
+  <p class="dc-note-h">Only CCTP needs a claim</p>
+  <p>CCTP burns USDC on Stellar, and the USDC is minted on the destination by a transaction you send
+    there, paying that chain's gas. On Ethereum mainnet at a busy moment that can cost more than the
+    transfer fee — consider a cheaper destination such as Base or Arbitrum if you have the choice.
+    LayerZero, NEAR Intents and Axelar deliver for you, with no claim and no gas needed on
+    arrival.</p>
 </div>
 
-<h2 id="if-you-close-the-tab-before-claiming"><a class="dc-anchor" href="#if-you-close-the-tab-before-claiming" aria-label="Link to this section">#</a>If you close the tab before claiming</h2>
+<p>Sending SHX through Axelar? On the XRP Ledger the receiving address needs an SHX trustline first,
+  which holds 0.2 XRP of reserve, and on Solana an SHX token account. Ethereum needs nothing.</p>
 
-<p>The burn is on-chain and permanent; the funds are not lost. Reopen
-  <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is listed
-  so you can complete the claim. A burned but unclaimed transfer stays claimable — it does not
-  expire.</p>
+<h2 id="if-you-close-the-tab"><a class="dc-anchor" href="#if-you-close-the-tab" aria-label="Link to this section">#</a>If you close the tab</h2>
 
-<p>Keep the burn transaction hash. There is a copy button on the transfer screen for exactly this
-  reason, and with it we can trace any transfer that appears stuck.</p>
+<p>Nothing is stranded. For a CCTP transfer, the burn and Circle's attestation are saved as soon as
+  they exist and listed under <strong>Awaiting redemption</strong> on
+  <a href="/bridge">Cross-chain</a>. Reconnect the same wallet and finish the claim. An unclaimed
+  transfer does not expire.</p>
+
+<p>LayerZero, NEAR Intents and Axelar arrive on their own, whether or not the tab is open. If a NEAR
+  Intents solver cannot complete a transfer, your deposit is returned.</p>
 
 <h2 id="what-it-costs"><a class="dc-anchor" href="#what-it-costs" aria-label="Link to this section">#</a>What it costs</h2>
 
 <ul>
   <li><strong>LumosCore:</strong> <span class="dc-num">0.2%</span> of the amount transferred, or
     <span class="dc-num">0.1%</span> on the LUMOS tier.</li>
-  <li><strong>Circle:</strong> nothing. CCTP itself charges no fee for the transfer.</li>
-  <li><strong>The networks:</strong> the source chain's fee to burn, and the destination chain's gas
-    to claim. Both paid to those networks in their own gas token.</li>
+  <li><strong>The route:</strong> Circle charges nothing for CCTP. LayerZero and Axelar charge a
+    delivery fee in XLM, quoted before you sign. NEAR Intents quotes one all-in rate from its solvers
+    before you deposit.</li>
+  <li><strong>The networks:</strong> Stellar's network fee on each signature, and on CCTP the
+    destination chain's gas to claim.</li>
 </ul>
 
 <h2 id="what-can-still-go-wrong"><a class="dc-anchor" href="#what-can-still-go-wrong" aria-label="Link to this section">#</a>What can still go wrong</h2>
 
-<p>Delegating the transport does not remove transport risk. Between the burn and the claim, the
-  transfer depends on CCTP's own security and operation. LumosCore's design bounds the exposure — we
-  hold no pooled balance, so a failure is limited to transfers actually in flight — but it does not
-  eliminate it. See <a href="/docs/security">Security</a>.</p>
+<p>Delegating the transport does not remove transport risk. While a transfer is in flight, it
+  depends on the security and operation of the route carrying it. LumosCore's design bounds the
+  exposure — we hold no pooled balance, so a failure is limited to transfers actually in flight — but
+  it does not eliminate it. See <a href="/docs/security">Security</a>.</p>
 
 <div class="dc-note dc-warn">
   <p class="dc-note-h">Check the destination address</p>
-  <p>Sending to an address you do not control, or to a contract that cannot receive USDC, is not
-    reversible by anyone. Confirm the destination before approving the burn.</p>
-</div><div class="dc-pager"><a class="dc-page" href="/docs/liquidity-pools"><span class="dc-page-k">Previous</span><span class="dc-page-t">Liquidity pools</span></a><a class="dc-page dc-next" href="/docs/wallet"><span class="dc-page-k">Next</span><span class="dc-page-t">Wallet</span></a></div><p class="dc-updated">Last updated 29 August 2026</p></div><div class="dc-toc"><p class="dc-toc-h">On this page</p><a href="#supported-networks">Supported networks</a><a href="#making-a-transfer">Making a transfer</a><a href="#if-you-close-the-tab-before-claiming">If you close the tab before claiming</a><a href="#what-it-costs">What it costs</a><a href="#what-can-still-go-wrong">What can still go wrong</a></div></div><script id="lx-docs-js">(function(){var d=document;var links=[].slice.call(d.querySelectorAll(".dc-toc a"));if(links.length){var pairs=[];links.forEach(function(a){var h=d.getElementById(a.getAttribute("href").slice(1));if(h)pairs.push([h,a]);});var cur=null,tick=0;var spy=function(){tick=0;var line=Math.max(90,innerHeight*0.22),best=pairs.length?pairs[0][1]:null;for(var i=0;i<pairs.length;i++){if(pairs[i][0].getBoundingClientRect().top<=line)best=pairs[i][1];else break;}if(innerHeight+scrollY>=d.documentElement.scrollHeight-4&&pairs.length)best=pairs[pairs.length-1][1];if(best!==cur){if(cur)cur.classList.remove("dc-tocon");if(best)best.classList.add("dc-tocon");cur=best;}};var onScroll=function(){if(!tick)tick=requestAnimationFrame(spy);};addEventListener("scroll",onScroll,{passive:true});addEventListener("resize",onScroll,{passive:true});spy();}var box=d.querySelector(".dc-navbox");if(box){var narrow=function(){return matchMedia("(max-width:880px)").matches;};if(narrow())box.removeAttribute("open");box.addEventListener("click",function(e){if(narrow()&&e.target&&e.target.closest&&e.target.closest(".dc-nav a"))box.removeAttribute("open");});addEventListener("resize",function(){if(!narrow())box.setAttribute("open","");},{passive:true});}var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");if(f){f.addEventListener("input",function(){var q=f.value.trim().toLowerCase(),hits=0;[].forEach.call(d.querySelectorAll(".dc-nav-group"),function(g){var shown=0;[].forEach.call(g.querySelectorAll("a"),function(a){var ok=!q||a.textContent.toLowerCase().indexOf(q)>=0;a.hidden=!ok;if(ok)shown++;});g.hidden=shown===0;hits+=shown;});if(none)none.hidden=hits>0;});}})();</script></main>
+  <p>Sending to an address you do not control, or to a contract that cannot receive the asset, is not
+    reversible by anyone. Confirm the destination before you sign.</p>
+</div><div class="dc-pager"><a class="dc-page" href="/docs/liquidity-pools"><span class="dc-page-k">Previous</span><span class="dc-page-t">Liquidity pools</span></a><a class="dc-page dc-next" href="/docs/wallet"><span class="dc-page-k">Next</span><span class="dc-page-t">Wallet</span></a></div><p class="dc-updated">Last updated 25 November 2026</p></div><div class="dc-toc"><p class="dc-toc-h">On this page</p><a href="#the-four-routes">The four routes</a><a href="#making-a-transfer">Making a transfer</a><a href="#if-you-close-the-tab">If you close the tab</a><a href="#what-it-costs">What it costs</a><a href="#what-can-still-go-wrong">What can still go wrong</a></div></div><script id="lx-docs-js">(function(){var d=document;var links=[].slice.call(d.querySelectorAll(".dc-toc a"));if(links.length){var pairs=[];links.forEach(function(a){var h=d.getElementById(a.getAttribute("href").slice(1));if(h)pairs.push([h,a]);});var cur=null,tick=0;var spy=function(){tick=0;var line=Math.max(90,innerHeight*0.22),best=pairs.length?pairs[0][1]:null;for(var i=0;i<pairs.length;i++){if(pairs[i][0].getBoundingClientRect().top<=line)best=pairs[i][1];else break;}if(innerHeight+scrollY>=d.documentElement.scrollHeight-4&&pairs.length)best=pairs[pairs.length-1][1];if(best!==cur){if(cur)cur.classList.remove("dc-tocon");if(best)best.classList.add("dc-tocon");cur=best;}};var onScroll=function(){if(!tick)tick=requestAnimationFrame(spy);};addEventListener("scroll",onScroll,{passive:true});addEventListener("resize",onScroll,{passive:true});spy();}var box=d.querySelector(".dc-navbox");if(box){var narrow=function(){return matchMedia("(max-width:880px)").matches;};if(narrow())box.removeAttribute("open");box.addEventListener("click",function(e){if(narrow()&&e.target&&e.target.closest&&e.target.closest(".dc-nav a"))box.removeAttribute("open");});addEventListener("resize",function(){if(!narrow())box.setAttribute("open","");},{passive:true});}var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");if(f){f.addEventListener("input",function(){var q=f.value.trim().toLowerCase(),hits=0;[].forEach.call(d.querySelectorAll(".dc-nav-group"),function(g){var shown=0;[].forEach.call(g.querySelectorAll("a"),function(a){var ok=!q||a.textContent.toLowerCase().indexOf(q)>=0;a.hidden=!ok;if(ok)shown++;});g.hidden=shown===0;hits+=shown;});if(none)none.hidden=hits>0;});}})();</script></main>
 
   <!-- Footer -->
   <footer class="site-footer">

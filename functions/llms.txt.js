@@ -18,7 +18,7 @@ const SUMMARY = {
   '/': 'What LumosCore is: a non-custodial multichain interface for trading, liquidity, token issuance and cross-chain transfers.',
   '/docs': 'Documentation index — sixteen pages covering how every part of the platform works.',
   '/docs/introduction': 'What LumosCore is, what runs today, and how the non-custodial model works.',
-  '/docs/connect-a-wallet': 'The five supported Stellar wallets and what connecting does and does not grant.',
+  '/docs/connect-a-wallet': 'The supported Stellar wallets and what connecting does and does not grant.',
   '/docs/fees': 'Authoritative fee reference: 0.2% trading, 0.1% for holders of 250,000 LUMOS, free limit orders.',
   '/docs/swaps': 'How swaps route, how price is found, and what slippage means here.',
   '/docs/limit-orders': 'Resting orders on the Stellar order book, and why they carry no platform fee.',
@@ -28,7 +28,7 @@ const SUMMARY = {
   // LayerZero and NEAR Intents went live on 2026-09-19. It matters more here than in most places: an
   // answer engine quoting llms.txt states it as fact, and this is the file we publish BECAUSE we want
   // it quoted. The same stale sentence was fixed in _seo.js on the same day.
-  '/docs/cross-chain': 'Moving assets from Stellar with Circle CCTP, LayerZero and NEAR Intents — three routes, each with its own chains.',
+  '/docs/cross-chain': 'Moving assets from Stellar to 52 networks with Circle CCTP, LayerZero, NEAR Intents and Axelar — four routes, each with its own chains.',
   '/docs/wallet': 'Balances, activity, sending and receiving without transferring custody.',
   '/docs/trustlines': 'Why Stellar requires a trustline, and the 0.5 XLM reserve each one holds.',
   '/docs/rewards': 'The three LUMOS reward programmes and how rounds pay.',
@@ -44,7 +44,7 @@ const SUMMARY = {
   '/blog': 'Guides and explainers on trading, pools, bridging and issuing assets on LumosCore.',
   '/trade/stellar': 'Live Stellar markets: pairs, movers and recently issued assets.',
   '/pools/stellar': 'Stellar liquidity pools with reserves, TVL and volume.',
-  '/bridge': 'Cross-chain transfers from Stellar to 52 networks via Circle CCTP, LayerZero and NEAR Intents.',
+  '/bridge': 'Cross-chain transfers from Stellar to 52 networks via Circle CCTP, LayerZero, NEAR Intents and Axelar.',
   '/wallet': 'Non-custodial wallet view: balances, activity, trustlines, claimable payments.',
   '/rewards': 'LUMOS reward programmes and current eligibility.',
   '/lumos': 'The LUMOS token: price, supply, holders and utility.',
@@ -64,7 +64,7 @@ const SUMMARY = {
   '/trade': 'Choose a network, then trade: Stellar, the XRP Ledger or NEAR.',
   '/pools': 'Choose a network, then browse its AMM liquidity pools.',
   '/launchpad/stellar': 'Issue a Stellar asset with no code, for a flat $25, and open its first pool.',
-  '/bridge/stellar': 'Move assets from Stellar to 52 networks via Circle CCTP, LayerZero or NEAR Intents.',
+  '/bridge/stellar': 'Move assets from Stellar to 52 networks via Circle CCTP, LayerZero, NEAR Intents or Axelar.',
   '/rewards/stellar': 'LUMOS reward programmes on Stellar: eligibility, rounds and payouts.',
   '/lumos/stellar': 'LUMOS on Stellar: price, liquidity pools, holders and recent trades.',
   '/mcp': 'MCP server: live prices, pools, wallets and routes for an AI agent, with no API key.',

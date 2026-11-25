@@ -33,8 +33,9 @@
         <td>We route to on-chain infrastructure we did not write — network protocols, pools, transport
           mechanisms. A defect in any of them can cause loss.</td></tr>
       <tr><td>Transport</td>
-        <td>Between the burn and the claim, a cross-chain transfer depends on CCTP's own security.
-          Our design bounds the exposure to transfers in flight; it does not remove it.</td></tr>
+        <td>While it is in flight, a cross-chain transfer depends on the security of the route carrying
+          it — Circle CCTP, LayerZero, NEAR Intents or Axelar. Our design bounds the exposure to transfers
+          in flight; it does not remove it.</td></tr>
       <tr><td>Liquidity provision</td>
         <td>Divergence loss, and the solvency of both assets in a pair. See
           <a href="/docs/liquidity-pools">Liquidity pools</a>.</td></tr>

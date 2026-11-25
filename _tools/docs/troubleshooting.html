@@ -38,20 +38,22 @@
 
 <h2>My cross-chain transfer is stuck</h2>
 
-<p>Work out which step it is on:</p>
+<p>It depends on the route it took:</p>
 
 <ul>
-  <li><strong>Burned, not yet attested.</strong> Circle's attestation normally takes a few minutes.
-    Waiting is the only option — neither of us can speed it up.</li>
-  <li><strong>Attested, not claimed.</strong> The claim is a transaction on the destination chain and
-    you need that chain's gas token to pay for it.</li>
-  <li><strong>Tab closed part way.</strong> The funds are not lost. Reopen
-    <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is
-    listed so you can finish the claim.</li>
+  <li><strong>Circle CCTP.</strong> CCTP is the one route you finish yourself. Open
+    <a href="/bridge">Cross-chain</a> with the same wallet connected: the transfer is listed under
+    Awaiting redemption, and the claim is a transaction on the destination chain, so you need a
+    little of that chain's gas token. An unclaimed transfer does not expire.</li>
+  <li><strong>LayerZero.</strong> It takes about 30 minutes, because it waits for Stellar ledgers
+    to finalise before delivering. There is nothing to claim.</li>
+  <li><strong>NEAR Intents or Axelar.</strong> Usually seconds for NEAR Intents and about five
+    minutes for Axelar, with nothing to claim. If a NEAR Intents solver cannot complete the
+    transfer, your deposit is returned.</li>
 </ul>
 
-<p>Keep the burn transaction hash — there is a copy button for it. With that hash we can trace any
-  transfer.</p>
+<p>Keep the Stellar transaction hash — there is a copy button for it. With that hash we can trace
+  any transfer.</p>
 
 <h2>My balance or a price looks wrong</h2>
 

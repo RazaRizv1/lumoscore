@@ -1,76 +1,100 @@
-<p>Cross-chain transfers move <strong>USDC</strong> between Stellar and eight other networks.
-  LumosCore does not run a bridge and never holds your funds in transit — the transfer is carried by
-  Circle's Cross-Chain Transfer Protocol (CCTP), which burns USDC on the source chain and mints
-  native USDC on the destination.</p>
+<p>Cross-chain transfers move value from Stellar to <strong>52 other networks</strong>. LumosCore
+  does not run a bridge and never holds your funds in transit — every transfer is carried by one of
+  four routes, and you see which one, what arrives and what it costs before you sign.</p>
 
-<h2>Supported networks</h2>
+<h2>The four routes</h2>
 
 <div class="dc-tw">
-  <table>
-    <thead><tr><th>From</th><th>To</th></tr></thead>
+  <table class="dc-routes">
+    <thead><tr><th>Route</th><th>Carries</th><th>Reaches</th><th>Arrival</th></tr></thead>
     <tbody>
       <tr>
-        <td>Stellar</td>
-        <td>Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, World Chain — and back
-          again in either direction.</td>
+        <td>Circle CCTP</td>
+        <td>USDC</td>
+        <td>17 networks, including Ethereum, Base, Arbitrum, Optimism, Polygon and Avalanche.</td>
+        <td>You claim it on the destination.</td>
+      </tr>
+      <tr>
+        <td>LayerZero</td>
+        <td>USDT0</td>
+        <td>21 networks — 14 that CCTP cannot reach, including Hyperliquid, Monad, Berachain and
+          Hedera.</td>
+        <td>Delivered for you, in about 30 minutes.</td>
+      </tr>
+      <tr>
+        <td>NEAR Intents</td>
+        <td>XLM or USDC in, the token you choose out — BTC, SOL, native XRP and more.</td>
+        <td>21 further networks, including Bitcoin, Solana, Tron, TON and the XRP Ledger.</td>
+        <td>Delivered for you, in about 30 seconds.</td>
+      </tr>
+      <tr>
+        <td>Axelar</td>
+        <td>SHX, as itself</td>
+        <td>A second way to Ethereum, Solana and the XRP Ledger.</td>
+        <td>Delivered for you, in about 5 minutes.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<p>USDC is the only asset CCTP carries. That is a real limit and we would rather state it than work
-  around it: moving one asset in a way that cannot be drained is worth more than moving every asset
-  through something that repeatedly has been.</p>
+<p>Each route carries one thing, so whatever you send is swapped into it first, at a rate shown
+  before you sign. Axelar is the exception: SHX crosses as itself.</p>
 
 <h2>Making a transfer</h2>
 
 <ol class="dc-steps">
-  <li>Open <a href="/bridge">Cross-chain</a>, choose the source and destination networks, and enter
-    an amount of USDC.</li>
-  <li>Approve the burn on the source chain. Your USDC is destroyed there — this is the step that
-    commits the transfer.</li>
-  <li>Wait for attestation. Circle observes the burn and issues a signed attestation. This normally
-    takes a few minutes and is not something either of us can speed up.</li>
-  <li>Claim on the destination. Submit the attestation to mint native USDC into your address on the
-    destination chain, paying that chain's gas.</li>
+  <li>Open <a href="/bridge">Cross-chain</a>, choose the destination network, then the asset and the
+    amount.</li>
+  <li>Review the route, what will arrive, the fees and the timing. Where more than one route reaches
+    a network, you choose which to use.</li>
+  <li>Approve in your wallet. How many signatures depends on the route: a swap into the route's asset
+    is its own signature, and so is the platform fee.</li>
+  <li>Wait for it to arrive — or, on CCTP, claim it on the destination.</li>
 </ol>
 
 <div class="dc-note">
-  <p class="dc-note-h">You claim it yourself</p>
-  <p>The final mint is a transaction on the destination chain and you pay its gas. On Ethereum
-    mainnet at a busy moment that can cost more than the transfer fee — check gas before you start,
-    and consider a cheaper destination such as Base or Arbitrum if you have the choice.</p>
+  <p class="dc-note-h">Only CCTP needs a claim</p>
+  <p>CCTP burns USDC on Stellar, and the USDC is minted on the destination by a transaction you send
+    there, paying that chain's gas. On Ethereum mainnet at a busy moment that can cost more than the
+    transfer fee — consider a cheaper destination such as Base or Arbitrum if you have the choice.
+    LayerZero, NEAR Intents and Axelar deliver for you, with no claim and no gas needed on
+    arrival.</p>
 </div>
 
-<h2>If you close the tab before claiming</h2>
+<p>Sending SHX through Axelar? On the XRP Ledger the receiving address needs an SHX trustline first,
+  which holds 0.2 XRP of reserve, and on Solana an SHX token account. Ethereum needs nothing.</p>
 
-<p>The burn is on-chain and permanent; the funds are not lost. Reopen
-  <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is listed
-  so you can complete the claim. A burned but unclaimed transfer stays claimable — it does not
-  expire.</p>
+<h2>If you close the tab</h2>
 
-<p>Keep the burn transaction hash. There is a copy button on the transfer screen for exactly this
-  reason, and with it we can trace any transfer that appears stuck.</p>
+<p>Nothing is stranded. For a CCTP transfer, the burn and Circle's attestation are saved as soon as
+  they exist and listed under <strong>Awaiting redemption</strong> on
+  <a href="/bridge">Cross-chain</a>. Reconnect the same wallet and finish the claim. An unclaimed
+  transfer does not expire.</p>
+
+<p>LayerZero, NEAR Intents and Axelar arrive on their own, whether or not the tab is open. If a NEAR
+  Intents solver cannot complete a transfer, your deposit is returned.</p>
 
 <h2>What it costs</h2>
 
 <ul>
   <li><strong>LumosCore:</strong> <span class="dc-num">0.2%</span> of the amount transferred, or
     <span class="dc-num">0.1%</span> on the LUMOS tier.</li>
-  <li><strong>Circle:</strong> nothing. CCTP itself charges no fee for the transfer.</li>
-  <li><strong>The networks:</strong> the source chain's fee to burn, and the destination chain's gas
-    to claim. Both paid to those networks in their own gas token.</li>
+  <li><strong>The route:</strong> Circle charges nothing for CCTP. LayerZero and Axelar charge a
+    delivery fee in XLM, quoted before you sign. NEAR Intents quotes one all-in rate from its solvers
+    before you deposit.</li>
+  <li><strong>The networks:</strong> Stellar's network fee on each signature, and on CCTP the
+    destination chain's gas to claim.</li>
 </ul>
 
 <h2>What can still go wrong</h2>
 
-<p>Delegating the transport does not remove transport risk. Between the burn and the claim, the
-  transfer depends on CCTP's own security and operation. LumosCore's design bounds the exposure — we
-  hold no pooled balance, so a failure is limited to transfers actually in flight — but it does not
-  eliminate it. See <a href="/docs/security">Security</a>.</p>
+<p>Delegating the transport does not remove transport risk. While a transfer is in flight, it
+  depends on the security and operation of the route carrying it. LumosCore's design bounds the
+  exposure — we hold no pooled balance, so a failure is limited to transfers actually in flight — but
+  it does not eliminate it. See <a href="/docs/security">Security</a>.</p>
 
 <div class="dc-note dc-warn">
   <p class="dc-note-h">Check the destination address</p>
-  <p>Sending to an address you do not control, or to a contract that cannot receive USDC, is not
-    reversible by anyone. Confirm the destination before approving the burn.</p>
+  <p>Sending to an address you do not control, or to a contract that cannot receive the asset, is not
+    reversible by anyone. Confirm the destination before you sign.</p>
 </div>
