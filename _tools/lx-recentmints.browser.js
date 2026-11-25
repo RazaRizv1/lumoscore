@@ -212,7 +212,23 @@
       + '.lx-rm .lx-rm-go:hover,.lx-rm-acts .lx-rm-go:hover{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff!important;box-shadow:none;filter:none;transform:none}'
       + '.lx-rm .lx-rm-go:hover svg,.lx-rm-acts .lx-rm-go:hover svg{transform:rotate(90deg)}'
       + '.lx-rm .lx-rm-go:active,.lx-rm-acts .lx-rm-go:active{transform:translateY(1px)}'
-      + '.lx-rm .lx-rm-go:focus-visible,.lx-rm-acts .lx-rm-go:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}';
+      + '.lx-rm .lx-rm-go:focus-visible,.lx-rm-acts .lx-rm-go:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}'
+      // v17 phone: compact header, small button, ~95px cards, slim footer
+      + '.lx-rm-mob .lx-rm-h{min-height:44px;padding:6px 8px 6px 12px}'
+      + '.lx-rm-mob .lx-rm-h h3{font-size:12px;gap:6px}.lx-rm-mob .lx-rm-flame{width:15px;height:15px}'
+      + '.lx-rm.lx-rm-mob .lx-rm-go{height:30px;padding:0 11px;font-size:12.5px;gap:5px;border-radius:8px}'
+      + '.lx-rm.lx-rm-mob .lx-rm-go svg{width:13px;height:13px}'
+      + '.lx-rm-mob .lx-rm-strip{gap:8px;padding:10px 12px}'
+      + '.lx-rm-mob .lx-rm-card{flex:0 0 168px;width:168px;min-width:0;box-sizing:border-box;padding:10px 12px 9px;gap:0;border-radius:12px;overflow:hidden}'
+      + '.lx-rm-mob .lx-rm-card .lx-rm-new{display:none}'   // the orange logo ring already marks a new token; no room for both
+      + '.lx-rm-mob .lx-rm-card .top{gap:7px;min-width:0}'
+      + '.lx-rm-mob .lx-rm-card .lx-rm-logo{width:24px;height:24px;flex:none}'
+      + '.lx-rm-mob .lx-rm-card .c{font-size:13.5px;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      + '.lx-rm-mob .lx-rm-card .lx-rm-new{font-size:9px;padding:0 5px;flex:none}'
+      + '.lx-rm-mob .lx-rm-card .cg{margin-left:auto;flex:none}.lx-rm-mob .lx-rm-card .cg .lx-rm-chg{font-size:12.5px}'
+      + '.lx-rm-mob .lx-rm-card .sp{margin:8px 0 6px}'
+      + '.lx-rm-mob .lx-rm-card .m{margin:0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.lx-rm-mob .lx-rm-all{min-height:38px;font-size:12.5px}';
     document.head.appendChild(s2);
   }
   // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
@@ -293,11 +309,13 @@
   }
   function cardHtml(r, pop) {
     var m = minted(r), b = byHtml(r);
+    // v17 (RAZA 2026-11-25 "too much height ... token boxes need to be smaller"): ~95px cards -- one top row (logo,
+    // ticker, %), a slim price line, one meta line ("20d ago · by G…").
+    var ag = r.born > 1e12 ? (ago(r.born) === 'now' ? 'just now' : ago(r.born) + ' ago') : '';
     return '<a class="lx-rm-card' + (pop ? ' lx-rm-flash' : '') + '" href="' + esc(pagePath(r.id)) + '" data-id="' + esc(r.id) + '"><div class="top">' + imgHtml(r)
-      + '<span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '</div>'
-      + '<div class="sp">' + sparkSvg(r, pop, 150, 36) + '</div>'
-      + '<div class="cap">' + chg(r) + '</div>'
-      + (m ? '<div class="m">' + esc(m) + '</div>' : '') + (b ? '<div class="m">' + b + '</div>' : '') + '</a>';
+      + '<span class="c">' + esc(r.code) + '</span>' + (isNew(r) ? '<span class="lx-rm-new">NEW</span>' : '') + '<span class="cg">' + chg(r) + '</span></div>'
+      + '<div class="sp">' + sparkSvg(r, pop, 144, 24) + '</div>'
+      + '<div class="m" title="' + esc(m) + '">' + esc(ag) + (ag && b ? ' · ' : '') + b + '</div></a>';
   }
   function head(mob) {
     return '<div class="lx-rm-h"><div><h3>' + FLAME + 'Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
@@ -308,7 +326,7 @@
     all.forEach(logo);
     var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 5);   // RAZA 2026-11-24: 5, not 10
     var checking = all.some(function (r) { return LOGO[r.id] === undefined; });
-    var SK = (mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>') + '<div class="lx-rm-all" aria-hidden="true" style="pointer-events:none"></div>';   // the footer's height too, so nothing below moves when the rows arrive
+    var SK = (mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 168px;height:98px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 168px;height:98px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>') + '<div class="lx-rm-all" aria-hidden="true" style="pointer-events:none"></div>';   // the footer's height too, so nothing below moves when the rows arrive
     // hold the skeleton until the logo checks are in, so rows do not pop in one by one on first load
     var body = (!DATA || (checking && !box.__lxrmDone)) ? SK
       : (!rows.length ? '<div class="lx-rm-empty">No token has been launched on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + ' yet. Be the first.</div>'
