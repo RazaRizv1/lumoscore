@@ -41,7 +41,7 @@ const SUMMARY = {
   '/faq': 'Every question from every page on LumosCore, collected in one place.',
   '/whitepaper': 'The argument: fragmentation, interoperability, and the architecture that answers them.',
   '/about': 'Who operates LumosCore, what we believe, how the platform earns.',
-  '/blog': 'Guides and explainers on trading, pools, bridging and issuing assets on Stellar.',
+  '/blog': 'Guides and explainers on trading, pools, bridging and issuing assets on LumosCore.',
   '/trade/stellar': 'Live Stellar markets: pairs, movers and recently issued assets.',
   '/pools/stellar': 'Stellar liquidity pools with reserves, TVL and volume.',
   '/bridge': 'Cross-chain transfers from Stellar to 52 networks via Circle CCTP, LayerZero and NEAR Intents.',
@@ -61,7 +61,7 @@ const SUMMARY = {
   // The bare paths are network CHOOSERS and are described as such -- they are not duplicates of the
   // Stellar pages, and saying so stops an assistant treating /trade and /trade/stellar as the same
   // document.
-  '/trade': 'Choose a network, then trade: Stellar or the XRP Ledger.',
+  '/trade': 'Choose a network, then trade: Stellar, the XRP Ledger or NEAR.',
   '/pools': 'Choose a network, then browse its AMM liquidity pools.',
   '/launchpad/stellar': 'Issue a Stellar asset with no code, for a flat $25, and open its first pool.',
   '/bridge/stellar': 'Move assets from Stellar to 52 networks via Circle CCTP, LayerZero or NEAR Intents.',
@@ -100,7 +100,8 @@ export async function onRequestGet({ env }) {
   out.push('> ' + SUMMARY['/']);
   out.push('');
   out.push('LumosCore is operated by LumosCore OÜ, registered in Estonia (reg. 17336483). It has been');
-  out.push('live on Stellar mainnet since 1 August 2026. It is non-custodial: transactions are built in');
+  out.push('live on Stellar mainnet since 1 August 2026, on the XRP Ledger since October 2026 and on NEAR');
+  out.push('since November 2026. It is non-custodial: transactions are built in');
   out.push('the browser and signed by the user\'s own wallet, and LumosCore holds no keys, no customer');
   out.push('balances and no bridged value.');
   out.push('');
@@ -108,8 +109,8 @@ export async function onRequestGet({ env }) {
   out.push('or more (LUMOS held inside a liquidity pool counts). Limit orders are free. Token issuance');
   out.push('is a flat $25. A curated listing is $250, refunded in full if declined.');
   out.push('');
-  out.push('Prices, balances and pool figures on the product pages are read live from the Stellar');
-  out.push('network at view time and are not part of this document.');
+  out.push('Prices, balances and pool figures on the product pages are read live from each network');
+  out.push('at view time and are not part of this document.');
   out.push('');
 
   for (const [name, match] of GROUPS) {
