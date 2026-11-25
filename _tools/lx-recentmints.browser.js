@@ -191,7 +191,7 @@
       + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{gap:8px;padding:0 14px 0 8px;border-radius:10px;font-weight:650;background:var(--surface,transparent);border:1px solid ' + B + ';transition:border-color .2s,background .2s}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn svg{box-sizing:border-box;width:24px;height:24px;padding:5px;border-radius:50%;background:var(--accent-pale,rgba(234,106,44,.14));box-shadow:inset 0 0 0 1px rgba(234,106,44,.28)}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn:hover{border-color:rgba(234,106,44,.55);background:var(--surface-2,' + S2 + ')}}'
-      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:20px}'
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;justify-content:flex-start;gap:10px;margin-bottom:20px}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;height:36px;padding:0 16px;font-size:14px;border-radius:10px}'   // FLASH (RAZA 2026-11-25): right size from the first frame
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{box-sizing:border-box;margin:0}}'
       + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}'
