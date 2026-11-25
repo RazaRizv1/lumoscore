@@ -3290,11 +3290,11 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // correct themselves as soon as better information arrives.
     var pagedTot=0; hold.forEach(function(h){pagedTot+=h.bal;});
     var sup=supply||pagedTot||1;   // hold is the COMPLETE holder set here (canRankHolders), so pagedTot is a sound fallback
-    var t10=0,t50=0; hold.slice(0,10).forEach(function(h){t10+=h.bal;}); hold.slice(0,50).forEach(function(h){t50+=h.bal;});
+    var t10=0,t50=0,_lxBurnt=0; var _lxCirc=hold.filter(function(h){ if(burnTag(h.addr)){ _lxBurnt+=h.bal; return false; } return true; }); var _lxSup=Math.max(1,sup-_lxBurnt); /* RAZA 2026-11-25: top 10 / top 50 of CIRCULATING supply -- the burn address is not a holder */ _lxCirc.slice(0,10).forEach(function(h){t10+=h.bal;}); _lxCirc.slice(0,50).forEach(function(h){t50+=h.bal;});
     var st2=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
     if(canRankHolders()){   // hold is a TRUE ranking -> the top-10/top-50 sums are the real thing
-      if(st2[1]){var _t10=(Math.min(100,t10/sup*100)).toFixed(1)+"%";if(st2[1].textContent!==_t10)st2[1].textContent=_t10;if(st2[1].hasAttribute("title"))st2[1].removeAttribute("title");lxMark(st2[1]);}
-      if(st2[2]){var _t50=(Math.min(100,t50/sup*100)).toFixed(1)+"%";if(st2[2].textContent!==_t50)st2[2].textContent=_t50;if(st2[2].hasAttribute("title"))st2[2].removeAttribute("title");lxMark(st2[2]);}
+      if(st2[1]){var _t10=(Math.min(100,t10/_lxSup*100)).toFixed(1)+"%";if(st2[1].textContent!==_t10)st2[1].textContent=_t10;if(st2[1].hasAttribute("title"))st2[1].removeAttribute("title");lxMark(st2[1]);}
+      if(st2[2]){var _t50=(Math.min(100,t50/_lxSup*100)).toFixed(1)+"%";if(st2[2].textContent!==_t50)st2[2].textContent=_t50;if(st2[2].hasAttribute("title"))st2[2].removeAttribute("title");lxMark(st2[2]);}
     }
     // Only the ROWS are gated on already having been built -- that guard exists to stop the fifty-row
     // rebuild loop that caused the grey flicker, and it still does exactly that.
