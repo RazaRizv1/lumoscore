@@ -387,7 +387,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +'<div class="mdx-mover-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mover-right">'
         +'<div class="mdx-mover-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
-        +'<div class="mdx-mover-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
+        +'<div class="mdx-mover-pct '+(_cu==null||Math.abs(+n(_cu))<0.005?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
         +'</div></div>';
     }).join("");
   }
@@ -600,7 +600,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
           +'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceTxt(a))+'</div>'
-        +'<div class="mdx-mk-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
+        +'<div class="mdx-mk-pct '+(_cu==null||Math.abs(+n(_cu))<0.005?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
         +'</div></div></div>';
     }).join("")+pgh;
   }
