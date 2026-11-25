@@ -363,8 +363,8 @@ function mainHTML(cfg){
        entrance script only reveals descendants of #lxhLeft, so a class here would leave it at
        opacity 0 forever. -->
   <div class="lxh-strip">
-    <div><div class="v">14</div><div class="l">Tools</div></div>
-    <div><div class="v">9</div><div class="l">Answer directly</div></div>
+    <div><div class="v">15</div><div class="l">Tools</div></div>
+    <div><div class="v">10</div><div class="l">Answer directly</div></div>
     <div><div class="v">5</div><div class="l">Prepared for you to sign</div></div>
   </div>
 </section>
@@ -379,7 +379,7 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ connected · 14 tools · POST /mcp',c:'lxh-ok',d:400},
+ {t:'tx',x:'✓ connected · 15 tools · POST /mcp',c:'lxh-ok',d:400},
  {t:'sp',d:130},
  // ASSETS SPAN THE NETWORKS, BECAUSE THE PAGE DOES. RAZA 2026-11-15: "on the right animation, please
  // dont use stellar based assets. use assets like usdc usdt btc xrp xlm near". The roster was
@@ -480,13 +480,14 @@ npx -y mcp-remote <span class="s">"https://lumoscore.com/mcp"</span></pre></div>
 
 <section class="mcp-sec" id="mcp-tools">
   <div class="mcp-cmdhead">
-    <h2>Fourteen tools, one server</h2>
-    <p>Nine answer straight away. Five come back as a prepared transaction for you to approve.</p>
+    <h2>Fifteen tools, one server</h2>
+    <p>Ten answer straight away. Five come back as a prepared transaction for you to approve.</p>
   </div>
   <div class="mcp-cmds">
     ${cmd(I.quote,'get_market','Live price, supply and market cap for any asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
     ${cmd(I.search,'get_quote','Best-route price for a swap, straight from on-chain path finding.',false)}
+    ${cmd('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>','find_arbitrage','Live check for price gaps between markets, at the amount you choose.',false)}
     ${cmd(I.shield,'list_curated_assets','Every asset LumosCore curates, and why each one is ticked.',false)}
     ${cmd(I.book,'get_orderbook','Bids, asks, spread and real depth against the native asset.',false)}
     ${cmd(I.layers,'list_pools','Liquidity pools by TVL, or filtered to one asset.',false)}
