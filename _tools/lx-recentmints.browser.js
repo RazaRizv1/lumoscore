@@ -172,6 +172,15 @@
       + '.lx-rm-flame{width:17px;height:17px;flex:none;transform-origin:50% 90%;filter:drop-shadow(0 0 4px rgba(255,122,26,.45));animation:lxrmFlick 2.4s ease-in-out infinite}'
       + '@keyframes lxrmFlick{0%,100%{transform:scale(1,1) rotate(0)}30%{transform:scale(.96,1.06) rotate(-2deg)}60%{transform:scale(1.03,.97) rotate(1.5deg)}}'
       + '@media (prefers-reduced-motion:reduce){.lx-rm-flame{animation:none}}'
+      // v13 polish (RAZA 2026-11-25 "more polishing ... to make it appealing")
+      + '.lx-rm{position:relative}.lx-rm::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;z-index:1;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,122,26,.95),transparent);box-shadow:0 0 10px 1px rgba(255,122,26,.35)}'
+      + '.lx-rm .lx-rm-new{background:var(--accent-pale,rgba(234,106,44,.14));color:var(--accent,#ea6a2c);box-shadow:inset 0 0 0 1px rgba(234,106,44,.25)}'
+      + '.lx-rm-logo.new{box-shadow:0 0 0 2px var(--surface,#131317),0 0 0 3.5px var(--accent,#ea6a2c),0 0 14px rgba(255,122,26,.35)}'
+      + '.lx-rm-row{box-shadow:inset 0 0 0 transparent;transition:background .18s,box-shadow .18s}.lx-rm-row:hover{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c)}'
+      + '.lx-rm-row:hover .lx-rm-spark .d{r:3.6}'
+      + '.lx-rm-all{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:44px;padding:0 14px;border:0;border-top:1px solid ' + B + ';background:transparent;color:var(--accent,#ea6a2c);font:inherit;font-size:13px;font-weight:650;cursor:pointer;transition:background .18s}'
+      + '.lx-rm-all:hover{background:var(--surface-2,' + S2 + ')}.lx-rm-all span{transition:transform .2s}.lx-rm-all:hover span{transform:translateX(3px)}'
+      + '.lx-rm-mob .lx-rm-all{min-height:42px}'
       + '.lx-rm-h h3{gap:7px}'
       + '.lx-rm-go{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(180deg,#ff8f52 0%,#f26b2a 52%,#e2561b 100%);border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.12),0 8px 18px -10px rgba(234,106,44,.75);font-weight:650;letter-spacing:.005em;text-shadow:0 1px 0 rgba(0,0,0,.12)}'
       + '.lx-rm-go::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.32) 50%,transparent 70%);transform:translateX(-120%);transition:transform .75s ease}'
@@ -182,7 +191,7 @@
       + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{gap:8px;padding:0 14px 0 8px;border-radius:10px;font-weight:650;background:var(--surface,transparent);border:1px solid ' + B + ';transition:border-color .2s,background .2s}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn svg{box-sizing:border-box;width:24px;height:24px;padding:5px;border-radius:50%;background:var(--accent-pale,rgba(234,106,44,.14));box-shadow:inset 0 0 0 1px rgba(234,106,44,.28)}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn:hover{border-color:rgba(234,106,44,.55);background:var(--surface-2,' + S2 + ')}}'
-      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;gap:10px;margin-bottom:20px}'
+      + '@media (min-width:1181px){section.dex-markets.lx-rm-on>.lx-rm-acts{display:flex;grid-column:2;grid-row:1;align-self:end;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:20px}'
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts .lx-rm-go{box-sizing:border-box;height:36px;padding:0 16px;font-size:14px;border-radius:10px}'   // FLASH (RAZA 2026-11-25): right size from the first frame
       + 'section.dex-markets.lx-rm-on>.lx-rm-acts #lxEarnBtn{box-sizing:border-box;margin:0}}'
       + '.lx-rm-wal,.lx-rm-act .lx-rm-wal{font-family:inherit;border-bottom:0;text-decoration:none}.lx-rm-wal:hover{text-decoration:underline;color:var(--text,inherit)}'
@@ -212,7 +221,17 @@
   }
   var rpT = 0;
   function repaint() { clearTimeout(rpT); rpT = setTimeout(function () { if (mounted) paint(mounted.box, mounted.mob); }, 60); }
-  function imgHtml(r) { return '<img class="lx-rm-logo" alt="" src="' + esc(LOGO[r.id]) + '">'; }
+  // v13: the footer opens the pairs table's own "LumosCore Mints" view (its mode menu), then scrolls to it.
+  var ALL = '<button type="button" class="lx-rm-all">View all LumosCore Mints <span aria-hidden="true">›</span></button>';
+  function showAllMints() {
+    var btns = function () { return [].filter.call(document.querySelectorAll('button'), function (b) { return b.offsetParent && !b.closest('.lx-rm'); }); };
+    var pick = function () { return btns().filter(function (b) { return /LumosCore Mints\s*$/.test((b.textContent || '').trim()); })[0]; };
+    var go = function () { var t = document.querySelector('.dex-mk-table-wrap') || pairsHead(); if (t && t.offsetParent) window.scrollTo({ top: t.getBoundingClientRect().top + scrollY - 140, behavior: 'smooth' }); };
+    var o = pick();
+    if (!o) { var m = btns().filter(function (b) { return /Curated|Stables|LumosCore Mints/.test(b.textContent || '') && !/^\s*[✓]/.test(b.textContent || ''); })[0]; if (m) m.click(); }
+    setTimeout(function () { var o2 = pick(); if (o2) o2.click(); setTimeout(go, 250); }, o ? 0 : 280);
+  }
+  function imgHtml(r) { return '<img class="lx-rm-logo' + (isNew(r) ? ' new' : '') + '" alt="" src="' + esc(LOGO[r.id]) + '">'; }
   function isNew(r) { return r.born > 1e12 && Date.now() - r.born < 86400000; }
   // v4 (RAZA 2026-11-24): "Minted 2h ago" + "by <wallet>" instead of the trade count. The latest trade stays as the small
   // live arrow beside the ticker (green buy / red sell, flashes on a new one).
@@ -275,12 +294,12 @@
     all.forEach(logo);
     var rows = all.filter(function (r) { return LOGO[r.id]; }).slice(0, 5);   // RAZA 2026-11-24: 5, not 10
     var checking = all.some(function (r) { return LOGO[r.id] === undefined; });
-    var SK = mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>';
+    var SK = (mob ? '<div class="lx-rm-strip"><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div><div class="lx-rm-skel" style="flex:0 0 178px;height:173px;border:0;margin:0;border-radius:12px"></div></div>' : '<div class="lx-rm-skel"></div><div class="lx-rm-skel"></div><div class="lx-rm-skel"></div>') + '<div class="lx-rm-all" aria-hidden="true" style="pointer-events:none"></div>';   // the footer's height too, so nothing below moves when the rows arrive
     // hold the skeleton until the logo checks are in, so rows do not pop in one by one on first load
     var body = (!DATA || (checking && !box.__lxrmDone)) ? SK
       : (!rows.length ? '<div class="lx-rm-empty">No token has been launched on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + ' yet. Be the first.</div>'
-        : (mob ? '<div class="lx-rm-strip">' + rows.map(function (r) { var p = changed(r); return cardHtml(r, p); }).join('') + '</div>'
-          : '<div class="lx-rm-list">' + rows.map(function (r) { var p = changed(r); return rowHtml(r, p); }).join('') + '</div>'));
+        : (mob ? '<div class="lx-rm-strip">' + rows.map(function (r) { var p = changed(r); return cardHtml(r, p); }).join('') + '</div>' + ALL
+          : '<div class="lx-rm-list">' + rows.map(function (r) { var p = changed(r); return rowHtml(r, p); }).join('') + '</div>' + ALL));
     if (DATA && !checking) box.__lxrmDone = 1;
     var keep = mob ? (box.querySelector('.lx-rm-strip') || {}).scrollLeft : 0;
     box.innerHTML = head(mob) + body;
@@ -351,6 +370,7 @@
       window.__lxRMClick = 1;
       window.addEventListener('click', function (e) {
         var t = e.target && e.target.closest ? e.target : null; if (!t || !t.closest('.lx-rm')) return;
+        if (t.closest('.lx-rm-all')) { e.preventDefault(); e.stopImmediatePropagation(); showAllMints(); return; }
         var w = t.closest('.lx-rm-wal'), a = t.closest('.lx-rm a[href]');
         var go = w ? w.getAttribute('data-href') : (a ? a.getAttribute('href') : '');
         if (!go) return;
