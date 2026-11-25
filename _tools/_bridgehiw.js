@@ -105,11 +105,40 @@ const STEPS_CCTP = [
    + 'are not lost, and the claim can be made later.'],
 ];
 
-const STEPS = LZ_LIVE ? STEPS_TWO : STEPS_CCTP;
+// FOUR ROUTES (RAZA 2026-11-25): CCTP, LayerZero, NEAR Intents and Axelar, 52 destinations. The copy lives in
+// C:/LumosCore-Monitor/bugshots/bhiw-new.js form, inlined here; the two older versions above are kept for history.
+const BHIW4 = {
+  "STEPS": [
+    [
+      "You choose where it goes",
+      "Your connected network is the source. Pick the destination chain, then the asset and the amount — any curated asset can be the thing you send."
+    ],
+    [
+      "You pick a route",
+      "Every route that reaches that chain is shown with what it delivers, what it costs and how long it takes. Where only one route reaches a chain, the choice is made for you."
+    ],
+    [
+      "Your asset is swapped into what the route carries",
+      "CCTP carries USDC, LayerZero carries USDT0 and NEAR Intents takes XLM or USDC. If you are sending something else, it is swapped on Stellar first, at a rate shown before you sign. SHX crosses through Axelar as itself."
+    ],
+    [
+      "The route carries it",
+      "NEAR Intents is the quickest, at about thirty seconds, and returns your deposit if a solver cannot complete the job. Axelar takes about five minutes. LayerZero takes about 30 minutes, waiting 320 Stellar ledgers before its verifiers sign off. CCTP is attestable in about five seconds."
+    ],
+    [
+      "You claim it — or you do not have to",
+      "With CCTP a second signature mints the USDC to your address, and you pay that chain’s gas for it. Until then the funds are attested but not issued: not lost, and listed under Awaiting redemption. LayerZero, NEAR Intents and Axelar deliver for you, with nothing to claim."
+    ]
+  ],
+  "LEDE": "LumosCore moves assets off Stellar through four routes, to 52 networks. <b>Circle CCTP</b> carries USDC and <b>LayerZero</b> carries USDT0, both <b>burned</b> on Stellar and <b>minted</b> on arrival. <b>NEAR Intents</b> swaps into the token you choose on the destination, and <b>Axelar</b> carries SHX as itself. LumosCore never holds your funds in transit.",
+  "NOTE": "<b>How many signatures depends on the route.</b> CCTP needs two — one to burn and one to claim, and the second cannot be prepared until Circle has attested to the first. LayerZero, NEAR Intents and Axelar need one. A swap into the route’s asset is its own signature, because a Soroban operation cannot share a transaction with a classic one, and so is LumosCore’s fee.",
+  "CHAINS": "<b>Where it goes:</b> 52 destinations. USDC via CCTP to 17 chains, including Ethereum, Base, Arbitrum, Optimism, Polygon and Avalanche. USDT0 via LayerZero to 21, including Hyperliquid, Monad, Berachain, Plasma and Hedera. NEAR Intents to 21 more, including Bitcoin, Solana, Tron, TON, Dogecoin and the XRP Ledger. Axelar carries SHX to Ethereum, Solana and the XRP Ledger."
+};
+const STEPS = BHIW4.STEPS;
 
 // The three prose blocks around the steps, likewise one version per state. Every one of them named CCTP as the
 // only mechanism, which is what made the popup read as a CCTP explainer after the second route went live.
-const LEDE = LZ_LIVE
+const LEDE_TWO = LZ_LIVE
   ? 'This is not a wrapped-token bridge, on either route. <b>Circle CCTP</b> moves USDC and <b>LayerZero</b> moves '
     + 'USDT0, and both work the same way: the stablecoin is <b>burned</b> on the chain it leaves and <b>minted</b> '
     + 'on the chain it arrives on. What lands is the genuine asset, not a synthetic claim on a pool somewhere.'
@@ -117,7 +146,7 @@ const LEDE = LZ_LIVE
     + 'between chains: your USDC is <b>burned</b> on the chain it leaves and <b>native USDC is minted</b> on the '
     + 'chain it arrives on. What lands is genuine Circle-issued USDC, not a synthetic claim on a pool somewhere.';
 
-const NOTE = LZ_LIVE
+const NOTE_TWO = LZ_LIVE
   ? '<b>How many signatures depends on the route.</b> CCTP needs two \\u2014 one to burn and one to claim \\u2014 and '
     + 'the second cannot be prepared until Circle has attested to the first. LayerZero needs one: its executor '
     + 'delivers, paid for by the messaging fee. Either way, a swap into the route\\u2019s stablecoin is its own '
@@ -125,12 +154,14 @@ const NOTE = LZ_LIVE
   : '<b>Two signatures, not one.</b> One to burn and one to claim. That is inherent to CCTP rather than a choice '
     + 'made here \\u2014 the second cannot be prepared until Circle has attested to the first.';
 
-const CHAINS = LZ_LIVE
+const CHAINS_TWO = LZ_LIVE
   ? '<b>Where it goes:</b> sixteen destinations. USDC via CCTP to Ethereum, Base, Arbitrum, Optimism, Polygon, '
     + 'Avalanche, Linea and World Chain. USDT0 via LayerZero to Ethereum, Arbitrum, Optimism, Polygon, Berachain, '
     + 'Ink, Hyperliquid, Monad, Flare, Sei, MegaETH and Plasma.'
   : '<b>Where it goes:</b> USDC can move between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, '
     + 'Avalanche, Linea and World Chain.';
+
+const LEDE = BHIW4.LEDE, NOTE = BHIW4.NOTE, CHAINS = BHIW4.CHAINS;
 
 const SCRIPT = `<script id="lx-bhiw">(function(){
   if(window.__lxBhiw)return; window.__lxBhiw=1;
