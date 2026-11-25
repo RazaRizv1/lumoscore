@@ -69,7 +69,7 @@ const CARDS = {
   bridge: ['bridge',
     'Move assets between networks without memorizing ten different bridges. LumosCore integrates the most trusted bridging solution for each chain.'],
   rewards: ['rewards',
-    'Put your assets to work and earn LUMOS. Provide liquidity on any supported chain, stake, or hold.'],
+    'LUMOS reward programs for holders and liquidity providers on Stellar and XRP Ledger, paid out on the 1st and 15th of every month.'],
   wallet: ['wallet',
     'The token the platform runs on. Hold 250,000 LUMOS and your trading fee halves to 0.1%; earn it by '
     + 'providing liquidity, and spend nothing to hold it.',
@@ -77,7 +77,7 @@ const CARDS = {
     '<img class="ic-prod-img" src="/assets/tokens/lumos.png" width="30" height="30" alt="" '
     + 'decoding="async">'],
   launchpad: ['launchpad',
-    'Mint asset and deploy its first pool on any supported network in less than 2 minutes.'],
+    'Mint an asset and deploy its first pool on any supported network in less than 2 minutes.'],
 };
 
 // The nav sizes its glyphs from CSS, so the nav markup carries no width/height -- dropped into the

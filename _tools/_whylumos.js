@@ -91,7 +91,7 @@ const CARDS = [
     icon: ICON(line('M6.2 7.4L12 16.6M17.8 7.4L12 16.6M6.2 7.4h11.6', 1.9)
       + dot(6.2, 7.4, 3.1, true) + dot(17.8, 7.4, 3.1, false) + dot(12, 16.6, 3.1, true)),
     title: 'Built for more than one chain',
-    body: 'Stellar today and XRP Ledger alongside it, with more to come. One account, one interface, '
+    body: 'Stellar, the XRP Ledger and NEAR today, with more to come. One account, one interface, '
       + 'and every new network arrives as somewhere else to explore rather than another tool to learn.'
   }
 ];
