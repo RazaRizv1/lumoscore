@@ -30,6 +30,8 @@
     + '<path fill="url(#lxrmFg)" d="M12 2.5c.6 2.9 2.4 4.9 4.1 6.7 1.6 1.7 2.9 3.4 2.9 5.9A7 7 0 0 1 12 22a7 7 0 0 1-7-6.9c0-2.1.9-3.9 2.3-5.2.2 1.6.9 2.8 2.1 3.4-.4-3.9.9-7.6 2.6-10.8z"/>'
     + '<path fill="#ffe9a8" opacity=".85" d="M12.2 12.2c.9 1.3 2.3 2.4 2.3 4.3A2.6 2.6 0 0 1 12 19.2a2.6 2.6 0 0 1-2.6-2.6c0-1.6 1.2-2.9 2.8-4.4z"/></svg>';
   var ROCKET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>';
+  // v16 (RAZA 2026-11-25 "never liked it ... make it more professional and modernistic"): a plain plus, not a rocket
+  var PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
   function css() {
     if (document.getElementById('lx-rm-css')) return;
     var s = document.createElement('style'); s.id = 'lx-rm-css';
@@ -200,6 +202,18 @@
       // hidden to the right, the table's right edge fades out, the usual hint that it scrolls.
       + 'section.dex-markets.lx-rm-on .dex-mk-table-wrap.lx-rm-more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 64px),transparent)}';
     document.head.appendChild(s);
+    // v16 LAUNCH TOKEN: tinted, flat, quiet -- orange text on a soft orange ground with a hairline border; fills solid on
+    // hover. No gradient, glow, sheen or text shadow. Same height/corners as the search box beside it.
+    var s2 = document.createElement('style'); s2.id = 'lx-rm-css2';
+    s2.textContent = ''
+      + '.lx-rm .lx-rm-go,.lx-rm-acts .lx-rm-go{background:var(--accent-pale,rgba(234,106,44,.12));color:var(--accent,#ea6a2c)!important;border:1px solid rgba(234,106,44,.38);box-shadow:none;text-shadow:none;filter:none;font-weight:600;letter-spacing:0;gap:7px;transition:background .18s,color .18s,border-color .18s}'
+      + '.lx-rm .lx-rm-go::after,.lx-rm-acts .lx-rm-go::after{display:none}'
+      + '.lx-rm .lx-rm-go svg,.lx-rm-acts .lx-rm-go svg{width:15px;height:15px;transform:none;transition:transform .2s}'
+      + '.lx-rm .lx-rm-go:hover,.lx-rm-acts .lx-rm-go:hover{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff!important;box-shadow:none;filter:none;transform:none}'
+      + '.lx-rm .lx-rm-go:hover svg,.lx-rm-acts .lx-rm-go:hover svg{transform:rotate(90deg)}'
+      + '.lx-rm .lx-rm-go:active,.lx-rm-acts .lx-rm-go:active{transform:translateY(1px)}'
+      + '.lx-rm .lx-rm-go:focus-visible,.lx-rm-acts .lx-rm-go:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}';
+    document.head.appendChild(s2);
   }
   // LOGOS DECIDE WHO IS LISTED (RAZA 2026-11-24 "lets please not show tokens with no logos"). A token is shown only
   // once its logo has actually LOADED in this browser; LOGO[id]: undefined = still checking, '' = none, url = shown.
@@ -287,7 +301,7 @@
   }
   function head(mob) {
     return '<div class="lx-rm-h"><div><h3>' + FLAME + 'Recent Mints</h3><div class="lx-rm-sub">Newest LumosCore Launchpad tokens on ' + esc({ stellar: 'Stellar', xrpl: 'XRPL', near: 'NEAR' }[NET]) + '</div></div>'
-      + (mob ? '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a>' : '') + '</div>';
+      + (mob ? '<a class="lx-rm-go" href="/launchpad/' + NET + '">' + PLUS + 'Launch Token</a>' : '') + '</div>';
   }
   function paint(box, mob) {
     var all = (DATA && DATA.rows) || [];
@@ -341,7 +355,7 @@
       // then left wherever it is, so it is simply moved in here (see ensure). Narrow desktops and phones keep the
       // button in the panel header: the bar is hidden there.
       var acts = document.createElement('div'); acts.className = 'lx-rm-acts';
-      acts.innerHTML = '<a class="lx-rm-go lx-rm-go-bar" href="/launchpad/' + NET + '">' + ROCKET + 'Launch Token</a>';
+      acts.innerHTML = '<a class="lx-rm-go lx-rm-go-bar" href="/launchpad/' + NET + '">' + PLUS + 'Launch Token</a>';
       host.appendChild(acts);
       // start level with the table card, not with the heading: the panel's first grid row = the row of the section
       // child that holds the table (each child of the section is one row of the single left column)
