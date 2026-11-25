@@ -2852,10 +2852,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           try{ pdTx(); }catch(_){}
         }).catch(function(){});
       }
-      if(partsLate){ var _pl=partsLate; partsLate=null;
+      if(partsLate){ var _pl=partsLate; partsLate=null; window.__lxPartsPending=1; window.__lxPartsFail=0;
         _pl.then(function(a){
+          window.__lxPartsPending=0; if(!a||a.__failed)window.__lxPartsFail=1;
           if(!DET) return;
-          var accs=(a&&a._embedded&&a._embedded.records)||[]; if(!accs.length) return;
+          var accs=(a&&a._embedded&&a._embedded.records)||[]; if(!accs.length){ try{ pdParts(); }catch(_){} return; }
           var ps=[], mine=0;
           accs.forEach(function(ac){ var id=ac.account_id||ac.id;
             (ac.balances||[]).forEach(function(b){
@@ -2866,7 +2867,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           ps.sort(function(x,y){ return y.shares-x.shares; });
           DET.parts=ps; if(mine&&!DET.myShares){ DET.myShares=mine; DET.myFrac=tot>0?mine/tot:0; }
           try{ pdParts(); }catch(_){}
-        }).catch(function(){});
+        }).catch(function(){ window.__lxPartsPending=0; window.__lxPartsFail=1; try{ pdParts(); }catch(_){} });
       }
       try{ var _fb=q(".lx-detfail"); if(_fb)_fb.remove();                      // data arrived after all
         var _cs=q("#tvlChart svg");
@@ -4170,10 +4171,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var d=DET; var list=q("#partList,#participantsList"); if(!list)return;
     list.__lxPP=1;  // block the design's participant paginator/cloner
     var s=partSlice(), mob=(list.id==="participantsList");
-    var sig=partPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].addr)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].addr)||"");
+    var sig=(window.__lxPartsPending?"P":"")+(window.__lxPartsFail?"F":"")+partPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].addr)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].addr)||"");
     if(list.__lxpsig!==sig || !list.querySelector(".lx-partrow")){
       list.__lxpsig=sig;
-      list.innerHTML=s.rows.length?s.rows.map(function(_p){return partRow(_p,mob);}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
+      list.innerHTML=s.rows.length?s.rows.map(function(_p){return partRow(_p,mob);}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">'+(window.__lxPartsPending?'<style>@keyframes lxpspin{to{transform:rotate(360deg)}}</style><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:lxpspin .8s linear infinite;margin-right:9px;vertical-align:-2px"></span>Loading participants\u2026':(window.__lxPartsFail?'Couldn\u2019t load participants right now.':'No liquidity providers yet'))+'</div>';
     }
     var pg=q("#lx-partpage"); if(pg)pg.style.display="none";
     var ptot=d.trustlines||d.parts.length;    // #13: the pool's own count, not the size of our sample
@@ -4218,7 +4219,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // push the pager onto a second row, which is what "pagination is breaking" looked like — on a small pool the line is
     // short and the pager sits beside it correctly, which is why USDM/XLM looked right and AQUA/XLM did not.
     var _extra="";
-    if(info)setText(info, s.all.length?("Viewing "+from+"\\u2013"+to+" of "+num(s.all.length)+" shown"+_extra):"No liquidity providers yet");
+    if(info)setText(info, s.all.length?("Viewing "+from+"\\u2013"+to+" of "+num(s.all.length)+" shown"+_extra):(window.__lxPartsPending?"Loading participants\u2026":"No liquidity providers yet"));
     if(!nav)return;
     if(!nav.__lxw){ nav.__lxw=1;
       nav.innerHTML='<button type="button" data-pp="prev">\\u2039</button><span class="lx-pppg"></span><button type="button" data-pp="next">\\u203a</button>';
