@@ -16,7 +16,7 @@
 const TO = 'support@lumoscore.com';
 const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
 
-const LIMITS = { email: 254, name: 80, subject: 160, message: 5000, wallet: 60, txHash: 80 };
+const LIMITS = { email: 254, name: 80, subject: 160, message: 5000, wallet: 100, txHash: 80 };   // wallet 100: NEAR ids reach 64
 const WINDOW_S = 900;       // 15 minutes between two messages from one IP (RAZA, 2026-10-09)
 const HOURLY_MAX = 5;
 // A field no human ever fills. The form renders it hidden and always submits it empty; a scanner
