@@ -34,10 +34,14 @@ for (const k of Object.keys(json)) {
 }
 if (!tpl) { console.log('mobile bottom nav: no source page to copy from — nothing done'); process.exit(0); }
 
+// A page that already carried the design's nav kept its static Wallet highlight (RAZA 2026-11-25: About, docs, terms,
+// privacy ... all lit Wallet). These pages belong to no tab, so nothing is lit on them.
+const STRAY = /^lumoscore-(docs-[a-z-]+|terms|privacy|support|whitepaper|list-token|mcp|about)-mobile\.html$/;
+function unstray(k, h) { return STRAY.test(k) ? h.split('class="nb-tab active" data-id="wallet"').join('class="nb-tab" data-id="wallet"') : h; }
 let added = 0, already = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
-  if (h.indexOf('class="nb-bar"') >= 0) { already++; continue; }
+  if (h.indexOf('class="nb-bar"') >= 0) { already++; json[k] = unstray(k, h); continue; }
   if (h.indexOf('.nb-bar{') < 0) continue;        // page is not part of the mobile shell
   const bi = h.lastIndexOf('</body>');
   if (bi < 0) continue;
