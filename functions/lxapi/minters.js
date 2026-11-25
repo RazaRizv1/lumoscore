@@ -379,6 +379,9 @@ async function nearRecord(kv, b) {
     const sym = token.split('.')[0].toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40);
     const id = sym + '-' + token, list = (await kv.get('mints:near', 'json')) || [];
     if (sym && Array.isArray(list) && list.indexOf(id) < 0) { list.push(id); await kv.put('mints:near', JSON.stringify(list)); }
+    // ...with its launch time, kept once (RAZA 2026-11-26): the dashboard's Newest / 24h Mints read it via recentmints.
+    const at = (await kv.get('mints:near:at', 'json')) || {};
+    if (!at[token]) { at[token] = Date.now(); await kv.put('mints:near:at', JSON.stringify(at)); }
   } catch (e) { /* the minter is recorded either way */ }
   return { status: 200, minter: chain[key] };
 }

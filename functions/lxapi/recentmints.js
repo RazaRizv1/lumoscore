@@ -239,7 +239,14 @@ export async function onRequestGet({ request, env, waitUntil }) {
   // A list whose launch dates are not all known yet may be missing the newest token (it can sit late in the list):
   // never cache that, so the next call carries on filling it in (shipped 2026-11-24 without this: JENSEN was missing).
   const pending = ids.some((id) => !meta[net + '|' + id]);
-  const res = json({ ok: true, net, at: Date.now(), rows, complete: !pending }, pending ? 0 : 30);
+  // NEAR totals for the dashboard's Launchpad box (RAZA 2026-11-26): over EVERY launch, not just the 10 rows above.
+  let extra = {};
+  if (net === 'near') {
+    let atMap = {}; try { atMap = (await kv.get('mints:near:at', 'json')) || {}; } catch (e) { atMap = {}; }
+    const live = ids.filter((id) => !HIDE.test(id)), times = live.map((id) => +atMap[id] || 0).filter((t) => t > 1e12);
+    extra = { total: live.length, newestAt: times.length ? Math.max.apply(null, times) : 0, mints24: times.filter((t) => Date.now() - t <= DAY).length };
+  }
+  const res = json(Object.assign({ ok: true, net, at: Date.now(), rows, complete: !pending }, extra), pending ? 0 : 30);
   if (!pending) { try { const p = cache.put(key, res.clone()); if (waitUntil) waitUntil(p); else await p; } catch (e) {} }
   return res;
 }
