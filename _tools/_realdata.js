@@ -1206,7 +1206,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // unread says so -- which is the same rule as the Orders tab's "could not load" vs "no open orders".
 // The next feed() pass is 60s away and re-reads every row, so this heals itself without a retry.
 +'}).catch(function(){ try{ rows[i].ic=UNREAD; rows[i].cls="unread"; rows[i].unread=1;'
-+'  rows[i].type="Couldn\\u2019t read this transaction"; rows[i].act=""; rows[i].pair=null; rows[i].pending=0; rows[i].done=1;'
++'  rows[i].type="Stellar network busy, retrying shortly"; rows[i].act=""; rows[i].pair=null; rows[i].pending=0; rows[i].done=1;'
 +'  _feedRender(); }catch(_){} })'
 +'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
