@@ -1382,8 +1382,10 @@ function buildPage(shell) {
   // So the inherited bar is RETARGETED rather than removed and rebuilt: keep its markup, its styling and
   // its arrow (the long one, which is the design's own back glyph), and change only where it goes and
   // what it says. The inner HTML is preserved through the replace, which is what keeps the svg.
-  p = p.replace(/<a class="back-link" href="[^"]*">([\s\S]*?)<\/a>/,
-    (m, inner) => '<a class="back-link" href="/dashboard">' + inner.replace(/Back to Pools/, 'Back to dashboard') + '</a>');
+  // ...and any attributes after href (the back-link step adds data-lxback="1" there; RAZA 2026-11-26 the phone pages
+  // still said "Back to Pools" because this pattern stopped at href">).
+  p = p.replace(/<a class="back-link" href="[^"]*"([^>]*)>([\s\S]*?)<\/a>/,
+    (m, rest, inner) => '<a class="back-link" href="/dashboard"' + rest + '>' + inner.replace(/Back to Pools/, 'Back to dashboard') + '</a>');
   // Our own crumb is then redundant -- but only where the bar exists, which is the mobile shell. The
   // desktop shell has no crumb-bar at all, so there the crumb IS the back link and must stay.
   if (/class="crumb-bar"/.test(p)) p = p.replace(/<div class="crumb lx-crumb">[\s\S]*?<\/div>/, '');
