@@ -87,6 +87,25 @@ const NAME = { Stellar: 'Stellar', XRPL: 'XRP Ledger' };
     ['rewards-xrpl', { eyebrow: 'Rewards on XRP Ledger', title: 'Rewards', sub: ['LUMOS rewards for holders', 'and liquidity providers.'],
       chipList: [{ t: 'XRP Ledger', chain: 'XRPL' }, { t: 'Paid in LUMOS' }], visual: K.VIS.rewards('XRPL') }],
 
+    // 2026-11-27 (card audit): pages that were still on the general card. Wording from each page itself.
+    ['support', { eyebrow: 'Support', title: 'Support', sub: ['Tell us what happened and', 'we will reply by email.'],
+      chipList: [{ t: 'Reply by email' }, { t: 'We never ask for your keys', dot: '#1fa968' }], visual: K.VIS.support() }],
+    ['privacy', { eyebrow: 'Legal', title: 'Privacy', sub: ['What happens to information', 'when you use LumosCore.'],
+      chipList: [{ t: 'No cookies' }, { t: 'No account to create' }], visual: K.VIS.legal() }],
+    ['terms', { eyebrow: 'Legal', title: 'Terms', sub: ['The terms for using', 'LumosCore.'],
+      chipList: [{ t: 'Non-custodial', dot: '#1fa968' }, { t: 'LumosCore OÜ, Estonia' }], visual: K.VIS.legal() }],
+    ['list-your-token-xrpl', { eyebrow: 'For issuers on XRP Ledger', title: 'List your token', sub: ['Apply for a curated listing,', 'reviewed by a person.'],
+      chipList: [{ t: 'XRP Ledger', chain: 'XRPL' }, { t: 'Refunded if declined' }], visual: K.VIS.listing('XRPL') }],
+    ['list-your-token-near', { eyebrow: 'For issuers on NEAR', title: 'List your token', sub: ['Apply for a curated listing,', 'reviewed by a person.'],
+      chipList: [{ t: 'NEAR', chain: 'NEAR' }, { t: 'Refunded if declined' }], visual: K.VIS.listing('NEAR') }],
+    // PUBLIC WALLET pages (/account/<chain>/<address>): one card per network, no address, no numbers.
+    ['account-stellar', { eyebrow: 'Wallet on Stellar', title: 'Wallet', sub: ['Balances, pools and activity', 'of a Stellar address.'],
+      chipList: [{ t: 'Stellar', chain: 'Stellar' }, { t: 'Public view' }], visual: K.VIS.wallet('Stellar') }],
+    ['account-xrpl', { eyebrow: 'Wallet on XRP Ledger', title: 'Wallet', sub: ['Balances, pools and activity', 'of an XRP Ledger address.'],
+      chipList: [{ t: 'XRP Ledger', chain: 'XRPL' }, { t: 'Public view' }], visual: K.VIS.wallet('XRPL') }],
+    ['account-near', { eyebrow: 'Wallet on NEAR', title: 'Wallet', sub: ['Balances, pools and activity', 'of a NEAR account.'],
+      chipList: [{ t: 'NEAR', chain: 'NEAR' }, { t: 'Public view' }], visual: K.VIS.wallet('NEAR') }],
+
     // MCP (new 2026-11-26, RAZA: "please make sure not to miss out mcp"). Wording from the /mcp page itself.
     ['mcp', { eyebrow: 'Model Context Protocol', title: 'MCP', sub: ['Your AI agent, on-chain.', 'You sign every transaction.'],
       chipList: [{ t: 'One URL' }, { t: 'No API key' }, { t: 'Never holds your key', dot: '#1fa968' }], visual: K.VIS.terminal() }],

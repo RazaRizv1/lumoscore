@@ -1261,6 +1261,12 @@ const SECTION_CARD = {
   '/launchpad/xrpl': 'launchpad-xrpl',
   '/about': 'about',
   '/mcp': 'mcp',
+  // 2026-11-27 card audit
+  '/support': 'support',
+  '/privacy': 'privacy',
+  '/terms': 'terms',
+  '/list-your-token/xrpl': 'list-your-token-xrpl',
+  '/list-your-token/near': 'list-your-token-near',
 };
 
 // The card for everything with no better answer: the docs, the legal pages, the footer links, a
@@ -1279,6 +1285,10 @@ function fallbackCard(p){
   if (p === '/faq') return '/assets/og/s/docs.png';
   if (p === '/docs' || p.indexOf('/docs/') === 0) return '/assets/og/s/docs.png';
   if (p === '/blog' || p.indexOf('/blog/') === 0) return '/assets/og/s/blog.png';
+  // A public wallet page: one card per network, never the address (2026-11-27 card audit).
+  if (p.indexOf('/account/stellar/') === 0) return '/assets/og/s/account-stellar.png';
+  if (p.indexOf('/account/xrpl/') === 0) return '/assets/og/s/account-xrpl.png';
+  if (p.indexOf('/account/near/') === 0) return '/assets/og/s/account-near.png';
   return GENERAL_CARD;
 }
 
@@ -2460,7 +2470,9 @@ export async function onRequest(context){
     //
     // The asset lookup that used to run here went solely to decide an image, and now decides
     // nothing, so it is gone rather than left to cost a round trip per request.
-    seo = poolSeo(want.a, want.b, '/assets/og/s/pools-' + (want.chain === 'xrpl' ? 'xrpl' : 'stellar') + '.png', want.chain);
+    // Stellar (2026-11-27): the pair resolves to its pool card through /lxapi/ogpool's pair map, no lookup here.
+    seo = poolSeo(want.a, want.b, want.chain === 'xrpl' ? '/assets/og/s/pools-xrpl.png'
+      : '/lxapi/ogpool?p=stellar-pair-' + encodeURIComponent([want.a, want.b].sort().join('~')), want.chain);
   }
 
   // A plain section route carries no seo object -- its title and description are baked into the page

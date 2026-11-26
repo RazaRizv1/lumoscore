@@ -582,11 +582,47 @@ const VIS = {
     [140, 120, 132, 100, 126, 112, 90].forEach((w, i) => { g += '<rect x="843" y="' + (222 + i * 26) + '" width="' + w + '" height="8" rx="4" fill="#ffffff" fill-opacity=".22"/>'; });
     return { svg: halo2(925, 300, 180) + g };
   },
-  listing() {
+  listing(chain) {
     return { svg: halo2(925, 305, 180) + ring2(925, 305, 150, .05) + ring2(925, 305, 112, .08, '2 8')
       + '<circle cx="925" cy="305" r="78" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>'
       + '<rect x="890" y="299" width="70" height="12" rx="6" fill="url(#c2flame)"/><rect x="919" y="270" width="12" height="70" rx="6" fill="url(#c2flame)"/>'
-      + '<circle cx="1046" cy="214" r="22" fill="#0e2519" stroke="#1fa968" stroke-opacity=".5"/><path d="M1036 214.5l6 6 11-11.5" fill="none" stroke="#1fa968" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>' };
+      + '<circle cx="1046" cy="214" r="22" fill="#0e2519" stroke="#1fa968" stroke-opacity=".5"/><path d="M1036 214.5l6 6 11-11.5" fill="none" stroke="#1fa968" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'
+      + netBadge(chain, 800, 190) };
+  },
+  // SUPPORT (2026-11-27): a question and a reply, the reply arriving "by email" -- what the page promises.
+  support() {
+    const bub = (x, y, w, h, mine) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="22" fill="' + (mine ? '#ffffff' : '#ffffff') + '" fill-opacity="' + (mine ? '.05' : '.08') + '" stroke="url(#c2edge)"/>';
+    return { svg: halo2(925, 300, 185)
+      + bub(760, 175, 270, 92, false) + '<rect x="786" y="203" width="190" height="9" rx="4.5" fill="#ffffff" fill-opacity=".3"/><rect x="786" y="225" width="140" height="9" rx="4.5" fill="#ffffff" fill-opacity=".16"/>'
+      + bub(840, 295, 270, 108, true) + '<rect x="866" y="322" width="200" height="9" rx="4.5" fill="#ffffff" fill-opacity=".3"/><rect x="866" y="344" width="170" height="9" rx="4.5" fill="#ffffff" fill-opacity=".16"/><rect x="866" y="366" width="110" height="9" rx="4.5" fill="#ffffff" fill-opacity=".16"/>'
+      + '<circle cx="1110" cy="300" r="26" fill="#0d0d10" stroke="url(#c2flame)" stroke-width="2.5"/>'
+      + '<path d="M1097 291 h26 v18 h-26 z M1097 291 l13 10 13 -10" fill="none" stroke="#dddce2" stroke-width="2.4" stroke-linejoin="round"/>'
+      + brandDisc(740, 175, 22) };
+  },
+  // PRIVACY / TERMS (2026-11-27): one page with a shield and a tick -- what the policy and the terms protect.
+  legal() {
+    let g = glass2(790, 158, 220, 290, 22) + '<rect x="818" y="190" width="96" height="12" rx="6" fill="url(#c2flame)"/>';
+    [160, 136, 150, 120, 146, 104].forEach((w, i) => { g += '<rect x="818" y="' + (224 + i * 26) + '" width="' + w + '" height="8" rx="4" fill="#ffffff" fill-opacity=".22"/>'; });
+    const sx = 1010, sy = 380;
+    g += '<path d="M' + sx + ' ' + (sy - 62) + ' L' + (sx + 50) + ' ' + (sy - 44) + ' V' + (sy - 6) + ' C' + (sx + 50) + ' ' + (sy + 26) + ' ' + (sx + 26) + ' ' + (sy + 46) + ' ' + sx + ' ' + (sy + 58)
+      + ' C' + (sx - 26) + ' ' + (sy + 46) + ' ' + (sx - 50) + ' ' + (sy + 26) + ' ' + (sx - 50) + ' ' + (sy - 6) + ' V' + (sy - 44) + ' Z" fill="#0d0d10" stroke="url(#c2flame)" stroke-width="3"/>'
+      + '<path d="M' + (sx - 18) + ' ' + (sy + 2) + ' l12 12 24 -26" fill="none" stroke="#1fa968" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
+    return { svg: halo2(925, 300, 185) + g };
+  },
+  // PUBLIC WALLET (2026-11-27): an address card -- avatar, a few balance rows as bars, no numbers, no address.
+  wallet(chain) {
+    let g = glass2(745, 165, 360, 280, 26)
+      + '<rect x="773" y="193" width="56" height="56" rx="16" fill="url(#c2flame)" fill-opacity=".85"/>'
+      + '<rect x="785" y="205" width="14" height="14" rx="3" fill="#ffffff" fill-opacity=".85"/><rect x="803" y="223" width="14" height="14" rx="3" fill="#ffffff" fill-opacity=".85"/>'
+      + '<rect x="845" y="203" width="170" height="11" rx="5.5" fill="#ffffff" fill-opacity=".4"/><rect x="845" y="225" width="110" height="9" rx="4.5" fill="#ffffff" fill-opacity=".16"/>';
+    [[0, 150, '#ffcf5a'], [1, 118, '#3fd0ea'], [2, 90, '#e2557f']].forEach(([i, w, c]) => {
+      const y = 285 + i * 50;
+      g += '<rect x="773" y="' + (y - 18) + '" width="304" height="1" fill="#ffffff" fill-opacity=".06"/>'
+        + '<circle cx="790" cy="' + (y + 6) + '" r="13" fill="' + c + '" fill-opacity=".85"/>'
+        + '<rect x="814" y="' + y + '" width="' + w + '" height="10" rx="5" fill="#ffffff" fill-opacity=".28"/>'
+        + '<rect x="' + (1077 - 70) + '" y="' + y + '" width="70" height="10" rx="5" fill="#ffffff" fill-opacity=".2"/>';
+    });
+    return { svg: halo2(925, 300, 190) + g + netBadge(chain, 1098, 172) };
   },
   rewards(chain) {
     let sp = ''; [[1060, 200, 7], [870, 168, 5], [1080, 400, 5], [775, 410, 6]].forEach(([x, y, r]) => { sp += '<path d="M' + x + ' ' + (y - r * 2) + ' L' + (x + r * 0.5) + ' ' + (y - r * 0.5) + ' L' + (x + r * 2) + ' ' + y + ' L' + (x + r * 0.5) + ' ' + (y + r * 0.5) + ' L' + x + ' ' + (y + r * 2) + ' L' + (x - r * 0.5) + ' ' + (y + r * 0.5) + ' L' + (x - r * 2) + ' ' + y + ' L' + (x - r * 0.5) + ' ' + (y - r * 0.5) + ' Z" fill="url(#c2flame)" fill-opacity=".8"/>'; });

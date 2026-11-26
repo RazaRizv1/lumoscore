@@ -41,6 +41,8 @@ export async function onRequestGet(ctx) {
   const m = KEY_RE.exec(url.searchParams.get('p') || '');
   const chain = m ? m[1] : '';
   const id = m ? m[2] : '';
+  // A STELLAR PAIR (2026-11-27): resolved to its pool id through og/p/stellar-pairs.json; unknown -> section card.
+  if (m && chain === 'stellar' && id.indexOf('pair-') === 0) return pairCard(ctx, url, id.slice(5));
   if (!m || !ID_RE[chain].test(id)) {
     return new Response(null, { status: 400, headers: { 'cache-control': 'public, max-age=300' } });
   }
@@ -76,6 +78,25 @@ export async function onRequestGet(ctx) {
 
 // HEAD HAS TO ANSWER TOO -- see the long note in ogcard.js. Only onRequestGet was exported, so a
 // crawler that checks the image with HEAD before downloading it got a 404 and dropped the card.
+const ASSET_RE = /^(native|[A-Za-z0-9]{1,12}-G[A-Z2-7]{55})$/;
+async function pairCard(ctx, url, pair) {
+  const sides = String(pair).split('~');
+  if (sides.length !== 2 || !ASSET_RE.test(sides[0]) || !ASSET_RE.test(sides[1])) {
+    return new Response(null, { status: 400, headers: { 'cache-control': 'public, max-age=300' } });
+  }
+  const k = sides.slice().sort().join('~');
+  const opts = { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } };
+  let id = '';
+  try {
+    const r = await fetch(url.origin + '/assets/og/p/stellar-pairs.json', opts);
+    if (r.ok) { const map = await r.json(); id = (map && map[k]) || ''; }
+  } catch (e) { id = ''; }
+  const u2 = new URL(url.toString());
+  u2.searchParams.set('p', id && ID_RE.stellar.test(id) ? 'stellar-' + id : 'stellar-' + '0'.repeat(64));
+  // re-enter the normal path: an id serves its card; the all-zero id has no card, so it falls to the section card
+  return onRequestGet(Object.assign({}, ctx, { request: new Request(u2.toString(), ctx.request) }));
+}
+
 export async function onRequestHead(ctx) {
   const res = await onRequestGet(ctx);
   return new Response(null, { status: res.status, headers: res.headers });

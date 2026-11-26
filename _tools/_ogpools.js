@@ -226,6 +226,17 @@ async function stellarLogo(u) {
     } catch (e) { console.error('  stellar ' + r.id + ': ' + e.message); }
   }
   if (sTop[0]) seen.push(['pools-stellar', 'Stellar', sTop[0]]);
+  // PAIR -> POOL ID MAP (2026-11-27). A Stellar pool PAGE is addressed by its pair (/pools/stellar/A/B) but its
+  // card is keyed on the pool id, so the page could never find it and every Stellar pool showed the section
+  // card. /lxapi/ogpool reads this map to resolve a pair. Key = the two assets ("native" or CODE-ISSUER) sorted
+  // and joined with "~", so either URL order finds it. Only written from a full roster.
+  if (sTop.length) {
+    const ak = (a) => (a && a.issuer ? a.code + '-' + a.issuer : 'native');
+    const map = {};
+    for (const r of sTop) if (r.a && r.b && r.id) map[[ak(r.a), ak(r.b)].sort().join('~')] = r.id;
+    fs.writeFileSync(path.join(OUT_P, 'stellar-pairs.json'), JSON.stringify(map));
+    console.log('  stellar pair map: ' + Object.keys(map).length + ' pair(s) -> og/p/stellar-pairs.json');
+  }
 
   // ---- XRPL: top 100 by 24h volume ---------------------------------------------------------------
   // Already fetched, at the very top of this run. Nothing to do here but draw.
