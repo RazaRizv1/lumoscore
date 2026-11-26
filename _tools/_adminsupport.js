@@ -323,7 +323,7 @@ function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){retur
 function lxmStatus(st){
   var M={delivered:["ok","Delivered"], opened:["ok","Delivered \\u00b7 opened"], bounced:["bad","Bounced \\u2014 not delivered"],
     complained:["bad","Marked as spam"], failed:["bad","Failed"], delayed:["warn","Delivery delayed"], sent:["wait","Sent \\u2014 waiting for delivery"]};
-  var v=M[st]; if(!v) return "";
+  var v=M[st]; if(st==="restricted") return "<span class='lxm-st wait' title='Resend accepted it. Delivery status is not shown because the Resend API key on this panel can only send.'>Accepted by Resend</span>"; if(st==="unknown")v=["wait","Accepted by Resend"]; if(!v) return "";
   return "<span class='lxm-st "+v[0]+"'>"+v[1]+"</span>";
 }
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Support")===0;}
@@ -387,7 +387,7 @@ function loadSent(){
       return;
     }
     list.innerHTML=rows.map(function(x){
-      var state=x.err?"<b>failed</b>":lxmStatus(x.status);
+      var state=x.err?"<b>failed</b>":(lxmStatus(x.status)||(x.provider?"<span class='lxm-st wait'>Accepted by Resend</span>":""));
       // Same shape as an inbox row so it inherits the same styling: the recipient where the sender
       // goes, the relative time in the same right-hand column, and the delivery state on the meta
       // line where the inbox puts "to ...".
@@ -408,7 +408,7 @@ function loadSent(){
         if(btn.parentNode)btn.parentNode.classList.add("sel");
         pane.innerHTML="<div class='lxm-read-head'><div class='lxm-read-subj'>"+esc(x.subject||"(no subject)")+"</div>"
           +"<div class='lxm-read-meta'>"+(x.from_addr?("From <b>"+esc(x.from_addr)+"</b><br>"):"")+"To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
-          +" \u00b7 "+(x.err?"<b>failed</b>":lxmStatus(x.status))+"</div></div>";
+          +" \u00b7 "+(x.err?"<b>failed</b>":(lxmStatus(x.status)||(x.provider?"<span class='lxm-st wait'>Accepted by Resend</span>":"")))+"</div></div>";
         // OUR OWN markup, already cut to the allowlist by the server before it was stored, so this
         // one is rendered. Inbound mail from strangers is still shown as TEXT and always will be --
         // see the file header. body holds the plain-text copy and stays the fallback for everything
@@ -946,7 +946,7 @@ function boot(){
       // Only the row's own button opens a message. A click on the checkbox (or its label) must not
       // also open the mail, or ticking twenty rows would open twenty of them on the way through.
       if(e.target.closest&&e.target.closest(".lxm-ck"))return;
-      var b=e.target.closest&&e.target.closest(".lxm-rowmain"); if(b)open(b.getAttribute("data-open"));
+      var b=e.target.closest&&e.target.closest(".lxm-rowmain"); if(b&&b.hasAttribute("data-open"))open(b.getAttribute("data-open"));
     });
   }
 

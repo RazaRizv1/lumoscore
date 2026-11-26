@@ -161,7 +161,8 @@ export async function resendStatuses(key, replies, fetchImpl) {
         signal: ctl ? ctl.signal : undefined,
       });
       if (t) clearTimeout(t);
-      if (!res.ok) { r.status = 'unknown'; continue; }
+      // 401/403 = the key may send but not read (a Resend "sending access" key): say so rather than blank.
+      if (!res.ok) { r.status = (res.status === 401 || res.status === 403) ? 'restricted' : 'unknown'; continue; }
       const d = await res.json();
       const ev = String((d && d.last_event) || '').toLowerCase();
       r.status = RESEND_EVENT[ev] || 'unknown';
