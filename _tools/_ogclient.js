@@ -100,8 +100,22 @@
     });
   }
 
+  // The 2026-11-26 card carries the LumosCore mark top-left. The build reads it from dist; here it is
+  // fetched once from our own origin (same-origin, so the canvas stays untainted).
+  var brandReady = null;
+  function ensureBrand() {
+    if (brandReady) return brandReady;
+    brandReady = logoDataUri('/assets/tokens/lumos.png').then(function (u) {
+      if (u && window.LXOGKit && window.LXOGKit.setBrand) window.LXOGKit.setBrand(u);
+      return true;
+    });
+    return brandReady;
+  }
+
   function generate(opt) {
     return ensureFont().then(function () {
+      return ensureBrand();
+    }).then(function () {
       return logoDataUri(opt.logo);
     }).then(function (logo) {
       var svg = window.LXOGKit.assetCard({

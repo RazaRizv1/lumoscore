@@ -387,12 +387,284 @@ function emitBrowser() {
   return out;
 }
 
+// =================================================================================================
+// THE 2026-11-26 CARD (RAZA: "make them more attractive and modernistic"; mockups approved as v2 in
+// og-mockups/v2). One frame for every card: near-black, a faint dot grid fading out to the right, a
+// soft glow in the flame's colours, the LumosCore mark top-left, a small label, the page name, one or
+// two short lines, a row of chips, and a picture on the right.
+//
+// NETWORKS ARE NEVER LISTED ON A HUB OR GENERAL CARD ("networks will just keep increasing"). A chain
+// chip / badge appears only on a card that IS that network's page (/trade/stellar, a Stellar token).
+// No numbers anywhere in a picture: a build-time image must not carry a price or a rate.
+// =================================================================================================
+const C2 = { BG: '#09090b', INK: '#f6f5f3', MUTED: '#a3a2ac', SOFT: '#75747e', SURF: '#121216', LINE: '#28282f', L: 84 };
+let BRAND = '';
+if (IS_NODE) {
+  try {
+    const bp = path.join(__dirname, '..', 'dist', 'assets', 'tokens', 'lumos.png');
+    if (fs.existsSync(bp)) BRAND = 'data:image/png;base64,' + fs.readFileSync(bp).toString('base64');
+  } catch (e) { BRAND = ''; }
+}
+function setBrand(uri) { BRAND = uri || ''; }
+
+// NEAR has no vector mark on the site, so a plain geometric N in the same 32-unit box as the others.
+CHAIN.NEAR = { label: 'NEAR', bb: [8, 8, 16, 16], d: 'M8 8h3.4l8.2 10.4V8H24v16h-3.4l-8.2-10.4V24H8z' };
+
+const DEFS2 =
+  '<radialGradient id="c2g1" cx="0.86" cy="0" r="0.7"><stop offset="0" stop-color="#e2557f" stop-opacity=".20"/><stop offset=".5" stop-color="#ff9a4a" stop-opacity=".06"/><stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/></radialGradient>'
+  + '<radialGradient id="c2g2" cx="0.98" cy="1" r="0.6"><stop offset="0" stop-color="#36c8e6" stop-opacity=".18"/><stop offset="1" stop-color="#36c8e6" stop-opacity="0"/></radialGradient>'
+  + '<radialGradient id="c2g3" cx="0" cy="0" r="0.5"><stop offset="0" stop-color="#ffffff" stop-opacity=".035"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>'
+  + '<pattern id="c2dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#ffffff" fill-opacity=".075"/></pattern>'
+  + '<linearGradient id="c2fade" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#ffffff" stop-opacity="0"/></linearGradient>'
+  + '<mask id="c2dm"><rect width="' + W + '" height="' + H + '" fill="url(#c2fade)"/></mask>'
+  + '<clipPath id="c2cc" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath>'
+  + '<linearGradient id="c2flame" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3fd0ea"/><stop offset=".38" stop-color="#e2557f"/><stop offset=".72" stop-color="#ff9a4a"/><stop offset="1" stop-color="#ffcf5a"/></linearGradient>'
+  + '<linearGradient id="c2edge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".22"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".05"/><stop offset="1" stop-color="#ffffff" stop-opacity=".12"/></linearGradient>'
+  + '<linearGradient id="c2glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".06"/><stop offset="1" stop-color="#ffffff" stop-opacity=".015"/></linearGradient>'
+  + '<linearGradient id="c2area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".28"/><stop offset="1" stop-color="#e2557f" stop-opacity="0"/></linearGradient>'
+  + '<linearGradient id="c2liq1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd0ea" stop-opacity=".55"/><stop offset="1" stop-color="#7a6cf0" stop-opacity=".55"/></linearGradient>'
+  + '<linearGradient id="c2liq2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e2557f" stop-opacity=".55"/><stop offset="1" stop-color="#ff9a4a" stop-opacity=".6"/></linearGradient>'
+  + '<radialGradient id="c2halo"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".16"/><stop offset=".45" stop-color="#e2557f" stop-opacity=".07"/><stop offset="1" stop-color="#e2557f" stop-opacity="0"/></radialGradient>'
+  + '<clipPath id="c2orb"><circle cx="925" cy="305" r="150"/></clipPath>';
+
+// chips: { t } plain, { t, chain } with that chain's mark, { t, dot } with a coloured dot, { t, tick } green curation tick
+function chips2(list) {
+  const y = 516, h = 44, FS = 19;
+  let x = C2.L, out = '';
+  (list || []).filter(Boolean).forEach((c) => {
+    const lead = c.chain || c.tick || c.dot ? 44 : 20;
+    const w = Math.round(lead + textW(c.t, FS, 0) + 20);
+    if (x + w > 860) return;                                  // never run into the domain on the right
+    out += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="22" fill="' + (c.tick ? '#0e2519' : C2.SURF) + '" stroke="' + (c.tick ? '#1fa968' : C2.LINE) + '"' + (c.tick ? ' stroke-opacity=".5"' : '') + '/>';
+    if (c.chain && CHAIN[c.chain]) {
+      out += '<circle cx="' + (x + 23) + '" cy="' + (y + 22) + '" r="13" fill="#24242b"/>' + chipMark(c.chain, x + 23, y + 22, 13);
+    }
+    if (c.dot) out += '<circle cx="' + (x + 23) + '" cy="' + (y + 22) + '" r="10" fill="' + c.dot + '" fill-opacity=".18"/><circle cx="' + (x + 23) + '" cy="' + (y + 22) + '" r="5" fill="' + c.dot + '"/>';
+    if (c.tick) out += '<circle cx="' + (x + 23) + '" cy="' + (y + 22) + '" r="11" fill="#1fa968"/><path d="M' + (x + 17.5) + ' ' + (y + 22.5) + 'l3.6 3.6 7-7.2" fill="none" stroke="#08080a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+    out += bold(x + lead, y + 29, FS, c.t, c.tick ? '#86e3b6' : '#dddce2', 0, 0.5);
+    x += w + 10;
+  });
+  return out;
+}
+
+// chainMark centres itself on its own box; for a chip the mark is centred on the circle instead
+function chipMark(chain, cx, cy, hgt) {
+  const C = CHAIN[chain]; if (!C) return '';
+  const s = hgt / C.bb[3], w = C.bb[2] * s;
+  return chainMark(chain, cx - w / 2, cy, hgt, '#ffffff').svg;
+}
+
+function fitTitle(text, max, start) {
+  let size = start || 100;
+  while (size > 44 && textW(text, size, -size * 0.04) > max) size -= 2;
+  return size;
+}
+
+// The frame. visual = { svg, defs } drawn on the right half.
+function card({ eyebrow, title, sub, chipList, visual, titleSize }) {
+  const L2 = C2.L, TMAX = 610;
+  const ts = fitTitle(title, TMAX, titleSize || 100);
+  const subs = (Array.isArray(sub) ? sub : [sub]).filter(Boolean).slice(0, 2);
+  const v = visual || { svg: '', defs: '' };
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
+    + '<defs>' + DEFS2 + (v.defs || '') + '</defs>'
+    + '<rect width="' + W + '" height="' + H + '" fill="' + C2.BG + '"/>'
+    + '<rect width="' + W + '" height="' + H + '" fill="url(#c2dots)" mask="url(#c2dm)"/>'
+    + '<rect width="' + W + '" height="' + H + '" fill="url(#c2g3)"/><rect width="' + W + '" height="' + H + '" fill="url(#c2g1)"/><rect width="' + W + '" height="' + H + '" fill="url(#c2g2)"/>';
+  if (BRAND) s += '<image x="' + L2 + '" y="62" width="42" height="42" href="' + BRAND + '" preserveAspectRatio="xMidYMid meet"/>';
+  s += bold(L2 + 54, 92, 28, 'LumosCore', C2.INK, -0.4, 0.9);
+  if (eyebrow) {
+    s += '<circle cx="' + (L2 + 5) + '" cy="226" r="5" fill="url(#c2flame)"/>'
+      + bold(L2 + 20, 233, 19, String(eyebrow).toUpperCase(), C2.SOFT, 2.6, 0.5);
+  }
+  s += bold(L2 - 4, 334, ts, title, C2.INK, -ts * 0.04, Math.max(1.8, ts * 0.04));
+  subs.forEach((t, i) => {
+    let fs2 = 30; while (fs2 > 22 && textW(t, fs2, 0) > TMAX) fs2 -= 1;
+    s += plain(L2, 392 + i * 40, fs2, t, C2.MUTED);
+  });
+  s += '<rect x="' + L2 + '" y="490" width="' + (W - L2 * 2) + '" height="1" fill="#ffffff" fill-opacity=".06"/>'
+    + chips2(chipList)
+    + bold(W - L2, 545, 20, 'lumoscore.com', C2.SOFT, 0, 0.4, 'end')
+    + (v.svg || '')
+    + '</svg>';
+  return s;
+}
+
+// ---- pictures (right half; centre ~ 925,305) ----------------------------------------------------
+const glass2 = (x, y, w, h, r) => '<rect x="' + x + '" y="' + (y + 14) + '" width="' + w + '" height="' + h + '" rx="' + r + '" fill="#000000" fill-opacity=".35"/>'
+  + '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '" fill="url(#c2glass)" stroke="url(#c2edge)" stroke-width="1.5"/>';
+const ring2 = (cx, cy, r, op, dash) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#ffffff" stroke-opacity="' + op + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+const halo2 = (cx, cy, r) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * 1.25) + '" fill="url(#c2halo)"/>';
+// the network badge a network page's picture wears (top-left of the picture)
+function netBadge(chain, cx, cy) {
+  if (!chain || !CHAIN[chain]) return '';
+  return '<circle cx="' + cx + '" cy="' + cy + '" r="24" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>' + chipMark(chain, cx, cy, 22);
+}
+function brandDisc(cx, cy, r) {
+  return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>'
+    + (BRAND ? '<image x="' + (cx - r * 0.75) + '" y="' + (cy - r * 0.75) + '" width="' + (r * 1.5) + '" height="' + (r * 1.5) + '" href="' + BRAND + '" preserveAspectRatio="xMidYMid meet"/>' : '');
+}
+function monogram(cx, cy, size, code) {
+  const t = String(code || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?';
+  return bold(cx, cy + size * 0.36, size, t, '#ffffff', 0, 1.6, 'middle');
+}
+
+const VIS = {
+  home() {
+    return { svg: halo2(925, 300, 175) + ring2(925, 300, 205, .05) + ring2(925, 300, 160, .07, '2 8') + ring2(925, 300, 115, .10)
+      + brandDisc(925, 300, 86)
+      + '<circle cx="1083" cy="214" r="5" fill="#ffcf5a"/><circle cx="772" cy="380" r="4" fill="#3fd0ea"/><circle cx="1050" cy="420" r="3.5" fill="#e2557f"/>' };
+  },
+  chart(chain) {
+    const P = [[0, 168], [45, 150], [90, 160], [135, 118], [180, 128], [225, 92], [270, 104], [315, 66], [360, 52]];
+    const X = (p) => 760 + p[0], Y = (p) => 190 + p[1];
+    let d = 'M' + X(P[0]) + ' ' + Y(P[0]);
+    for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], mx = (X(a) + X(b)) / 2; d += ' C' + mx + ' ' + Y(a) + ' ' + mx + ' ' + Y(b) + ' ' + X(b) + ' ' + Y(b); }
+    let g = ''; for (let i = 0; i < 4; i++) g += '<rect x="760" y="' + (230 + i * 50) + '" width="360" height="1" fill="#ffffff" fill-opacity=".05"/>';
+    [22, 14, 30, 18, 26, 36, 20, 28, 40].forEach((h, i) => { g += '<rect x="' + (764 + i * 44) + '" y="' + (420 - h) + '" width="22" height="' + h + '" rx="4" fill="#ffffff" fill-opacity=".08"/>'; });
+    return { svg: glass2(728, 150, 424, 310, 30) + g + '<path d="' + d + ' L1120 420 L760 420 Z" fill="url(#c2area)"/>'
+      + '<path d="' + d + '" fill="none" stroke="url(#c2flame)" stroke-width="5" stroke-linecap="round"/>'
+      + '<circle cx="1120" cy="242" r="16" fill="#ffcf5a" fill-opacity=".18"/><circle cx="1120" cy="242" r="7.5" fill="#ffcf5a"/>'
+      + netBadge(chain, 778, 186) };
+  },
+  bridge(chain) {
+    let dots = '';
+    for (let i = 1; i < 10; i++) { if (i === 5) continue; const t = i / 10, x = (1 - t) * (1 - t) * 790 + 2 * (1 - t) * t * 925 + t * t * 1060, y = (1 - t) * (1 - t) * 360 + 2 * (1 - t) * t * 170 + t * t * 360; dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.2" fill="url(#c2flame)"/>'; }
+    const end = (cx) => '<circle cx="' + cx + '" cy="360" r="62" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>' + ring2(cx, 360, 84, .06) + ring2(cx, 360, 106, .035);
+    const left = chain && CHAIN[chain] ? chipMark(chain, 790, 360, 40)
+      : '<path d="M772 360 h34 m-12 -12 l12 12 l-12 12" fill="none" stroke="#dddce2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    return { svg: halo2(925, 300, 190) + '<path d="M790 360 Q925 170 1060 360" fill="none" stroke="#ffffff" stroke-opacity=".07" stroke-width="2"/>' + dots
+      + end(790) + end(1060) + left
+      + '<circle cx="1060" cy="360" r="15" fill="none" stroke="#dddce2" stroke-width="3.5"/><path d="M1053 360 l5 5 l9 -10" fill="none" stroke="#dddce2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      + brandDisc(925, 232, 34) };
+  },
+  orb(chain) {
+    const wave = (y, amp, ph, fill) => { let d = 'M760 ' + y; for (let x = 760; x <= 1090; x += 10) d += ' L' + x + ' ' + (y + Math.sin((x - 760) / 52 + ph) * amp).toFixed(1); return '<path d="' + d + ' L1090 470 L760 470 Z" fill="' + fill + '"/>'; };
+    return { svg: halo2(925, 305, 200) + '<circle cx="925" cy="319" r="150" fill="#000000" fill-opacity=".35"/>'
+      + '<g clip-path="url(#c2orb)"><rect x="760" y="140" width="330" height="330" fill="#0d0d10"/>' + wave(300, 14, 0, 'url(#c2liq1)') + wave(330, 12, 2.2, 'url(#c2liq2)') + wave(372, 9, 4.1, '#ffffff') .replace('fill="#ffffff"', 'fill="#ffffff" fill-opacity=".06"') + '</g>'
+      + '<circle cx="925" cy="305" r="150" fill="none" stroke="url(#c2edge)" stroke-width="1.6"/>'
+      + '<path d="M842 214 A118 118 0 0 1 960 182" fill="none" stroke="#ffffff" stroke-opacity=".22" stroke-width="7" stroke-linecap="round"/>'
+      + ring2(925, 305, 182, .05) + ring2(925, 305, 214, .03)
+      + '<circle cx="1018" cy="252" r="5" fill="#ffffff" fill-opacity=".5"/><circle cx="880" cy="268" r="3.5" fill="#ffffff" fill-opacity=".35"/>'
+      + netBadge(chain, 800, 168) };
+  },
+  // one token: its own logo in a glass tile, contained (not cropped -- not every logo is round)
+  token(logo, code, chain) {
+    const defs = '<clipPath id="c2tk"><rect x="835" y="215" width="180" height="180" rx="44"/></clipPath>';
+    return { defs, svg: halo2(925, 305, 170) + glass2(775, 155, 300, 300, 56)
+      + '<rect x="815" y="195" width="220" height="220" rx="56" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>'
+      + (logo ? '<image x="835" y="215" width="180" height="180" href="' + logo + '" clip-path="url(#c2tk)" preserveAspectRatio="xMidYMid meet"/>' : monogram(925, 305, 84, code))
+      + netBadge(chain, 790, 170) };
+  },
+  // a pool: the two tokens' logos overlapping, inside the same soft rings as the orb
+  pair(la, lb, ca, cb, chain) {
+    const one = (cx, logo, code, id) => '<circle cx="' + cx + '" cy="305" r="92" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.6"/>'
+      + (logo ? '<image x="' + (cx - 66) + '" y="239" width="132" height="132" href="' + logo + '" clip-path="url(#' + id + ')" preserveAspectRatio="xMidYMid meet"/>' : monogram(cx, 305, 62, code));
+    const defs = '<clipPath id="c2pa"><circle cx="865" cy="305" r="66"/></clipPath><clipPath id="c2pb"><circle cx="985" cy="305" r="66"/></clipPath>';
+    return { defs, svg: halo2(925, 305, 200) + ring2(925, 305, 182, .05) + ring2(925, 305, 214, .03)
+      + one(865, la, ca, 'c2pa') + one(985, lb, cb, 'c2pb') + netBadge(chain, 800, 190) };
+  },
+  posts() {
+    let g = '';
+    [0, 1, 2].forEach((i) => { const y = 200 + i * 78; g += '<rect x="785" y="' + y + '" width="280" height="60" rx="16" fill="#ffffff" fill-opacity="' + (i === 0 ? '.07' : '.04') + '" stroke="url(#c2edge)"/>'
+      + '<circle cx="815" cy="' + (y + 30) + '" r="8" fill="' + (i === 0 ? 'url(#c2flame)' : '#ffffff') + '"' + (i === 0 ? '' : ' fill-opacity=".25"') + '/>'
+      + '<rect x="837" y="' + (y + 22) + '" width="' + [180, 150, 166][i] + '" height="8" rx="4" fill="#ffffff" fill-opacity=".28"/><rect x="837" y="' + (y + 36) + '" width="' + [120, 96, 110][i] + '" height="6" rx="3" fill="#ffffff" fill-opacity=".12"/>'; });
+    return { svg: halo2(925, 300, 180) + g };
+  },
+  docs() {
+    let g = glass2(780, 160, 290, 300, 28) + '<rect x="808" y="192" width="120" height="12" rx="6" fill="url(#c2flame)"/>';
+    [210, 180, 230, 160, 200, 140, 190].forEach((w, i) => { g += '<rect x="808" y="' + (228 + i * 28) + '" width="' + w + '" height="9" rx="4.5" fill="#ffffff" fill-opacity="' + (i % 3 === 2 ? '.12' : '.22') + '"/>'; });
+    return { svg: halo2(925, 300, 180) + g };
+  },
+  paper() {
+    let g = '<rect x="845" y="168" width="200" height="270" rx="18" fill="#ffffff" fill-opacity=".03" stroke="url(#c2edge)" transform="rotate(6 945 303)"/>'
+      + glass2(815, 158, 200, 270, 18) + '<rect x="843" y="190" width="80" height="12" rx="6" fill="url(#c2flame)"/>';
+    [140, 120, 132, 100, 126, 112, 90].forEach((w, i) => { g += '<rect x="843" y="' + (222 + i * 26) + '" width="' + w + '" height="8" rx="4" fill="#ffffff" fill-opacity=".22"/>'; });
+    return { svg: halo2(925, 300, 180) + g };
+  },
+  listing() {
+    return { svg: halo2(925, 305, 180) + ring2(925, 305, 150, .05) + ring2(925, 305, 112, .08, '2 8')
+      + '<circle cx="925" cy="305" r="78" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.5"/>'
+      + '<rect x="890" y="299" width="70" height="12" rx="6" fill="url(#c2flame)"/><rect x="919" y="270" width="12" height="70" rx="6" fill="url(#c2flame)"/>'
+      + '<circle cx="1046" cy="214" r="22" fill="#0e2519" stroke="#1fa968" stroke-opacity=".5"/><path d="M1036 214.5l6 6 11-11.5" fill="none" stroke="#1fa968" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>' };
+  },
+  rewards(chain) {
+    let sp = ''; [[1060, 200, 7], [870, 168, 5], [1080, 400, 5], [775, 410, 6]].forEach(([x, y, r]) => { sp += '<path d="M' + x + ' ' + (y - r * 2) + ' L' + (x + r * 0.5) + ' ' + (y - r * 0.5) + ' L' + (x + r * 2) + ' ' + y + ' L' + (x + r * 0.5) + ' ' + (y + r * 0.5) + ' L' + x + ' ' + (y + r * 2) + ' L' + (x - r * 0.5) + ' ' + (y + r * 0.5) + ' L' + (x - r * 2) + ' ' + y + ' L' + (x - r * 0.5) + ' ' + (y - r * 0.5) + ' Z" fill="url(#c2flame)" fill-opacity=".8"/>'; });
+    return { svg: halo2(925, 305, 190) + ring2(925, 305, 190, .04) + ring2(925, 305, 145, .07, '2 8') + brandDisc(925, 305, 100) + sp + netBadge(chain, 800, 190) };
+  },
+  launch(chain) {
+    // a new token: a coin at the end of a curved launch trail, with a small "Minted" tag. Not the
+    // LumosCore flame -- the token being launched is the visitor's own, not LUMOS.
+    const star = (x, y, r, fill) => '<path d="M' + x + ' ' + (y - r) + ' C' + (x + r * 0.12) + ' ' + (y - r * 0.12) + ' ' + (x + r * 0.12) + ' ' + (y - r * 0.12) + ' ' + (x + r) + ' ' + y
+      + ' C' + (x + r * 0.12) + ' ' + (y + r * 0.12) + ' ' + (x + r * 0.12) + ' ' + (y + r * 0.12) + ' ' + x + ' ' + (y + r)
+      + ' C' + (x - r * 0.12) + ' ' + (y + r * 0.12) + ' ' + (x - r * 0.12) + ' ' + (y + r * 0.12) + ' ' + (x - r) + ' ' + y
+      + ' C' + (x - r * 0.12) + ' ' + (y - r * 0.12) + ' ' + (x - r * 0.12) + ' ' + (y - r * 0.12) + ' ' + x + ' ' + (y - r) + 'Z" fill="' + fill + '"/>';
+    return { svg: halo2(985, 250, 180)
+      + '<path d="M760 450 C 820 430 880 380 925 320" fill="none" stroke="url(#c2flame)" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 14"/>'
+      + ring2(1000, 245, 128, .05) + ring2(1000, 245, 96, .08, '2 8')
+      + '<circle cx="1000" cy="245" r="72" fill="#0d0d10" stroke="url(#c2flame)" stroke-width="3"/>'
+      + '<circle cx="1000" cy="245" r="56" fill="none" stroke="#ffffff" stroke-opacity=".08"/>'
+      + star(1000, 245, 30, 'url(#c2flame)') + star(1052, 186, 9, '#ffcf5a') + star(940, 300, 6, '#3fd0ea')
+      + '<rect x="930" y="345" width="140" height="44" rx="22" fill="#0e2519" stroke="#1fa968" stroke-opacity=".5"/>'
+      + '<circle cx="953" cy="367" r="11" fill="#1fa968"/><path d="M947.5 367.5l3.6 3.6 7-7.2" fill="none" stroke="#08080a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      + bold(972, 374, 19, 'Minted', '#86e3b6', 0, 0.5)
+      + netBadge(chain, 800, 190) };
+  },
+};
+
+// 2 to 4 tokens of one pool, overlapping in a row (NEAR pools can hold up to four).
+VIS.group = function (logos, codes, chain) {
+  const n = Math.max(2, Math.min(4, (logos || []).length || 2));
+  if (n === 2) return VIS.pair(logos[0], logos[1], codes[0], codes[1], chain);
+  const r = n === 3 ? 74 : 62, step = r * 1.45, x0 = 925 - step * (n - 1) / 2;
+  let defs = '', svg = halo2(925, 305, 200) + ring2(925, 305, 182, .05) + ring2(925, 305, 214, .03);
+  for (let i = 0; i < n; i++) {
+    const cx = Math.round(x0 + i * step), id = 'c2g' + i, ir = Math.round(r * 0.72);
+    defs += '<clipPath id="' + id + '"><circle cx="' + cx + '" cy="305" r="' + ir + '"/></clipPath>';
+    svg += '<circle cx="' + cx + '" cy="305" r="' + r + '" fill="#0d0d10" stroke="url(#c2edge)" stroke-width="1.6"/>'
+      + (logos[i] ? '<image x="' + (cx - ir) + '" y="' + (305 - ir) + '" width="' + (ir * 2) + '" height="' + (ir * 2) + '" href="' + logos[i] + '" clip-path="url(#' + id + ')" preserveAspectRatio="xMidYMid meet"/>' : monogram(cx, 305, Math.round(r * 0.62), codes[i]));
+  }
+  return { defs, svg: svg + netBadge(chain, 800, 190) };
+};
+// MCP: a terminal window -- an agent asks, a transaction comes back ready to sign. No real addresses or numbers.
+VIS.terminal = function () {
+  const line = (y, w, op) => '<rect x="790" y="' + y + '" width="' + w + '" height="9" rx="4.5" fill="#ffffff" fill-opacity="' + op + '"/>';
+  return { svg: halo2(925, 300, 190) + glass2(745, 165, 360, 280, 24)
+    + '<rect x="745" y="165" width="360" height="40" rx="24" fill="#ffffff" fill-opacity=".04"/>'
+    + '<circle cx="771" cy="185" r="5.5" fill="#e5484d" fill-opacity=".8"/><circle cx="790" cy="185" r="5.5" fill="#ffcf5a" fill-opacity=".8"/><circle cx="809" cy="185" r="5.5" fill="#1fa968" fill-opacity=".8"/>'
+    + '<path d="M772 238 l10 7 -10 7" fill="none" stroke="url(#c2flame)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<rect x="792" y="240" width="170" height="10" rx="5" fill="#ffffff" fill-opacity=".45"/>'
+    + line(272, 240, .18) + line(294, 200, .18) + line(316, 220, .12)
+    + '<rect x="772" y="350" width="196" height="44" rx="22" fill="#0e2519" stroke="#1fa968" stroke-opacity=".5"/>'
+    + '<circle cx="795" cy="372" r="11" fill="#1fa968"/><path d="M789.5 372.5l3.6 3.6 7-7.2" fill="none" stroke="#08080a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+    + bold(814, 379, 19, 'Ready to sign', '#86e3b6', 0, 0.5)
+    + brandDisc(1105, 175, 34) };
+};
+
+// The new asset card, same inputs as assetCard so the browser generator and every builder keep working.
+function assetCard2({ code, logo, badge, domain, issuer, chain }) {
+  const ch = chain || 'Stellar';
+  const third = domain || (issuer ? issuer.slice(0, 4) + '…' + issuer.slice(-4) : '');
+  const tick = badge && /curat|lumoscore token|verified/i.test(badge);
+  return card({
+    eyebrow: 'Token on ' + (CHAIN[ch] ? CHAIN[ch].label : ch),
+    title: code, titleSize: 108,
+    // NEAR passes the token's CONTRACT where Stellar passes the issuer's website, so it is named as one.
+    sub: [third ? (ch === 'NEAR' ? 'Contract ' + third : domain ? 'Issued by ' + domain : 'Issuer ' + third) : 'Trade it on LumosCore'],
+    chipList: [{ t: CHAIN[ch] ? CHAIN[ch].label : ch, chain: ch }, badge ? (tick ? { t: badge, tick: true } : { t: badge }) : null],
+    visual: VIS.token(logo, code, null),
+  });
+}
+
 const API = {
+  card, VIS, assetCard2, setBrand, C2,
   W, H, BG, BG_TOP, INK, MUTED, ACCENT, GREEN, LINE, FONT,
   L, CODE_BASE, CODE_NOM, PANEL, PAD, INNER, PX, PY,
   ROW_Y, ROW_H, ROW_MID, ROW_FS, ROW_BASE, ACCENT_BASE, FEAT_BASE, RULE_Y,
   esc, textW, hasFont, initMetrics, bold, plain, CHAIN, CHECK, chainMark, metaRow, brandRow, fitHeadline,
-  shell, assetPanel, assetCard, render, toPng, imageDataUri, emitBrowser,
+  // assetCard IS the new card (2026-11-26): the browser generator, _ogcards.js and the NEAR builders all
+  // call K.assetCard with the same inputs and get the new design. The old one stays as assetCardV1.
+  shell, assetPanel, assetCard: assetCard2, assetCardV1: assetCard, render, toPng, imageDataUri, emitBrowser,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 else if (typeof window !== 'undefined') window.LXOGKit = API;

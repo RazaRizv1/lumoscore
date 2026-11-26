@@ -10,4 +10,5 @@
 // read under another would either be served after the design moved on, or thrown away for ever.
 // 6: the XRPL asset cards gained the "Listed asset" badge, to match the tick dexasset.js already
 // shows on every page in the top-100 roster.
-export const CARD_V = 6;
+// 7: the 2026-11-26 redesign (K.card) -- every card drawn before it is a different picture.
+export const CARD_V = 7;

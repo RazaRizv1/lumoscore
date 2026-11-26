@@ -1255,6 +1255,12 @@ const SECTION_CARD = {
   '/rewards/xrpl': 'rewards-xrpl',
   '/whitepaper': 'whitepaper',
   '/list-your-token': 'list-your-token',
+  // 2026-11-26: new cards -- these used to fall back to the general one.
+  '/launchpad': 'launchpad',
+  '/launchpad/stellar': 'launchpad-stellar',
+  '/launchpad/xrpl': 'launchpad-xrpl',
+  '/about': 'about',
+  '/mcp': 'mcp',
 };
 
 // The card for everything with no better answer: the docs, the legal pages, the footer links, a
@@ -2490,6 +2496,11 @@ export async function onRequest(context){
       head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
     }
     seo.image = absUrl(seo.image);
+    // CARD VERSION ON THE URL (2026-11-26 redesign): crawlers cache a preview by url for days and /assets/ is
+    // immutable, so our own cards carry ?cv=<design> -- bump it with the next redesign.
+    // Plain indexOf, no regex: extract_site.js emits this file from a template that eats backslashes.
+    if ((seo.image.indexOf('/assets/og/') >= 0 || seo.image.indexOf('/lxapi/ogcard') >= 0 || seo.image.indexOf('/lxapi/ogpool') >= 0
+      || seo.image.indexOf('/lxapi/ogxrpl') >= 0) && seo.image.indexOf('cv=') < 0) seo.image += (seo.image.indexOf('?') < 0 ? '?' : '&') + 'cv=2';
     // A crawler reads the page first and fetches og:image a moment later. Building the card now,
     // without holding up this response, means that second request usually finds it already cached
     // instead of paying the cold 2-3s that made a link need pasting two or three times.

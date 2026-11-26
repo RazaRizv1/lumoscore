@@ -82,15 +82,16 @@ function pairPanel(a, b, ca, cb) {
   return { svg, defs };
 }
 
+// 2026-11-26 card (K.card): this IS a pool on one network, so it wears that network's chip. No earning
+// wording -- pools copy describes the action, never a return.
 function poolCard({ chain, ca, cb, la, lb }) {
-  const p = pairPanel(la, lb, ca, cb);
-  return K.shell({
-    defs: p.defs,
-    row: K.metaRow([{ chain }, { text: 'Liquidity pool' }]).svg,
-    headline: ca + ' / ' + cb,
-    accent: 'Provide liquidity on LumosCore',
-    features: 'Reserves · Activity · Participants',
-    panel: p.svg,
+  const name = (K.CHAIN[chain] && K.CHAIN[chain].label) || chain;
+  return K.card({
+    eyebrow: 'Liquidity pool on ' + name,
+    title: ca + ' / ' + cb,
+    sub: ['Add or withdraw liquidity', 'from your own wallet.'],
+    chipList: [{ t: name, chain }, { t: 'AMM pool' }],
+    visual: K.VIS.pair(la, lb, ca, cb, null),
   });
 }
 
@@ -176,7 +177,31 @@ async function stellarLogo(u) {
   const xTop = await fetchXrplRoster(XORIGIN, LIMIT);
 
   const logos = new Map();                      // one fetch per distinct token, not per pool side
-  const getS = async (u) => { if (!logos.has(u)) logos.set(u, await stellarLogo(u)); return logos.get(u); };
+  // 2026-11-26: /lxapi/pools rows no longer carry an `img`, so every Stellar pool card was being drawn
+  // with two monograms. The logo is looked up by asset id instead (the same endpoint the asset pages
+  // use), and native XLM uses the Stellar mark that ships in dist.
+  const getS = async (a) => {
+    if (!a) return '';
+    if (a.img) { if (!logos.has(a.img)) logos.set(a.img, await stellarLogo(a.img)); return logos.get(a.img); }
+    const key = a.issuer ? a.code + '-' + a.issuer : 'native';
+    if (logos.has(key)) return logos.get(key);
+    let uri = '';
+    try {
+      if (!a.issuer) {
+        const p = path.join(__dirname, '..', 'dist', 'assets', 'networks', 'stellar.png');
+        if (fs.existsSync(p)) uri = 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+      } else {
+        const r = await fetch(ORIGIN + '/lxapi/assetlogo?asset=' + encodeURIComponent(key));
+        const d = r.ok ? await r.json() : null; const u = d && d.image;
+        if (u && u.indexOf('data:') === 0) {
+          const m = /^data:([^;]+);base64,(.*)$/i.exec(u);
+          if (m) uri = await K.toPng(Buffer.from(m[2], 'base64'));
+          else { const sv = /^data:image\/svg\+xml[^,]*,(.*)$/i.exec(u); if (sv) uri = await K.toPng(Buffer.from(decodeURIComponent(sv[1]), 'utf8')); }
+        } else if (u) uri = await K.imageDataUri(u.indexOf('/') === 0 ? ORIGIN + u : u);
+      }
+    } catch (e) { uri = ''; }
+    logos.set(key, uri); return uri;
+  };
   const getX = async (m) => {
     if (!m) return '';
     if (!logos.has(m)) logos.set(m, await K.imageDataUri(XORIGIN + '/lxapi/xrplthumb?id=' + m + '&w=128'));
@@ -194,7 +219,7 @@ async function stellarLogo(u) {
   } catch (e) { console.error('  stellar pools: ' + e.message); }
   for (const r of sTop) {
     try {
-      const la2 = await getS(r.a && r.a.img), lb2 = await getS(r.b && r.b.img);
+      const la2 = await getS(r.a), lb2 = await getS(r.b);
       const png = K.render(poolCard({ chain: 'Stellar', ca: (r.a && r.a.code) || '?', cb: (r.b && r.b.code) || '?', la: la2, lb: lb2 }));
       await writeCard(path.join(OUT_P, 'stellar-' + r.id + '.png'), png);
       drawn++;
@@ -221,45 +246,23 @@ async function stellarLogo(u) {
   // ---- the three section cards -------------------------------------------------------------------
   // Each chain's pools card wears that chain's busiest pool as its pair, so it reads as a pool page
   // rather than another markets page.
-  for (const [name, chain, r] of seen) {
-    const isX = chain === 'XRPL';
-    const la2 = isX ? await getX(r.a1 && r.a1.m) : await getS(r.a && r.a.img);
-    const lb2 = isX ? await getX(r.a2 && r.a2.m) : await getS(r.b && r.b.img);
-    // The codes too, so the section card gets the same fallback as the per-pool ones. Its pair is the
-    // chain's busiest pool, which has always had both logos -- but "has always" is not a guarantee.
-    const p = pairPanel(la2, lb2,
-      isX ? xrplCode(r.a1 && r.a1.c) : ((r.a && r.a.code) || ''),
-      isX ? xrplCode(r.a2 && r.a2.c) : ((r.b && r.b.code) || ''));
-    const png = K.render(K.shell({
-      defs: p.defs,
-      row: K.metaRow([{ chain }]).svg,
-      headline: isX ? 'XRPL Pools' : 'Stellar Pools',
-      accent: 'Provide liquidity on LumosCore',
-      features: 'TVL · Volume · Fees · APR',
-      panel: p.svg,
-    }));
-    await writeCard(path.join(OUT_S, name + '.png'), png);
-  }
-  // The chooser: both chain marks, matching the trade hub.
-  {
-    const GAP = 14, CELL = Math.round((K.INNER - GAP) / 2);
-    const top = K.PY + K.PAD + (K.INNER - CELL) / 2;
-    let svg = '';
-    ['Stellar', 'XRPL'].forEach((c, i) => {
-      const cx = K.PX + K.PAD + i * (CELL + GAP);
-      svg += '<rect x="' + cx + '" y="' + top + '" width="' + CELL + '" height="' + CELL + '" rx="' + Math.round(CELL * 0.27)
-        + '" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.09"/>';
-      const h = Math.round(CELL * 0.46);
-      svg += K.chainMark(c, cx + CELL / 2 - (K.CHAIN[c].bb[2] * (h / K.CHAIN[c].bb[3])) / 2, top + CELL / 2, h, K.INK).svg;
-    });
-    await writeCard(path.join(OUT_S, 'pools.png'), K.render(K.shell({
-      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
-      headline: 'Pools',
-      accent: 'Earn a share of the trading fees',
-      features: 'TVL · Volume · Fees · APR',
-      panel: svg,
+  // 2026-11-26: the pools section cards are the liquid orb -- the hub names no network, each network
+  // page wears only its own badge and chip. Drawn whether or not the rankings above loaded.
+  for (const [name, chain] of [['pools-stellar', 'Stellar'], ['pools-xrpl', 'XRPL']]) {
+    const label = K.CHAIN[chain].label;
+    await writeCard(path.join(OUT_S, name + '.png'), K.render(K.card({
+      eyebrow: 'Liquidity on ' + label, title: 'Pools',
+      sub: ['Add, remove and manage', 'your liquidity on ' + label + '.'],
+      chipList: [{ t: label, chain }, { t: 'Add liquidity' }, { t: 'Withdraw anytime' }],
+      visual: K.VIS.orb(chain),
     })));
   }
+  await writeCard(path.join(OUT_S, 'pools.png'), K.render(K.card({
+    eyebrow: 'Liquidity', title: 'Pools',
+    sub: ['Add, remove and manage', 'your liquidity in AMM pools.'],
+    chipList: [{ t: 'Add liquidity' }, { t: 'Withdraw anytime' }],
+    visual: K.VIS.orb(),
+  })));
 
   // PRUNE WHAT IS NO LONGER IN THE TOP HUNDRED.
   //

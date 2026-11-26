@@ -451,8 +451,8 @@ function lxLpLoadScript(src){
 }
 function lxLpPublishCard(result, d, logo){
   try{
-    return lxLpLoadScript("/assets/js/lx-ogkit.js")
-      .then(function(){ return lxLpLoadScript("/assets/js/lx-ogcardgen.js"); })
+    return lxLpLoadScript("/assets/js/lx-ogkit.js?v=2")
+      .then(function(){ return lxLpLoadScript("/assets/js/lx-ogcardgen.js?v=2"); })
       .then(function(){
         if(!window.LXOGCard) return null;
         // NO REGEX HERE. This whole script lives inside a template literal, where a backslash is
