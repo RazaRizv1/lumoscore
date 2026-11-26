@@ -11,4 +11,5 @@
 // 6: the XRPL asset cards gained the "Listed asset" badge, to match the tick dexasset.js already
 // shows on every page in the top-100 roster.
 // 7: the 2026-11-26 redesign (K.card) -- every card drawn before it is a different picture.
-export const CARD_V = 7;
+// 8: 2026-11-27 -- token cards name the displayed domain (LUMOS lumoscore.com, USDe/sUSDe ethena.fi).
+export const CARD_V = 8;

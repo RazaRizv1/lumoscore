@@ -2500,7 +2500,7 @@ export async function onRequest(context){
     // immutable, so our own cards carry ?cv=<design> -- bump it with the next redesign.
     // Plain indexOf, no regex: extract_site.js emits this file from a template that eats backslashes.
     if ((seo.image.indexOf('/assets/og/') >= 0 || seo.image.indexOf('/lxapi/ogcard') >= 0 || seo.image.indexOf('/lxapi/ogpool') >= 0
-      || seo.image.indexOf('/lxapi/ogxrpl') >= 0) && seo.image.indexOf('cv=') < 0) seo.image += (seo.image.indexOf('?') < 0 ? '?' : '&') + 'cv=2';
+      || seo.image.indexOf('/lxapi/ogxrpl') >= 0) && seo.image.indexOf('cv=') < 0) seo.image += (seo.image.indexOf('?') < 0 ? '?' : '&') + 'cv=3';
     // A crawler reads the page first and fetches og:image a moment later. Building the card now,
     // without holding up this response, means that second request usually finds it already cached
     // instead of paying the cold 2-3s that made a link need pasting two or three times.

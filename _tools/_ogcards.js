@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const K = require('./_ogkit.js');
+const { DOMAIN_DISPLAY } = require('./lib.js');
 
 const ORIGIN = 'https://lumoscore.com';
 // dist/assets is committed directly rather than copied from assets/ on a public build, so the cards
@@ -152,7 +153,12 @@ async function bestLogo(assetId) {
   for (const id of ids) {
     const code = id.slice(0, id.lastIndexOf('-'));
     const v = verified[id] || {};
-    const domain = String(v.d || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    // What the site SHOWS as the home domain wins over the verification record (RAZA 2026-11-27: the LUMOS
+    // card said "Issued by lumosdao.io" -- the issuer's stale pre-rename home_domain, which the record keeps
+    // as evidence of the handshake). Same DOMAIN_DISPLAY map the asset and account pages use, so a card and
+    // its page can never name different domains.
+    const shown = DOMAIN_DISPLAY[code + '|' + id.slice(id.lastIndexOf('-') + 1)];
+    const domain = String(shown || v.d || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (domain) withDomain++;
     const { uri: logo, definitive, local } = await bestLogo(id);
     if (logo) withLogo++;
